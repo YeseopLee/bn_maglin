@@ -120,9 +120,6 @@ namespace Maglin.Battle
         // 전투 상태
         private bool isBattleActive = false;
         private bool isPlayerTurn = true;
-        
-        // 애니메이션 제어
-        private bool isHandUIUpdateEnabled = true;
 
         // 현재 보상 목록
         private RewardItem[] currentRewards;
@@ -717,71 +714,44 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 조합 슬롯 UI만 정리 (카드 사용 후 호출)
+        /// 조합 슬롯 UI만 정리
         /// </summary>
         public void ClearComboSlotsUIOnly()
         {
-            if (debugMode)
-                Debug.Log("[BattleUIManager] 조합 슬롯 UI만 정리 시작 (카드 사용 후)");
-
             if (elementSlotCard != null && elementSlotUI != null)
             {
-                // handCardUIs 리스트에서 제거
-                if (handCardUIs.Contains(elementSlotUI))
+                if (elementSlotUI.transform.parent != handContent)
                 {
-                    handCardUIs.Remove(elementSlotUI);
+                    Destroy(elementSlotUI);
                 }
-                
-                // UI 오브젝트 제거
-                Destroy(elementSlotUI);
-                
                 elementSlotCard = null;
                 elementSlotUI = null;
-                
-                if (debugMode)
-                    Debug.Log("[BattleUIManager] Element 슬롯 카드 UI 완전 제거");
             }
 
             if (active1SlotCard != null && active1SlotUI != null)
             {
-                // handCardUIs 리스트에서 제거
-                if (handCardUIs.Contains(active1SlotUI))
+                if (active1SlotUI.transform.parent != handContent)
                 {
-                    handCardUIs.Remove(active1SlotUI);
+                    Destroy(active1SlotUI);
                 }
-                
-                // UI 오브젝트 제거
-                Destroy(active1SlotUI);
-                
                 active1SlotCard = null;
                 active1SlotUI = null;
-                
-                if (debugMode)
-                    Debug.Log("[BattleUIManager] Active1 슬롯 카드 UI 완전 제거");
             }
 
             if (active2SlotCard != null && active2SlotUI != null)
             {
-                // handCardUIs 리스트에서 제거
-                if (handCardUIs.Contains(active2SlotUI))
+                if (active2SlotUI.transform.parent != handContent)
                 {
-                    handCardUIs.Remove(active2SlotUI);
+                    Destroy(active2SlotUI);
                 }
-                
-                // UI 오브젝트 제거
-                Destroy(active2SlotUI);
-                
                 active2SlotCard = null;
                 active2SlotUI = null;
-                
-                if (debugMode)
-                    Debug.Log("[BattleUIManager] Active2 슬롯 카드 UI 완전 제거");
             }
 
             UpdateComboUI();
 
             if (debugMode)
-                Debug.Log("[BattleUIManager] 조합 슬롯 UI만 정리 완료 - 카드들이 완전히 제거됨");
+                Debug.Log("[BattleUIManager] 조합 슬롯 UI만 정리 완료");
         }
 
         /// <summary>
@@ -1033,17 +1003,6 @@ namespace Maglin.Battle
         private void UpdateHandUI(List<Card> handCards)
         {
             if (handContent == null) return;
-            
-            // 애니메이션 중에는 UI 업데이트 비활성화
-            if (!isHandUIUpdateEnabled)
-            {
-                if (debugMode)
-                    Debug.Log($"[BattleUIManager] 손패 UI 업데이트 일시 비활성화됨 (애니메이션 중)");
-                return;
-            }
-
-            if (debugMode)
-                Debug.Log($"[BattleUIManager] 손패 UI 업데이트 시작: {handCards.Count}장");
 
             ClearHandCardUIs();
 
@@ -1057,7 +1016,7 @@ namespace Maglin.Battle
             }
 
             if (debugMode)
-                Debug.Log($"[BattleUIManager] 손패 UI 업데이트 완료: {handCardUIs.Count}장 UI 생성");
+                Debug.Log($"[BattleUIManager] 손패 UI 업데이트: {handCards.Count}장");
         }
 
         /// <summary>
@@ -1170,11 +1129,8 @@ namespace Maglin.Battle
         /// <summary>
         /// 손패 카드 UI 정리
         /// </summary>
-        public void ClearHandCardUIs()
+        private void ClearHandCardUIs()
         {
-            if (debugMode)
-                Debug.Log($"[BattleUIManager] 손패 카드 UI 정리 시작: {handCardUIs.Count}개");
-
             foreach (var cardUI in handCardUIs)
             {
                 if (cardUI != null)
@@ -1183,27 +1139,6 @@ namespace Maglin.Battle
                 }
             }
             handCardUIs.Clear();
-
-            if (debugMode)
-                Debug.Log("[BattleUIManager] 손패 카드 UI 정리 완료");
-        }
-
-        /// <summary>
-        /// 턴 종료 시 모든 카드 UI 정리 (손패 + 조합 슬롯)
-        /// </summary>
-        public void ClearAllCardUIs()
-        {
-            if (debugMode)
-                Debug.Log("[BattleUIManager] 모든 카드 UI 정리 시작 (턴 종료)");
-
-            // 조합 슬롯 정리 (카드를 손패로 되돌리지 않음)
-            ClearComboSlotsUIOnly();
-
-            // 손패 UI 정리
-            ClearHandCardUIs();
-
-            if (debugMode)
-                Debug.Log("[BattleUIManager] 모든 카드 UI 정리 완료 (턴 종료)");
         }
 
         /// <summary>
@@ -1869,128 +1804,6 @@ namespace Maglin.Battle
             }
             return null;
         }
-        
-        #region Animation Control
-        /// <summary>
-        /// 손패 UI 업데이트 비활성화 (애니메이션 중 사용)
-        /// </summary>
-        public void DisableHandUIUpdate()
-        {
-            isHandUIUpdateEnabled = false;
-            if (debugMode)
-                Debug.Log("[BattleUIManager] 손패 UI 업데이트 비활성화");
-        }
-        
-        /// <summary>
-        /// 손패 UI 업데이트 활성화 (애니메이션 완료 후 사용)
-        /// </summary>
-        public void EnableHandUIUpdate()
-        {
-            isHandUIUpdateEnabled = true;
-            if (debugMode)
-                Debug.Log("[BattleUIManager] 손패 UI 업데이트 활성화");
-        }
-        
-        /// <summary>
-        /// 강제로 손패 UI 업데이트 (애니메이션 완료 후 사용)
-        /// </summary>
-        public void ForceUpdateHandUI()
-        {
-            if (CardManager.Instance != null)
-            {
-                var handCards = CardManager.Instance.HandCards;
-                UpdateHandUI(new List<Card>(handCards));
-            }
-        }
-        
-        /// <summary>
-        /// 애니메이션용 카드 UI 생성 (태스크 71번)
-        /// </summary>
-        public GameObject CreateCardUIForAnimation(Card card)
-        {
-            if (cardUIPrefab == null || handContent == null || card == null)
-                return null;
-
-            GameObject cardUI = Instantiate(cardUIPrefab, handContent);
-            cardUI.SetActive(false); // 애니메이션에서 활성화할 때까지 비활성화
-
-            // CardUI 컴포넌트 설정
-            var cardUIComponent = cardUI.GetComponent<CardUI>();
-            if (cardUIComponent != null)
-            {
-                // Initialize 메서드를 사용하여 카드 연결 (HandCardUI는 null로 전달)
-                cardUIComponent.Initialize(card, null);
-                
-                if (debugMode)
-                    Debug.Log($"[BattleUIManager] CardUI 컴포넌트로 카드 초기화: {card.CardName}");
-            }
-            else
-            {
-                if (debugMode)
-                    Debug.LogWarning($"[BattleUIManager] CardUI 컴포넌트를 찾을 수 없음 - CardUIData로 대체");
-            }
-
-            // CardUIData도 설정 (이중 보장)
-            var cardUIData = cardUI.GetComponent<CardUIData>();
-            if (cardUIData == null)
-            {
-                cardUIData = cardUI.AddComponent<CardUIData>();
-            }
-            cardUIData.CardInstance = card;
-
-            // 기존 상호작용 기능 설정 (드래그, 클릭 등)
-            SetupCardUIInteraction(cardUI, card);
-
-            if (debugMode)
-                Debug.Log($"[BattleUIManager] 애니메이션용 카드 UI 생성 완료: {card.CardName} (비활성화 상태)");
-
-            return cardUI;
-        }
-        
-        /// <summary>
-        /// 카드 UI 상호작용 기능 설정
-        /// </summary>
-        private void SetupCardUIInteraction(GameObject cardUI, Card card)
-        {
-            // CardDraggable 컴포넌트 추가/설정
-            var cardDraggable = cardUI.GetComponent<CardDraggable>();
-            if (cardDraggable == null)
-            {
-                cardDraggable = cardUI.AddComponent<CardDraggable>();
-            }
-
-            // Button 컴포넌트 추가/설정
-            var button = cardUI.GetComponent<Button>();
-            if (button == null)
-            {
-                button = cardUI.AddComponent<Button>();
-            }
-
-            // 클릭 이벤트 설정
-            button.onClick.RemoveAllListeners();
-            button.onClick.AddListener(() => OnCardClicked?.Invoke(cardUI));
-
-            // 카드 정보 업데이트
-            UpdateCardUIInfo(cardUI, card);
-
-            if (debugMode)
-                Debug.Log($"[BattleUIManager] 카드 UI 상호작용 기능 설정 완료: {card.CardName}");
-        }
-        
-        /// <summary>
-        /// 애니메이션으로 생성된 카드 UI를 손패 목록에 등록
-        /// </summary>
-        public void RegisterCardUI(CardUI cardUI)
-        {
-            if (cardUI?.gameObject != null && !handCardUIs.Contains(cardUI.gameObject))
-            {
-                handCardUIs.Add(cardUI.gameObject);
-                
-                if (debugMode)
-                    Debug.Log($"[BattleUIManager] 카드 UI 등록 완료: {cardUI.AssociatedCard?.CardName ?? "카드 데이터 없음"}");
-            }
-        }
-        #endregion
     }
 
     /// <summary>

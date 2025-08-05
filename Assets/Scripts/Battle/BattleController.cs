@@ -583,15 +583,6 @@ namespace Maglin.Battle
             // 매니저들에 턴 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
-            // 기존 카드 UI 완전 정리 (혹시 남아있을 수 있는 UI들)
-            if (BattleUIManager.Instance != null)
-            {
-                BattleUIManager.Instance.ClearHandCardUIs();
-                
-                if (debugMode)
-                    Debug.Log("[BattleController] 기존 손패 UI 정리 완료");
-            }
-
             // 카드 드로우
             if (CardManager.Instance != null)
             {
@@ -723,7 +714,6 @@ namespace Maglin.Battle
             }
 
             ComboExecutionResult result = null;
-            bool cardsUsed = false; // 카드가 실제로 사용되었는지 추적
 
             // 단독 사용 처리
             if (comboCards.Count == 1 && comboCards[0].CardData.CanUseSolo)
@@ -734,7 +724,6 @@ namespace Maglin.Battle
                 if (CardManager.Instance != null)
                 {
                     CardManager.Instance.UseCardInstances(comboCards.ToArray());
-                    cardsUsed = true; // 카드가 사용됨
                 }
 
                 ExecuteCardEffect(comboCards[0].CardData);
@@ -763,21 +752,25 @@ namespace Maglin.Battle
                     if (result.Success)
                     {
                         ExecuteCardEffect(result.ResultCardData);
-                        cardsUsed = true; // 조합 성공 시 카드가 사용됨
                     }
                 }
             }
 
             // 조합 완료 후 슬롯 정리
-            if (cardsUsed)
+            if (result != null)
             {
-                // 카드가 사용된 경우: UI만 정리하고 카드는 손패로 되돌리지 않음
-                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                if (result.Success)
+                {
+                    BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                }
+                else
+                {
+                    BattleUIManager.Instance?.ClearComboSlots();
+                }
             }
             else
             {
-                // 카드가 사용되지 않은 경우: 카드를 손패로 되돌림
-                BattleUIManager.Instance?.ClearComboSlots();
+                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
             }
 
             // 승부 판정

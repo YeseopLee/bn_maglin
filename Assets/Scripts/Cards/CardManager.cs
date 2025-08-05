@@ -5,7 +5,6 @@ using System.Linq;
 using Maglin.Core;
 using Maglin.Player;
 using Maglin.Battle;
-using Maglin.UI;
 
 namespace Maglin.Cards
 {
@@ -102,7 +101,7 @@ namespace Maglin.Cards
         [SerializeField] private int additionalDrawsThisTurn = 0; // 이번 턴 추가 드로우 횟수
 
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
 
         // 초기화 관련
         private bool isInitialized = false;
@@ -340,12 +339,12 @@ namespace Maglin.Cards
         }
 
         /// <summary>
-        /// 전투 시작 시 호출 - 수정됨: 덱 준비만 하고 손패는 비운 채로 유지
+        /// 전투 시작 시 호출
         /// </summary>
         private void OnBattleStarted(BattleSO battleData)
         {
             if (debugMode)
-                Debug.Log("[CardManager] 전투 시작 - 덱 준비 및 손패 비우기 (초기 드로우는 애니메이션에서 처리)");
+                Debug.Log("[CardManager] 전투 시작 - 초기 드로우 준비");
 
             // 전투 시작 시 손패와 임시무덤 모두 덱으로 되돌리고 셔플 (Card 인스턴스)
             ReturnAllCardInstancesToDeck();
@@ -353,8 +352,8 @@ namespace Maglin.Cards
             // 기존 CardSO 시스템도 동기화
             ReturnAllCardsToDeck();
 
-            // **중요**: 초기 드로우 애니메이션을 위해 손패를 비운 상태로 유지
-            // BattleInitializationSequence에서 애니메이션과 함께 처리
+            // 초기 드로우 (Card 인스턴스 기반)
+            DrawCards(MaxHandSize, true);
         }
 
         /// <summary>
@@ -1084,27 +1083,12 @@ namespace Maglin.Cards
                 return;
             }
 
-            // 카드 유효성 검증 - 손패 또는 조합 슬롯에 있는 카드인지 확인
-            var comboSlotCards = new List<Card>();
-            if (BattleUIManager.Instance != null)
-            {
-                comboSlotCards = BattleUIManager.Instance.GetComboSlotCards();
-            }
-
+            // 카드 유효성 검증
             foreach (var card in cards)
             {
-                if (card == null)
+                if (card == null || !handCards.Contains(card))
                 {
-                    Debug.LogError($"[CardManager] null Card 인스턴스를 사용하려고 시도");
-                    return;
-                }
-
-                // 손패에 있거나 조합 슬롯에 있는 카드인지 확인
-                bool isValidCard = handCards.Contains(card) || comboSlotCards.Contains(card);
-                
-                if (!isValidCard)
-                {
-                    Debug.LogError($"[CardManager] 손패나 조합 슬롯에 없는 Card 인스턴스를 사용하려고 시도: {card.CardName}");
+                    Debug.LogError($"[CardManager] 손패에 없는 Card 인스턴스를 사용하려고 시도: {card?.CardName ?? "null"}");
                     return;
                 }
             }
@@ -1115,12 +1099,7 @@ namespace Maglin.Cards
             // 손패에서 제거하고 임시무덤으로 이동
             foreach (var card in cards)
             {
-                // 손패에 있는 경우에만 제거 (조합 슬롯에만 있는 경우는 이미 손패에서 제거됨)
-                if (handCards.Contains(card))
-                {
-                    handCards.Remove(card);
-                }
-                
+                handCards.Remove(card);
                 tempGraveyard.Add(card);
 
                 // 동시에 CardSO 기반 시스템도 동기화
@@ -1344,236 +1323,6 @@ namespace Maglin.Cards
         }
 
         /// <summary>
-        /// 애니메이션과 함께 카드를 드로우하는 메서드
-        /// </summary>
-        public async System.Threading.Tasks.Task<List<Card>> DrawCardsWithAnimation(int count)
-        {
-            var drawnCards = new List<Card>();
-            
-            if (count <= 0) return drawnCards;
-
-            // CardDrawAnimationManager가 있는지 확인
-            var animationManager = Maglin.UI.CardDrawAnimationManager.Instance;
-            var battleUIManager = BattleUIManager.Instance;
-            
-            if (debugMode)
-                Debug.Log($"[CardManager] CardDrawAnimationManager.Instance: {(animationManager != null ? "발견됨" : "null")}");
-            
-            if (animationManager != null && battleUIManager != null)
-            {
-                if (debugMode)
-                    Debug.Log($"[CardManager] CardDrawAnimationManager를 사용한 애니메이션 드로우 시작: {count}장");
-                
-                // 1. BattleUIManager의 손패 UI 업데이트 비활성화
-                battleUIManager.DisableHandUIUpdate();
-                
-                try
-                {
-                    // 2. 카드 데이터만 드로우 (UI 생성 없이)
-                    for (int i = 0; i < count; i++)
-                    {
-                        if (IsHandCardsFull) break;
-                        
-                        var drawnCard = DrawSingleCardInstance();
-                        if (drawnCard != null)
-                        {
-                            drawnCards.Add(drawnCard);
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-                    
-                    // 3. 카드 드로우 애니메이션 실행
-                    if (drawnCards.Count > 0)
-                    {
-                        // 애니메이션을 위해 임시 UI 오브젝트들 생성
-                        var cardUIs = new List<GameObject>();
-                        foreach (var card in drawnCards)
-                        {
-                            var cardUI = battleUIManager.CreateCardUIForAnimation(card);
-                            if (cardUI != null)
-                            {
-                                // 카드 UI가 확실히 초기화되었는지 확인
-                                var cardUIComponent = cardUI.GetComponent<CardUI>();
-                                if (cardUIComponent != null && cardUIComponent.AssociatedCard != null)
-                                {
-                                    if (debugMode)
-                                        Debug.Log($"[CardManager] 애니메이션용 카드 UI 생성 성공: {card.CardName} -> {cardUIComponent.AssociatedCard.CardName}");
-                                    
-                                    cardUIs.Add(cardUI);
-                                }
-                                else
-                                {
-                                    Debug.LogWarning($"[CardManager] 카드 UI 초기화 실패: {card.CardName}");
-                                    
-                                    // CardUIData로 직접 설정
-                                    var cardUIData = cardUI.GetComponent<CardUIData>();
-                                    if (cardUIData == null)
-                                    {
-                                        cardUIData = cardUI.AddComponent<CardUIData>();
-                                    }
-                                    cardUIData.CardInstance = card;
-                                    
-                                    if (debugMode)
-                                        Debug.Log($"[CardManager] CardUIData로 카드 데이터 설정: {card.CardName}");
-                                    
-                                    cardUIs.Add(cardUI);
-                                }
-                            }
-                        }
-                        
-                        if (cardUIs.Count > 0)
-                        {
-                            await animationManager.DrawCardsSequentially(cardUIs);
-                        }
-                        else
-                        {
-                            Debug.LogWarning("[CardManager] 애니메이션용 카드 UI 생성 실패");
-                        }
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogError($"[CardManager] 카드 드로우 애니메이션 중 오류: {e.Message}");
-                }
-                finally
-                {
-                    // 애니메이션 완료 후 BattleUIManager의 기존 손패 UI 정리 후 재활성화
-                    if (battleUIManager != null)
-                    {
-                        battleUIManager.ClearHandCardUIs(); // 기존 손패 UI 정리
-                        battleUIManager.EnableHandUIUpdate(); // 손패 UI 업데이트 재활성화
-                        
-                        if (debugMode)
-                            Debug.Log($"[CardManager] 애니메이션 완료 - 기존 손패 UI 정리 후 재활성화");
-                    }
-                }
-            }
-            else
-            {
-                if (debugMode)
-                    Debug.Log($"[CardManager] CardDrawAnimationManager가 없어서 기본 드로우 사용: {count}장");
-                
-                // 애니메이션 매니저가 없으면 기본 방식으로 드로우
-                for (int i = 0; i < count; i++)
-                {
-                    if (IsHandCardsFull)
-                    {
-                        if (debugMode)
-                            Debug.Log($"[CardManager] 손패가 가득 찬 상태 - {drawnCards.Count}장만 드로우");
-                        break;
-                    }
-
-                    var drawnCard = DrawSingleCardInstance();
-                    if (drawnCard != null)
-                    {
-                        drawnCards.Add(drawnCard);
-                        
-                        // 각 카드마다 기본 간격
-                        await System.Threading.Tasks.Task.Delay(200);
-                    }
-                    else
-                    {
-                        if (debugMode)
-                            Debug.Log($"[CardManager] 더 이상 드로우할 카드가 없음 - {drawnCards.Count}장 드로우");
-                        break;
-                    }
-                }
-                
-                if (drawnCards.Count > 0)
-                {
-                    OnHandCardsChanged?.Invoke(handCards);
-                }
-            }
-
-            if (debugMode)
-                Debug.Log($"[CardManager] {drawnCards.Count}장 카드 드로우 애니메이션 완료");
-
-            return drawnCards;
-        }
-
-        /// <summary>
-        /// 턴 시작 시 애니메이션과 함께 카드를 최대치까지 드로우
-        /// </summary>
-        public async System.Threading.Tasks.Task<List<Card>> DrawCardsToMaxWithAnimation()
-        {
-            int cardsToDraw = MaxHandSize - HandCardCount;
-            return await DrawCardsWithAnimation(cardsToDraw);
-        }
-
-        /// <summary>
-        /// 손패를 비우는 메서드 (애니메이션용)
-        /// 카드들을 덱으로 되돌리지 않고 단순히 손패만 비움
-        /// </summary>
-        public void ClearHand()
-        {
-            if (debugMode)
-                Debug.Log($"[CardManager] 손패 비우기 - {handCards.Count}장 카드 제거");
-
-            // Card 인스턴스 손패 비우기
-            handCards.Clear();
-            
-            // CardSO 손패도 비우기
-            hand.Clear();
-            
-            // 이벤트 발생
-            OnHandCardsChanged?.Invoke(handCards);
-            OnHandChanged?.Invoke(hand);
-        }
-
-        /// <summary>
-        /// 현재 손패의 UI 카드 오브젝트들을 가져오는 메서드
-        /// </summary>
-        private List<GameObject> GetHandCardUIObjects()
-        {
-            var cardObjects = new List<GameObject>();
-            
-            try
-            {
-                // HandArea에서 카드 UI 오브젝트들 찾기
-                GameObject handArea = GameObject.Find("HandArea");
-                if (handArea == null)
-                {
-                    // 다른 이름으로 시도
-                    handArea = GameObject.Find("Hand");
-                    if (handArea == null)
-                    {
-                        handArea = GameObject.Find("PlayerHand");
-                    }
-                }
-                
-                if (handArea != null)
-                {
-                    // 활성화된 카드 오브젝트들만 가져오기
-                    for (int i = 0; i < handArea.transform.childCount; i++)
-                    {
-                        var cardObject = handArea.transform.GetChild(i).gameObject;
-                        if (cardObject.activeInHierarchy)
-                        {
-                            cardObjects.Add(cardObject);
-                        }
-                    }
-                    
-                    if (debugMode)
-                        Debug.Log($"[CardManager] HandArea에서 {cardObjects.Count}개 카드 UI 오브젝트 발견");
-                }
-                else
-                {
-                    if (debugMode)
-                        Debug.LogWarning("[CardManager] HandArea를 찾을 수 없음");
-                }
-            }
-            catch (System.Exception e)
-            {
-                Debug.LogError($"[CardManager] 손패 UI 오브젝트 가져오기 중 오류: {e.Message}");
-            }
-            
-            return cardObjects;
-        }
-
-        /// <summary>
         /// 지정된 수만큼 카드 드로우 (태스크 71번 요구사항)
         /// </summary>
         public List<Card> DrawCardInstances(int count)
@@ -1604,29 +1353,7 @@ namespace Maglin.Cards
         /// </summary>
         public void EndTurnProcessing()
         {
-            if (debugMode)
-                Debug.Log("[CardManager] 턴 종료 처리 시작");
-
-            // 1. UI 먼저 정리 (카드 데이터 정리 전에)
-            if (BattleUIManager.Instance != null)
-            {
-                BattleUIManager.Instance.ClearAllCardUIs();
-                
-                if (debugMode)
-                    Debug.Log("[CardManager] UI 정리 완료");
-            }
-
-            // 2. 모든 Card 인스턴스를 메인덱으로 되돌리고 셔플
-            ReturnAllCardInstancesToDeck();
-
-            // 3. 기존 CardSO 시스템도 동기화
-            ReturnAllCardsToDeck();
-
-            // 4. 드로우 비용 초기화
-            ResetDrawCosts();
-
-            if (debugMode)
-                Debug.Log("[CardManager] 턴 종료 처리 완료");
+            EndTurn();
         }
 
         /// <summary>

@@ -590,7 +590,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 플레이어 턴 시작
         /// </summary>
-        private async void StartPlayerTurn()
+        private void StartPlayerTurn()
         {
             if (debugMode)
                 Debug.Log($"[BattleTestController] 플레이어 턴 {currentTurn} 시작");
@@ -600,51 +600,14 @@ namespace Maglin.Battle
             // 매니저들에 턴 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
-            // 기존 카드 UI 완전 정리 (혹시 남아있을 수 있는 UI들)
-            if (BattleUIManager.Instance != null)
+            // 카드 드로우
+            if (CardManager.Instance != null)
             {
-                BattleUIManager.Instance.ClearHandCardUIs();
-                
-                if (debugMode)
-                    Debug.Log("[BattleTestController] 기존 손패 UI 정리 완료");
-            }
+                // 손패 초기화 후 최대 손패까지 드로우
+                var drawnCards = CardManager.Instance.DrawCardsToMax();
 
-            // 카드 드로우 (애니메이션 포함) - 첫 턴이 아닐 때만
-            if (CardManager.Instance != null && currentTurn > 1)
-            {
-                try
-                {
-                    if (debugMode)
-                        Debug.Log("[BattleTestController] 턴 시작 카드 드로우 애니메이션 시작");
-
-                    // 턴 시작 시에는 부족한 만큼만 드로우
-                    int needCards = CardManager.Instance.MaxHandSize - CardManager.Instance.HandCardCount;
-                    if (needCards > 0)
-                    {
-                        var drawnCards = await CardManager.Instance.DrawCardsWithAnimation(needCards);
-                        if (debugMode)
-                            Debug.Log($"[BattleTestController] {drawnCards.Count}장 드로우 애니메이션 완료");
-                    }
-                    else
-                    {
-                        if (debugMode)
-                            Debug.Log("[BattleTestController] 손패가 이미 가득참, 드로우 건너뜀");
-                    }
-                }
-                catch (System.Exception e)
-                {
-                    Debug.LogError($"[BattleTestController] 카드 드로우 애니메이션 중 오류 - {e.Message}");
-                    
-                    // 오류 발생 시 기본 드로우로 대체
-                    var drawnCards = CardManager.Instance.DrawCardsToMax();
-                    if (debugMode)
-                        Debug.Log($"[BattleTestController] 기본 드로우로 {drawnCards.Count}장 완료");
-                }
-            }
-            else if (currentTurn == 1)
-            {
                 if (debugMode)
-                    Debug.Log("[BattleTestController] 첫 턴이므로 BattleInitializationSequence에서 이미 카드 드로우 처리됨");
+                    Debug.Log($"[BattleTestController] {drawnCards.Count}장 드로우 완료");
             }
 
             // 조합 슬롯 초기화
@@ -767,6 +730,7 @@ namespace Maglin.Battle
         {
             if (!isPlayerTurn || !isBattleActive) return;
 
+            // BattleUIManager에서 조합 슬롯 카드들 가져오기
             var comboCards = BattleUIManager.Instance?.GetComboSlotCards() ?? new List<Card>();
 
             if (comboCards.Count == 0)
@@ -777,33 +741,47 @@ namespace Maglin.Battle
             }
 
             ComboExecutionResult result = null;
-            bool cardsUsed = false; // 카드가 실제로 사용되었는지 추적
 
-            // 단독 사용 처리
+            // 단독 사용 가능한 카드만 있는 경우 처리
             if (comboCards.Count == 1 && comboCards[0].CardData.CanUseSolo)
             {
                 if (debugMode)
                     Debug.Log($"[BattleTestController] 단독 카드 사용: {comboCards[0].CardName}");
 
+                // CardManager를 통해 카드 사용
                 if (CardManager.Instance != null)
                 {
                     CardManager.Instance.UseCardInstances(comboCards.ToArray());
-                    cardsUsed = true; // 카드가 사용됨
                 }
 
+                // 단독 카드 효과 실행
                 ExecuteCardEffect(comboCards[0].CardData);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] {comboCards[0].CardName} 단독 사용 효과 실행 완료");
             }
-            // 조합 처리
             else if (comboCards.Count >= 2)
             {
                 if (debugMode)
                     Debug.Log($"[BattleTestController] {comboCards.Count}장 카드 조합 실행");
 
+                // ComboManager를 통해 조합 실행
                 if (ComboManager.Instance != null)
                 {
+                    // 현재 필드 효과 가져오기
                     ElementType currentField = FieldManager.Instance != null ?
                         FieldManager.Instance.CurrentFieldElement : ElementType.None;
 
+                    if (debugMode)
+                    {
+                        Debug.Log($"[BattleTestController] 조합 카드 목록:");
+                        foreach (var card in comboCards)
+                        {
+                            Debug.Log($"  - {card.CardName} ({card.Type}) - Element: {card.Element} - CardData: {card.CardData?.name ?? "null"}");
+                        }
+                    }
+
+                    // ComboExecutionContext 생성 (카드 소모 활성화)
                     var context = new ComboExecutionContext(comboCards.ToArray(), currentField);
                     context.consumeCards = true;
 
@@ -827,7 +805,6 @@ namespace Maglin.Battle
                     {
                         // 실제 카드 효과 실행 (데미지, 힐 등)
                         ExecuteCardEffect(result.ResultCardData);
-                        cardsUsed = true; // 조합 성공 시 카드가 사용됨
 
                         if (debugMode)
                             Debug.Log($"[BattleTestController] {result.ResultCardData.CardName} 효과 실행 완료");
@@ -842,15 +819,24 @@ namespace Maglin.Battle
             }
 
             // 조합 완료 후 슬롯 정리
-            if (cardsUsed)
+            if (result != null)
             {
-                // 카드가 사용된 경우: UI만 정리하고 카드는 손패로 되돌리지 않음
-                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                // 조합 시도 후 처리
+                if (result.Success)
+                {
+                    // 성공 시: 카드가 이미 소모되었으므로 UI만 정리
+                    BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                }
+                else
+                {
+                    // 실패 시: 카드를 손패로 되돌림
+                    BattleUIManager.Instance?.ClearComboSlots();
+                }
             }
             else
             {
-                // 카드가 사용되지 않은 경우: 카드를 손패로 되돌림
-                BattleUIManager.Instance?.ClearComboSlots();
+                // 단독 카드 사용 시: 카드가 이미 소모되었으므로 UI만 정리
+                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
             }
 
             // 승부 판정
