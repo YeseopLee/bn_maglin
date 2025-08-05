@@ -775,6 +775,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
   - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
   - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+  - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
   currentDeck: []
   hand: []
   discardPile: []
@@ -786,7 +787,7 @@ MonoBehaviour:
   drawCostIncrease: 10
   currentDrawCost: 10
   additionalDrawsThisTurn: 0
-  debugMode: 0
+  debugMode: 1
 --- !u!4 &568764742
 Transform:
   m_ObjectHideFlags: 0

@@ -9,6 +9,7 @@ using Maglin.Enemy;
 using Maglin.UI;
 using Maglin.Relics;
 using TMPro;
+using Core; // LoadingManager 사용을 위해 추가
 
 namespace Maglin.Battle
 {
@@ -95,6 +96,7 @@ namespace Maglin.Battle
         [Header("프리팹")]
         [SerializeField] private GameObject cardUIPrefab;
         [SerializeField] private GameObject monsterPrefab;
+        [SerializeField] private GameObject loadingUIPrefab; // 로딩 UI 프리팹 (초기 블랙스크린용)
 
         [Header("보상 UI")]
         [SerializeField] private CanvasGroup rewardSelectionUI;
@@ -123,6 +125,10 @@ namespace Maglin.Battle
 
         // 현재 보상 목록
         private RewardItem[] currentRewards;
+
+        // 초기 블랙스크린 관리
+        private GameObject initialBlackScreen;
+        private CanvasGroup initialBlackScreenCanvasGroup;
         #endregion
 
         #region Unity Lifecycle
@@ -133,6 +139,10 @@ namespace Maglin.Battle
             {
                 _instance = this;
                 DontDestroyOnLoad(gameObject);
+                
+                // 초기 블랙스크린 먼저 생성 (다른 초기화보다 우선)
+                CreateInitialBlackScreen();
+                
                 InitializeUIManager();
             }
             else if (_instance != this)
@@ -162,6 +172,12 @@ namespace Maglin.Battle
             {
                 BattleManager.OnTurnChanged += OnTurnChanged;
                 BattleManager.OnPhaseChanged += OnPhaseChanged;
+            }
+
+            // LoadingManager 이벤트 구독
+            if (LoadingManager.Instance != null)
+            {
+                LoadingManager.Instance.OnLoadingCompleted += OnLoadingCompleted;
             }
 
             // 자체 이벤트 구독
@@ -200,6 +216,12 @@ namespace Maglin.Battle
             {
                 BattleManager.OnTurnChanged -= OnTurnChanged;
                 BattleManager.OnPhaseChanged -= OnPhaseChanged;
+            }
+
+            // LoadingManager 이벤트 구독 해제
+            if (LoadingManager.Instance != null)
+            {
+                LoadingManager.Instance.OnLoadingCompleted -= OnLoadingCompleted;
             }
 
             // 자체 이벤트 구독 해제
@@ -253,6 +275,124 @@ namespace Maglin.Battle
         }
 
         /// <summary>
+        /// 초기 블랙스크린 생성
+        /// </summary>
+        private void CreateInitialBlackScreen()
+        {
+            if (loadingUIPrefab == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleUIManager] loadingUIPrefab이 설정되지 않았습니다. Inspector에서 설정해주세요.");
+                return;
+            }
+
+            // 로딩 UI 프리팹 인스턴스화
+            initialBlackScreen = Instantiate(loadingUIPrefab);
+            initialBlackScreen.name = "InitialBlackScreen";
+
+            // Canvas의 sortingOrder를 낮게 설정 (실제 로딩 화면보다 뒤에)
+            Canvas initialCanvas = initialBlackScreen.GetComponent<Canvas>();
+            if (initialCanvas != null)
+            {
+                initialCanvas.sortingOrder = 999; // LoadingManager의 sortingOrder(1000)보다 낮게
+                
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] 초기 블랙스크린 Canvas sortingOrder: {initialCanvas.sortingOrder}");
+            }
+
+            // CanvasGroup 가져오기
+            initialBlackScreenCanvasGroup = initialBlackScreen.GetComponent<CanvasGroup>();
+            if (initialBlackScreenCanvasGroup == null)
+            {
+                initialBlackScreenCanvasGroup = initialBlackScreen.GetComponentInChildren<CanvasGroup>();
+            }
+
+            if (initialBlackScreenCanvasGroup != null)
+            {
+                // 완전 불투명하게 설정하여 화면 전체를 가림
+                initialBlackScreenCanvasGroup.alpha = 1f;
+                initialBlackScreenCanvasGroup.blocksRaycasts = true;
+                initialBlackScreenCanvasGroup.interactable = false;
+
+                if (debugMode)
+                    Debug.Log("[BattleUIManager] 초기 블랙스크린 생성 완료");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleUIManager] 로딩 UI 프리팹에 CanvasGroup이 없습니다.");
+            }
+
+            // BackgroundPanel만 보이게 하고 나머지는 숨기기
+            HideLoadingUIElements();
+        }
+
+        /// <summary>
+        /// 로딩 UI의 다른 요소들 숨기기 (배경만 남기기)
+        /// </summary>
+        private void HideLoadingUIElements()
+        {
+            if (initialBlackScreen == null) return;
+
+            // 로딩 컨테이너 숨기기 (텍스트, 진행률 바, 스피너 등)
+            Transform loadingContainer = initialBlackScreen.transform.Find("LoadingContainer");
+            if (loadingContainer != null)
+            {
+                loadingContainer.gameObject.SetActive(false);
+                
+                if (debugMode)
+                    Debug.Log("[BattleUIManager] 로딩 UI 요소들 숨김 (배경만 유지)");
+            }
+        }
+
+        /// <summary>
+        /// 로딩 완료 시 초기 블랙스크린 제거
+        /// </summary>
+        private void OnLoadingCompleted()
+        {
+            if (initialBlackScreen != null)
+            {
+                StartCoroutine(FadeOutInitialBlackScreen());
+            }
+        }
+
+        /// <summary>
+        /// 초기 블랙스크린 페이드 아웃
+        /// </summary>
+        private System.Collections.IEnumerator FadeOutInitialBlackScreen()
+        {
+            if (initialBlackScreenCanvasGroup == null) yield break;
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 초기 블랙스크린 페이드 아웃 시작");
+
+            float fadeSpeed = 2f; // 페이드 속도
+            float timer = 0f;
+
+            while (timer < 1f)
+            {
+                timer += Time.unscaledDeltaTime * fadeSpeed;
+                initialBlackScreenCanvasGroup.alpha = Mathf.Lerp(1f, 0f, timer);
+                yield return null;
+            }
+
+            // 완전히 투명해진 후 제거
+            initialBlackScreenCanvasGroup.alpha = 0f;
+            initialBlackScreenCanvasGroup.blocksRaycasts = false;
+
+            // 오브젝트 제거
+            if (initialBlackScreen != null)
+            {
+                Destroy(initialBlackScreen);
+                initialBlackScreen = null;
+                initialBlackScreenCanvasGroup = null;
+
+                if (debugMode)
+                    Debug.Log("[BattleUIManager] 초기 블랙스크린 제거 완료");
+            }
+        }
+
+        /// <summary>
         /// UI 참조 설정 (BattleTestController에서 호출)
         /// </summary>
         public void SetUIReferences(
@@ -272,7 +412,8 @@ namespace Maglin.Battle
             UnityEngine.UI.Image fieldAreaImage,
             TMPro.TextMeshProUGUI fieldEffectTurnsText,
             GameObject cardUIPrefab,
-            GameObject monsterPrefab)
+            GameObject monsterPrefab,
+            GameObject loadingUIPrefab = null)
         {
             this.healthText = healthText;
             this.manaText = manaText;
@@ -291,6 +432,12 @@ namespace Maglin.Battle
             this.fieldEffectTurnsText = fieldEffectTurnsText;
             this.cardUIPrefab = cardUIPrefab;
             this.monsterPrefab = monsterPrefab;
+            
+            // 로딩 UI 프리팹 설정 (제공된 경우)
+            if (loadingUIPrefab != null)
+            {
+                this.loadingUIPrefab = loadingUIPrefab;
+            }
 
             if (debugMode)
                 Debug.Log("[BattleUIManager] UI 참조 설정 완료");

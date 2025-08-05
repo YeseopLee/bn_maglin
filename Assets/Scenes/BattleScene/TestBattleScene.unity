@@ -1349,6 +1349,63 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &443259464
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 443259465}
+  - component: {fileID: 443259466}
+  m_Layer: 0
+  m_Name: MonsterDeathAnimationManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &443259465
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 443259464}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 651.9051, y: 441.83215, z: -2.4792345}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &443259466
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 443259464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a24b022ea64f254190cdbaeef465bfa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  fragmentationDuration: 1
+  fragmentCount: 8
+  explosionForce: 5
+  fragmentLifetime: 3
+  fragmentEase: 12
+  defaultDeathParticlePrefab: {fileID: 0}
+  useParticleEffect: 1
+  particleDuration: 2
+  useColorFading: 1
+  deathColor: {r: 1, g: 0, b: 0, a: 1}
+  useScaleEffect: 1
+  useRotationEffect: 1
+  debugMode: 1
 --- !u!1 &450451972
 GameObject:
   m_ObjectHideFlags: 0
@@ -2818,8 +2875,6 @@ GameObject:
   - component: {fileID: 722838607}
   - component: {fileID: 722838606}
   - component: {fileID: 722838609}
-  - component: {fileID: 722838610}
-  - component: {fileID: 722838611}
   m_Layer: 0
   m_Name: BattleController
   m_TagString: Untagged
@@ -2906,6 +2961,7 @@ MonoBehaviour:
   - {fileID: 0}
   cardUIPrefab: {fileID: 350527894111610896, guid: b573633245e8d4647af4362d9c9ef83f, type: 3}
   monsterPrefab: {fileID: 8633294552988975469, guid: 6b3250d8b13844fdeb13404a47de1178, type: 3}
+  loadingUIPrefab: {fileID: 7490260722711204314, guid: 000e34f11f6eeba498c8703168cd1c7f, type: 3}
   rewardSelectionUI: {fileID: 1130329581}
   rewardSlots:
   - {fileID: 1289091332}
@@ -2913,59 +2969,6 @@ MonoBehaviour:
   - {fileID: 450451973}
   skipRewardButton: {fileID: 275697070}
   debugMode: 1
---- !u!114 &722838610
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 722838605}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fc723289c24470e4393b89e116b3e8a2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  spawnDuration: 1
-  spawnInterval: 0.3
-  spawnEase: 27
-  entranceHeight: 3
-  enableSpawnParticles: 1
-  enableSpawnSound: 1
-  enableGroundSlam: 1
-  enableScreenShake: 0
-  spawnParticlePrefab: {fileID: 0}
-  slamBounceHeight: 0.3
-  slamDuration: 0.5
-  slamVibrato: 3
-  shakeStrength: 0.2
-  shakeDuration: 0.3
-  debugMode: 0
---- !u!114 &722838611
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 722838605}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c2f1c569e9137154282938b41c511938, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cardDrawDuration: 0.5
-  cardDrawInterval: 0.2
-  cardDrawEase: 27
-  cardFlipDuration: 0.3
-  cardFlipEase: 7
-  deckPosition: {fileID: 1201285383}
-  handArea: {fileID: 270317947}
-  deckStartOffset: {x: 0, y: 200, z: 0}
-  handCardSpacing: 120
-  enableCardGlow: 1
-  enableDrawSound: 1
-  enableParticleEffect: 0
-  cardDrawParticlePrefab: {fileID: 0}
-  debugMode: 0
 --- !u!1 &738230413
 GameObject:
   m_ObjectHideFlags: 0
@@ -3372,6 +3375,62 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 845854913}
   m_CullTransparentMesh: 1
+--- !u!1 &876231590
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 876231592}
+  - component: {fileID: 876231591}
+  m_Layer: 0
+  m_Name: MonsterSpawnAnimationManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &876231591
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 876231590}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc723289c24470e4393b89e116b3e8a2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnDelay: 0.3
+  spawnDuration: 0.8
+  scaleStartSize: 0.1
+  spawnEase: 27
+  defaultSpawnParticlePrefab: {fileID: 0}
+  useParticleEffect: 1
+  particleDuration: 1.5
+  useRotationEffect: 1
+  rotationAmount: 360
+  useColorFadeEffect: 1
+  preserveOriginalColor: 1
+  debugMode: 1
+--- !u!4 &876231592
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 876231590}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 651.9051, y: 441.83215, z: -2.4792345}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &884947487
 GameObject:
   m_ObjectHideFlags: 0
@@ -3418,7 +3477,7 @@ GameObject:
   - component: {fileID: 898111754}
   - component: {fileID: 898111753}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: BattleInitSequence
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -10540,3 +10599,5 @@ SceneRoots:
   - {fileID: 722838607}
   - {fileID: 1380820467}
   - {fileID: 898111754}
+  - {fileID: 876231592}
+  - {fileID: 443259465}

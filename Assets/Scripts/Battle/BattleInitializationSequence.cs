@@ -93,18 +93,21 @@ namespace Maglin.Battle
                 await FinalizeBattleSetup();
                 
                 // 9. 로딩 화면 숨기기
-                if (LoadingManager.Instance != null)
+                if (LoadingManager.Instance != null && LoadingManager.Instance.IsLoading)
                 {
                     await LoadingManager.Instance.HideLoading();
                 }
                 
-                // 10. 씬 페이드 인 (SceneTransitionManager가 처리하지 않은 경우)
+                // 10. 몬스터 스폰 애니메이션 시작 (로딩 화면이 숨겨진 후)
+                await StartMonsterSpawnAnimations();
+                
+                // 11. 씬 페이드 인 (SceneTransitionManager가 처리하지 않은 경우)
                 if (SceneTransitionManager.Instance != null && !SceneTransitionManager.Instance.IsTransitioning)
                 {
                     await SceneTransitionManager.Instance.FadeOut(0.5f);
                 }
                 
-                // 11. 플레이어 조작 활성화
+                // 12. 플레이어 조작 활성화
                 await BlockPlayerInput(false);
                 
                 if (debugMode)
@@ -199,17 +202,19 @@ namespace Maglin.Battle
         /// </summary>
         private async Task InitializeEnemySystems()
         {
+            // 적 스폰 단계까지는 로딩 화면 유지
             if (LoadingManager.Instance != null)
                 LoadingManager.Instance.UpdateToEnemySpawn();
             
-            // 적 스폰 및 초기화
+            // 적 스폰 및 초기화 (로딩 화면이 있는 상태에서 준비)
             if (battleController != null)
             {
                 // battleController.SpawnEnemies();
+                // 몬스터는 준비되지만 애니메이션은 아직 시작하지 않음
             }
             
             if (!skipInitializationDelay)
-                await Task.Delay(500);
+                await Task.Delay(300);
         }
         
         /// <summary>
@@ -217,13 +222,14 @@ namespace Maglin.Battle
         /// </summary>
         private async Task InitializeCardSystems()
         {
-            if (LoadingManager.Instance != null)
-                LoadingManager.Instance.UpdateToDeckPrep();
+            // 카드 드로우 애니메이션을 보여주기 위해 로딩 화면 없이 진행
+            // if (LoadingManager.Instance != null)
+            //     LoadingManager.Instance.UpdateToDeckPrep();
             
             // 카드 매니저 초기화
             if (CardManager.Instance != null)
             {
-                // 덱 초기화 및 초기 드로우
+                // 덱 초기화 및 초기 드로우 (애니메이션과 함께)
                 // CardManager.Instance.InitializeForBattle();
             }
             
@@ -308,6 +314,31 @@ namespace Maglin.Battle
             isInitializing = false;
         }
         
+        /// <summary>
+        /// 몬스터 스폰 애니메이션 시작
+        /// </summary>
+        private async Task StartMonsterSpawnAnimations()
+        {
+            if (debugMode)
+                Debug.Log("BattleInitializationSequence: 몬스터 스폰 애니메이션 시작");
+            
+            // MonsterSpawnManager에게 애니메이션 시작 신호 전송
+            if (MonsterSpawnManager.Instance != null)
+            {
+                // 대기 중인 몬스터들의 애니메이션 처리 강제 실행
+                MonsterSpawnManager.Instance.ProcessPendingAnimations();
+                
+                // 모든 애니메이션이 완료될 때까지 대기
+                while (MonsterSpawnManager.Instance.IsWaitingForAnimations)
+                {
+                    await Task.Delay(100);
+                }
+            }
+            
+            if (debugMode)
+                Debug.Log("BattleInitializationSequence: 몬스터 스폰 애니메이션 완료");
+        }
+
         /// <summary>
         /// 초기화 다시 시작 (디버그용)
         /// </summary>

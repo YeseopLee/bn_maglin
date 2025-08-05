@@ -163,6 +163,25 @@ namespace Maglin.Battle
         }
         #endregion
 
+        #region Animation Integration
+        /// <summary>
+        /// 스폰된 몬스터들의 리스트 (애니메이션 시스템용)
+        /// </summary>
+        private List<GameObject> pendingAnimationMonsters = new List<GameObject>();
+
+        /// <summary>
+        /// 애니메이션 완료 대기 중인 몬스터 수
+        /// </summary>
+        private int waitingForAnimationCount = 0;
+
+        /// <summary>
+        /// 몬스터 스폰 애니메이션 활성화 여부
+        /// </summary>
+        [Header("애니메이션 설정")]
+        [SerializeField] private bool enableSpawnAnimations = true;
+        [SerializeField] private bool useSequentialSpawn = true;
+        #endregion
+
         #region Monster Spawning
         /// <summary>
         /// 테스트 몬스터들 스폰 (BattleTestController에서 호출)
@@ -205,6 +224,14 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log("[MonsterSpawnManager] 사용 가능한 배틀 없음, 기본 테스트 몬스터 스폰");
                 SpawnDefaultTestMonster();
+            }
+
+            // 애니메이션 시스템과 통합 (자동 실행하지 않고 대기)
+            if (enableSpawnAnimations && pendingAnimationMonsters.Count > 0)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] {pendingAnimationMonsters.Count}마리 몬스터가 애니메이션 대기 중");
+                // ProcessSpawnAnimations(); // 자동 실행하지 않음
             }
 
             if (debugMode)
@@ -339,8 +366,33 @@ namespace Maglin.Battle
             {
                 spawnedMonsters.Add(monsterObj);
 
-                if (debugMode)
-                    Debug.Log($"[MonsterSpawnManager] 더미 테스트 몬스터 스폰 완료: {position}");
+                // 애니메이션 대기 리스트에 추가 (더미 몬스터도 애니메이션 적용)
+                if (enableSpawnAnimations)
+                {
+                    monsterObj.SetActive(false);
+                    pendingAnimationMonsters.Add(monsterObj);
+                    
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnManager] 더미 테스트 몬스터 애니메이션 대기 리스트에 추가: {position}");
+                }
+                else
+                {
+                    // TargetManager에 몬스터 추가 (더미 몬스터도 타겟 가능)
+                    if (TargetManager.Instance != null)
+                    {
+                        TargetManager.Instance.AddMonster(monsterObj);
+                        
+                        // 첫 번째 몬스터라면 타겟으로 설정
+                        var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+                        if (enemy != null && TargetManager.Instance.CurrentTarget == null)
+                        {
+                            TargetManager.Instance.SetTarget(enemy);
+                        }
+                    }
+
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnManager] 더미 테스트 몬스터 스폰 완료 (애니메이션 없음): {position}");
+                }
             }
         }
 
@@ -405,17 +457,37 @@ namespace Maglin.Battle
 
                 spawnedMonsters.Add(monsterObj);
 
-                // TargetManager에 몬스터 추가
-                if (TargetManager.Instance != null)
+                // 애니메이션 대기 리스트에 추가
+                if (enableSpawnAnimations)
                 {
-                    TargetManager.Instance.AddMonster(monsterObj);
+                    // 몬스터를 초기에 비활성화하고 애니메이션 리스트에 추가
+                    monsterObj.SetActive(false);
+                    pendingAnimationMonsters.Add(monsterObj);
+                    
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 애니메이션 대기 리스트에 추가: {gridPosition}");
                 }
+                else
+                {
+                    // 애니메이션을 사용하지 않는 경우 즉시 활성화
+                    // TargetManager에 몬스터 추가
+                    if (TargetManager.Instance != null)
+                    {
+                        TargetManager.Instance.AddMonster(monsterObj);
+                        
+                        // 첫 번째 몬스터라면 타겟으로 설정
+                        if (TargetManager.Instance.CurrentTarget == null)
+                        {
+                            TargetManager.Instance.SetTarget(enemy);
+                        }
+                    }
 
-                // 이벤트 발생
-                OnMonsterSpawned?.Invoke(enemy);
+                    // 이벤트 발생
+                    OnMonsterSpawned?.Invoke(enemy);
 
-                if (debugMode)
-                    Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 스폰 완료: {gridPosition}");
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 스폰 완료 (애니메이션 없음): {gridPosition}");
+                }
             }
         }
 
@@ -512,12 +584,19 @@ namespace Maglin.Battle
                     Debug.LogWarning($"[MonsterSpawnManager] GridFieldManager가 없어 기본 위치 사용: {monsterName}");
             }
 
-            // 위치 설정 완료 후 활성화
-            if (shouldActivateAfterSetup)
+            // 위치 설정 완료 후 활성화 (애니메이션 사용시 제외)
+            if (shouldActivateAfterSetup && !enableSpawnAnimations)
             {
                 monsterObj.SetActive(true);
                 if (debugMode)
                     Debug.Log($"[MonsterSpawnManager] 몬스터 활성화: {monsterName}");
+            }
+            else if (enableSpawnAnimations && shouldActivateAfterSetup)
+            {
+                // 애니메이션 사용시 비활성화 상태로 유지 (애니메이션이 활성화할 예정)
+                monsterObj.SetActive(false);
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] 몬스터 애니메이션 대기 상태: {monsterName}");
             }
 
             return monsterObj;
@@ -666,6 +745,12 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[MonsterSpawnManager] {enemy.EnemyName} 사망 처리");
 
+            // 사망 애니메이션 실행
+            if (MonsterDeathAnimationManager.Instance != null)
+            {
+                MonsterDeathAnimationManager.Instance.PlayDeathAnimation(enemy.gameObject);
+            }
+
             // 몬스터 제거 처리
             StartCoroutine(RemoveDeadMonster(enemy));
 
@@ -701,8 +786,40 @@ namespace Maglin.Battle
                     Debug.Log($"[MonsterSpawnManager] {enemy.EnemyName} TargetManager에서 제거됨");
             }
 
-            // 3. 잠시 대기 (사망 애니메이션이나 효과를 위한 시간)
-            yield return new WaitForSeconds(0.5f);
+            // 3. 사망 애니메이션 완료 대기
+            if (MonsterDeathAnimationManager.Instance != null)
+            {
+                bool animationCompleted = false;
+                
+                // 사망 애니메이션 완료 이벤트 구독
+                System.Action<GameObject> onAnimationCompleted = (obj) => {
+                    if (obj == monsterObj)
+                    {
+                        animationCompleted = true;
+                    }
+                };
+                
+                MonsterDeathAnimationManager.OnDeathAnimationCompleted += onAnimationCompleted;
+                
+                // 애니메이션 완료까지 대기 (최대 3초)
+                float waitTime = 0f;
+                while (!animationCompleted && waitTime < 3f)
+                {
+                    yield return new WaitForSeconds(0.1f);
+                    waitTime += 0.1f;
+                }
+                
+                // 이벤트 구독 해제
+                MonsterDeathAnimationManager.OnDeathAnimationCompleted -= onAnimationCompleted;
+                
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] {enemy.EnemyName} 사망 애니메이션 대기 완료 (대기시간: {waitTime:F1}초)");
+            }
+            else
+            {
+                // 사망 애니메이션 매니저가 없으면 기본 대기시간
+                yield return new WaitForSeconds(0.5f);
+            }
 
             // 4. 게임오브젝트 제거
             if (monsterObj != null)
@@ -1011,6 +1128,163 @@ namespace Maglin.Battle
                 Debug.LogWarning($"[MonsterSpawnManager] 사용 가능한 스폰 위치를 찾을 수 없음, 원래 위치 사용: {preferredPosition}");
             return preferredPosition;
         }
+
+        /// <summary>
+        /// 스폰 애니메이션 처리
+        /// </summary>
+        private void ProcessSpawnAnimations()
+        {
+            if (pendingAnimationMonsters.Count == 0) return;
+
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] 스폰 애니메이션 처리 시작: {pendingAnimationMonsters.Count}마리");
+
+            // 애니메이션 매니저 초기화 확인
+            if (MonsterSpawnAnimationManager.Instance == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[MonsterSpawnManager] MonsterSpawnAnimationManager가 없어 애니메이션 없이 진행");
+                
+                // 애니메이션 없이 모든 몬스터 활성화
+                FallbackActivateAllMonsters();
+                return;
+            }
+
+            // 애니메이션 이벤트 구독
+            MonsterSpawnAnimationManager.OnSpawnAnimationCompleted += OnMonsterSpawnAnimationCompleted;
+            MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted += OnAllSpawnAnimationsCompleted;
+
+            waitingForAnimationCount = pendingAnimationMonsters.Count;
+
+            if (useSequentialSpawn)
+            {
+                // 순차적 스폰 애니메이션
+                MonsterSpawnAnimationManager.Instance.PlaySequentialSpawnAnimations(new List<GameObject>(pendingAnimationMonsters));
+            }
+            else
+            {
+                // 동시 스폰 애니메이션
+                foreach (var monster in pendingAnimationMonsters)
+                {
+                    if (monster != null)
+                    {
+                        monster.SetActive(true);
+                        MonsterSpawnAnimationManager.Instance.PlaySpawnAnimation(monster);
+                    }
+                }
+            }
+
+            pendingAnimationMonsters.Clear();
+        }
+
+        /// <summary>
+        /// 개별 몬스터 스폰 애니메이션 완료 처리
+        /// </summary>
+        private void OnMonsterSpawnAnimationCompleted(GameObject monster)
+        {
+            if (monster == null) return;
+
+            var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
+            if (enemy != null)
+            {
+                // TargetManager에 몬스터 추가
+                if (TargetManager.Instance != null)
+                {
+                    TargetManager.Instance.AddMonster(monster);
+                    
+                    // 첫 번째 몬스터라면 타겟으로 설정
+                    if (TargetManager.Instance.CurrentTarget == null)
+                    {
+                        TargetManager.Instance.SetTarget(enemy);
+                    }
+                }
+
+                // 몬스터 스폰 이벤트 발생
+                OnMonsterSpawned?.Invoke(enemy);
+
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] {enemy.EnemyName} 스폰 애니메이션 완료");
+            }
+
+            waitingForAnimationCount--;
+        }
+
+        /// <summary>
+        /// 모든 몬스터 스폰 애니메이션 완료 처리
+        /// </summary>
+        private void OnAllSpawnAnimationsCompleted()
+        {
+            // 이벤트 구독 해제
+            MonsterSpawnAnimationManager.OnSpawnAnimationCompleted -= OnMonsterSpawnAnimationCompleted;
+            MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted -= OnAllSpawnAnimationsCompleted;
+
+            waitingForAnimationCount = 0;
+
+            // TargetManager 업데이트 (타겟 마커 표시 등)
+            if (TargetManager.Instance != null)
+            {
+                TargetManager.Instance.ValidateTarget();
+                
+                // 타겟이 설정되지 않았다면 가장 가까운 몬스터를 타겟으로 설정
+                if (TargetManager.Instance.CurrentTarget == null)
+                {
+                    TargetManager.Instance.SetTargetToClosest();
+                }
+
+                // 전투 준비 완료 (타겟 마커 활성화)
+                TargetManager.Instance.CompleteBattleInitialization();
+            }
+
+            // 모든 몬스터 스폰 완료 이벤트 발생
+            OnAllMonstersSpawned?.Invoke();
+
+            if (debugMode)
+                Debug.Log("[MonsterSpawnManager] 모든 몬스터 스폰 애니메이션 완료");
+        }
+
+        /// <summary>
+        /// 애니메이션 매니저가 없을 때 대체 활성화
+        /// </summary>
+        private void FallbackActivateAllMonsters()
+        {
+            foreach (var monster in pendingAnimationMonsters)
+            {
+                if (monster != null)
+                {
+                    monster.SetActive(true);
+
+                    var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
+                    if (enemy != null)
+                    {
+                        // TargetManager에 몬스터 추가
+                        if (TargetManager.Instance != null)
+                        {
+                            TargetManager.Instance.AddMonster(monster);
+                        }
+
+                        // 몬스터 스폰 이벤트 발생
+                        OnMonsterSpawned?.Invoke(enemy);
+                    }
+                }
+            }
+
+            pendingAnimationMonsters.Clear();
+
+            // TargetManager 전투 준비 완료
+            if (TargetManager.Instance != null)
+            {
+                TargetManager.Instance.ValidateTarget();
+                
+                if (TargetManager.Instance.CurrentTarget == null)
+                {
+                    TargetManager.Instance.SetTargetToClosest();
+                }
+
+                TargetManager.Instance.CompleteBattleInitialization();
+            }
+
+            OnAllMonstersSpawned?.Invoke();
+        }
         #endregion
 
         #region Public API
@@ -1030,6 +1304,20 @@ namespace Maglin.Battle
         /// </summary>
         public void ClearSpawnedMonsters()
         {
+            // 진행 중인 애니메이션 중단
+            if (MonsterSpawnAnimationManager.Instance != null)
+            {
+                MonsterSpawnAnimationManager.Instance.StopAllSpawnAnimations();
+            }
+
+            // 애니메이션 이벤트 구독 해제
+            MonsterSpawnAnimationManager.OnSpawnAnimationCompleted -= OnMonsterSpawnAnimationCompleted;
+            MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted -= OnAllSpawnAnimationsCompleted;
+
+            // 대기 중인 몬스터들 정리
+            pendingAnimationMonsters.Clear();
+            waitingForAnimationCount = 0;
+
             foreach (var monster in spawnedMonsters)
             {
                 if (monster != null)
@@ -1050,6 +1338,44 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[MonsterSpawnManager] 모든 몬스터 정리 완료");
         }
+
+        /// <summary>
+        /// 스폰 애니메이션 설정 변경
+        /// </summary>
+        public void SetSpawnAnimationEnabled(bool enabled)
+        {
+            enableSpawnAnimations = enabled;
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] 스폰 애니메이션 {(enabled ? "활성화" : "비활성화")}");
+        }
+
+        /// <summary>
+        /// 순차 스폰 설정 변경
+        /// </summary>
+        public void SetSequentialSpawnEnabled(bool enabled)
+        {
+            useSequentialSpawn = enabled;
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] 순차 스폰 {(enabled ? "활성화" : "비활성화")}");
+        }
+
+        /// <summary>
+        /// 대기 중인 애니메이션 강제 처리 (BattleInitializationSequence에서 호출)
+        /// </summary>
+        public void ProcessPendingAnimations()
+        {
+            if (pendingAnimationMonsters.Count > 0)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] 대기 중인 애니메이션 강제 처리: {pendingAnimationMonsters.Count}마리");
+                ProcessSpawnAnimations();
+            }
+        }
+
+        /// <summary>
+        /// 애니메이션 대기 중인지 확인
+        /// </summary>
+        public bool IsWaitingForAnimations => waitingForAnimationCount > 0 || pendingAnimationMonsters.Count > 0;
 
         /// <summary>
         /// 몬스터 이동 처리

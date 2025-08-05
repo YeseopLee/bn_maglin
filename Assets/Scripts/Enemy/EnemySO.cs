@@ -64,6 +64,8 @@ namespace Maglin.Enemy
         [TextArea(2, 4)]
         [SerializeField] private string specialAbilityDescription;
 
+
+
         [Header("보상 정보")]
         [SerializeField] private int goldReward;
         [SerializeField] private int experienceReward;
