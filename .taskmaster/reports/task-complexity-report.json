@@ -1,0 +1,243 @@
+{
+	"meta": {
+		"generatedAt": "2025-07-24T07:48:01.048Z",
+		"tasksAnalyzed": 30,
+		"totalTasks": 30,
+		"analysisCount": 30,
+		"thresholdScore": 7,
+		"projectName": "Taskmaster",
+		"usedResearch": true
+	},
+	"complexityAnalysis": [
+		{
+			"taskId": 67,
+			"complexityScore": 6,
+			"recommendedSubtasks": 7,
+			"expansionPrompt": "CardSO, RelicSO, EnemySO, BattleSO, BattleStageSO, ShopSO, RewardSO 각각의 ScriptableObject 클래스를 개별적으로 설계하고 구현하세요. 각 클래스의 필드 정의, 직렬화 설정, Inspector 커스터마이징을 포함하여 세분화하세요.",
+			"reasoning": "7개의 서로 다른 ScriptableObject 클래스를 정의해야 하며, 각각 고유한 필드와 구조를 가지므로 개별적으로 설계가 필요합니다."
+		},
+		{
+			"taskId": 92,
+			"complexityScore": 5,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "기본 속성 카드 생성, 액티브1 카드 생성, 액티브2 카드 생성, 조합 카드 생성, 기본 유물 생성, 데이터 검증 및 테스트로 세분화하여 각 카테고리별로 체계적으로 데이터를 생성하세요.",
+			"reasoning": "다양한 카테고리의 카드와 유물 데이터를 생성해야 하며, 각각 다른 특성과 밸런스 고려사항이 있어 카테고리별 분리가 효율적입니다."
+		},
+		{
+			"taskId": 68,
+			"complexityScore": 8,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "GameManager, BattleManager, CardManager, PlayerManager, UIManager, AudioManager를 각각 개별 작업으로 분리하여 구현하세요. 각 매니저의 싱글톤 패턴 적용, 초기화 로직, 상호 의존성 관리를 포함하세요.",
+			"reasoning": "6개의 핵심 매니저 클래스를 구현해야 하며, 각각 복잡한 로직과 싱글톤 패턴, 상호 의존성을 가지므로 높은 복잡도를 가집니다."
+		},
+		{
+			"taskId": 70,
+			"complexityScore": 7,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "Card 클래스 구현, CardCombination 구조체 정의, ComboManager 구현, 조합 캐싱 시스템 구현, 조합 실패 처리 시스템 구현으로 세분화하여 카드 조합의 핵심 로직을 단계적으로 구현하세요.",
+			"reasoning": "카드 조합 시스템은 게임의 핵심 메커니즘으로 복잡한 로직과 성능 최적화(Dictionary 캐싱)가 필요하여 높은 복잡도를 가집니다."
+		},
+		{
+			"taskId": 73,
+			"complexityScore": 6,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "EnemySO 구조 정의, Enemy 클래스 구현, EnemyAI 이동 로직 구현, EnemyAI 공격 로직 및 위치 충돌 처리 구현으로 세분화하여 몬스터 시스템을 체계적으로 구축하세요.",
+			"reasoning": "몬스터 데이터 구조와 AI 로직을 포함하며, 위치 기반 이동과 충돌 처리 등 복잡한 로직이 필요합니다."
+		},
+		{
+			"taskId": 71,
+			"complexityScore": 5,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "DeckManager 클래스 기본 구조 구현, 카드 드로우 시스템 구현, 카드 사용 처리 구현, 턴 종료 카드 순환 구현, 추가 드로우 마나 시스템 구현으로 세분화하세요.",
+			"reasoning": "덱 관리의 여러 기능(드로우, 사용, 순환, 추가 드로우)이 서로 연관되어 있지만 각각 독립적인 로직을 가지므로 적절한 복잡도입니다."
+		},
+		{
+			"taskId": 85,
+			"complexityScore": 3,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "메인 메뉴 UI 구현, 설정 메뉴 구현, 게임 시작 초기화 로직 구현, 씬 전환 관리 시스템 구현으로 세분화하여 메뉴 시스템을 완성하세요.",
+			"reasoning": "기본적인 UI와 씬 전환 로직으로 구성되어 있어 상대적으로 단순하지만, 설정 관리와 초기화 로직이 포함되어 있습니다."
+		},
+		{
+			"taskId": 95,
+			"complexityScore": 9,
+			"recommendedSubtasks": 6,
+			"expansionPrompt": "전체 게임 플로우 테스트, 시스템 간 상호작용 테스트, 성능 테스트, UI/UX 테스트, 버그 수정, 코드 최적화로 세분화하여 체계적인 통합 테스트를 진행하세요.",
+			"reasoning": "모든 시스템의 통합과 테스트를 포함하는 최종 단계로, 복잡한 상호작용과 성능 최적화가 필요하여 최고 수준의 복잡도를 가집니다."
+		},
+		{
+			"taskId": 94,
+			"complexityScore": 4,
+			"recommendedSubtasks": 5,
+			"expansionPrompt": "BalanceConfig ScriptableObject 구현, 층별 난이도 스케일링 시스템 구현, 밸런스 테스트 도구 구현, 통계 수집 시스템 구현, 기본 수치 설정 및 조정으로 세분화하세요.",
+			"reasoning": "밸런싱 시스템은 데이터 관리와 조정 도구 구현이 주요 작업으로, 복잡하지 않지만 게임 전반에 영향을 미치는 중요한 시스템입니다."
+		},
+		{
+			"taskId": 93,
+			"complexityScore": 4,
+			"recommendedSubtasks": 4,
+			"expansionPrompt": "기본 몬스터 데이터 생성, BattleSO 전투 구성 데이터 생성, BattleStageSO 층별 전투 풀 생성, 데이터 검증 및 테스트로 세분화하여 체계적으로 전투 관련 데이터를 생성하세요.",
+			"reasoning": "몬스터와 전투 데이터 생성 작업으로, 다양한 타입의 데이터를 생성해야 하지만 구조가 정해진 후의 데이터 입력 작업이 주를 이룹니다."
+		},
+		{
+			"taskId": 66,
+			"taskTitle": "Unity 프로젝트 초기 설정 및 폴더 구조 생성",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on unity 프로젝트 초기 설정 및 폴더 구조 생성.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 69,
+			"taskTitle": "플레이어 상태 관리 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 플레이어 상태 관리 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 72,
+			"taskTitle": "필드 시스템 및 속성 효과 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 필드 시스템 및 속성 효과 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 74,
+			"taskTitle": "10칸 횡스크롤 전투 필드 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 10칸 횡스크롤 전투 필드 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 75,
+			"taskTitle": "턴 기반 전투 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 턴 기반 전투 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 76,
+			"taskTitle": "카드 사용 UI 및 조합 인터페이스 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 카드 사용 ui 및 조합 인터페이스 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 77,
+			"taskTitle": "유물 시스템 및 효과 적용 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 유물 시스템 및 효과 적용 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 78,
+			"taskTitle": "상점 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 상점 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 79,
+			"taskTitle": "이벤트 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 이벤트 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 80,
+			"taskTitle": "층 진행 및 게임 플로우 관리 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 층 진행 및 게임 플로우 관리 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 81,
+			"taskTitle": "전투 보상 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 전투 보상 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 82,
+			"taskTitle": "보스 몬스터 특수 기믹 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 보스 몬스터 특수 기믹 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 83,
+			"taskTitle": "중립 오브젝트 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 중립 오브젝트 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 84,
+			"taskTitle": "카드 이펙트 및 사운드 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 카드 이펙트 및 사운드 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 86,
+			"taskTitle": "플레이어 상태 UI 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 플레이어 상태 ui 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 87,
+			"taskTitle": "덱 관리 UI 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 덱 관리 ui 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 88,
+			"taskTitle": "전투 결과 및 승리 조건 처리 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 전투 결과 및 승리 조건 처리 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 89,
+			"taskTitle": "마나 시스템 및 추가 드로우 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 마나 시스템 및 추가 드로우 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 90,
+			"taskTitle": "속성 상성 및 데미지 계산 시스템 구현",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 속성 상성 및 데미지 계산 시스템 구현.",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		},
+		{
+			"taskId": 91,
+			"taskTitle": "세이브/로드 시스템 구현 (로그라이크 특성 고려)",
+			"complexityScore": 5,
+			"recommendedSubtasks": 3,
+			"expansionPrompt": "Break down this task with a focus on 세이브/로드 시스템 구현 (로그라이크 특성 고려).",
+			"reasoning": "Automatically added due to missing analysis in AI response."
+		}
+	]
+}

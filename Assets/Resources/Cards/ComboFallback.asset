@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 09c5fd198e9e547d78110c87f1a43a49, type: 3}
+  m_Name: ComboFallback
+  m_EditorClassIdentifier: 
+  fallbackName: DefaultFallback
+  fallbackDescription: 
+  fallbackIcon: {fileID: 0}
+  penalties:
+  - penaltyName: health damage
+    description: 
+    probability: 0.5
+    type: 0
+    minValue: 5
+    maxValue: 5
+    usePercentage: 0
+    disableNextTurn: 0
+    preventCombo: 0
+    turnDuration: 1
+  - penaltyName: gold loss
+    description: 
+    probability: 0.5
+    type: 5
+    minValue: 1
+    maxValue: 1
+    usePercentage: 0
+    disableNextTurn: 0
+    preventCombo: 0
+    turnDuration: 1
+  useWeightedRandom: 1
+  maxPenaltyCount: 1
+  conditions: []
+  requireAllConditions: 1
+  failureSound: {fileID: 0}
+  failureMessage: "\uC870\uD569\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4!"
+  failureColor: {r: 1, g: 0, b: 0, a: 1}
+  messageDuration: 2

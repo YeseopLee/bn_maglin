@@ -1,0 +1,120 @@
+# 이벤트 시스템 구현 정리
+
+## 개요
+- Task 79번: 이벤트 시스템 구현 완료
+- 랜덤으로 등장하는 이벤트 화면과 선택지 기반 보상/페널티 시스템 구현
+- 상점 시스템(Task 78)을 참고하여 일관성 있는 구조로 개발
+
+## 구현된 컴포넌트
+
+### 1. EventSO.cs (ScriptableObject)
+- **위치**: Assets/Scripts/Event/EventSO.cs
+- **기능**: 이벤트 데이터 정의 및 관리
+- **주요 구조**:
+  - `EventRewardType`: 골드, 체력, 카드, 유물, 최대체력, 덱강화 등
+  - `EventChoice`: 선택지 텍스트, 보상/페널티, 성공확률
+  - `EventReward`: 보상 데이터 (랜덤 수량 지원)
+  - `EventSO`: 이벤트 기본 정보, 등장 조건, 선택지 배열
+- **특징**:
+  - 층별 등장 조건 설정 가능 (minFloor, maxFloor)
+  - 일회성 이벤트 지원 (isOneTimeOnly)
+  - 가중치 기반 등장 확률 (spawnWeight)
+  - 랜덤 수량 지원 (minAmount, maxAmount)
+
+### 2. EventManager.cs (매니저 클래스)
+- **위치**: Assets/Scripts/Event/EventManager.cs
+- **기능**: 이벤트 시스템 관리 및 로직 처리
+- **주요 기능**:
+  - 이벤트 발생 확률 계산 (30% 기본값)
+  - 층별 등장 가능 이벤트 필터링
+  - 가중치 기반 랜덤 선택
+  - 선택지 성공/실패 판정
+  - 보상/페널티 자동 적용
+  - 일회성 이벤트 추적
+- **이벤트 시스템**:
+  - `OnEventStarted`: 이벤트 시작 시
+  - `OnEventEnded`: 이벤트 종료 시
+  - `OnChoiceSelected`: 선택지 선택 시
+  - `OnRewardsApplied`: 보상 적용 시
+
+### 3. EventUI.cs (UI 관리)
+- **위치**: Assets/Scripts/UI/EventUI.cs
+- **기능**: 이벤트 화면 및 선택지 UI 관리
+- **주요 기능**:
+  - 이벤트 정보 표시 (이름, 설명, 이미지)
+  - 동적 선택지 버튼 생성
+  - 결과 화면 표시
+  - 자동 결과 화면 닫기 (3초 후)
+  - 중복 클릭 방지
+- **UI 구조**:
+  - Event Panel: 이벤트 정보 및 선택지
+  - Result Panel: 결과 표시
+  - 동적 선택지 버튼 생성/제거
+
+### 4. PlayerManager 확장
+- **위치**: Assets/Scripts/Player/PlayerManager.cs
+- **추가 기능**: `ChangeMaxHealth(int amount)` 메서드 추가
+- **기능**: 이벤트에서 최대 체력 증감 처리
+
+## 보상/페널티 시스템
+
+### 지원되는 보상 타입
+1. **Gold**: 골드 획득/손실
+2. **Health**: 체력 회복/감소
+3. **MaxHealth**: 최대 체력 증감
+4. **Card**: 카드 획득 (특정 카드)
+5. **CardRemoval**: 카드 제거 서비스
+6. **Relic**: 유물 획득
+7. **DeckUpgrade**: 덱 강화 서비스
+
+### 랜덤 요소
+- 보상 수량 랜덤화 (minAmount ~ maxAmount)
+- 선택지 성공/실패 확률 (successRate)
+- 실패 시 별도 페널티 적용
+
+## 통합 방식
+
+### 기존 시스템과의 연동
+- **PlayerManager**: 체력, 골드, 유물 관리
+- **CardManager**: 카드 덱 관리
+- **GameManager**: 현재 층 정보 제공
+
+### 이벤트 발생 타이밍
+- 층 이동 시 `TryTriggerEvent(currentFloor)` 호출
+- 30% 확률로 이벤트 발생
+- 층별 등장 조건 만족하는 이벤트 중 랜덤 선택
+
+## 확장성
+
+### 추후 구현 예정
+- 카드 제거 UI 연동
+- 덱 업그레이드 UI 연동
+- 이벤트별 커스텀 이미지
+- 복잡한 조건부 이벤트
+- 이벤트 체인 시스템
+
+### 테스트 기능
+- `ForceStartEvent()`: 특정 이벤트 강제 시작
+- `ShowTestEvent()`: UI 테스트용 이벤트 표시
+- `SetEventChance()`: 이벤트 발생 확률 조정
+
+## 상점 시스템과의 일관성
+- 유사한 매니저 패턴 (싱글톤, 이벤트 기반)
+- 동일한 UI 구조 (패널, 동적 생성, 이벤트 구독)
+- 일관된 네임스페이스 구조 (Maglin.Event)
+- 통일된 ScriptableObject 활용
+
+## 구현 완료 항목
+✅ EventSO: 이벤트 데이터 구조
+✅ EventManager: 이벤트 로직 처리
+✅ EventUI: 이벤트 화면 UI
+✅ 선택지 기반 보상/페널티 시스템
+✅ 랜덤 요소 (확률, 수량)
+✅ 층별 등장 조건
+✅ 일회성 이벤트 지원
+✅ 기존 시스템과의 통합
+✅ PlayerManager 확장
+✅ 메타 파일 생성
+
+## 결과
+이벤트 시스템이 완전히 구현되어 게임에 랜덤성과 전략적 선택 요소를 추가했습니다. 플레이어는 층 이동 시 다양한 이벤트를 만나고, 선택지에 따라 보상이나 페널티를 받게 됩니다. 

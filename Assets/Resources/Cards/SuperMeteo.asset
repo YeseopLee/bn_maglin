@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
+  m_Name: SuperMeteo
+  m_EditorClassIdentifier: 
+  cardName: SuperMeteo
+  cardType: 3
+  elementType: 1
+  baseDamage: 30
+  baseHeal: 0
+  manaCost: 0
+  targetType: 2
+  targetCount: 1
+  cardDescription: Super Meteo
+  cardImage: {fileID: 0}
+  cardEffect: {fileID: 0}
+  cardSound: {fileID: 0}
+  comboFailureType: 0
+  cardPrice: 0
+  fieldEffectToApply: {fileID: 0}
+  requiredCombinations:
+  - elementCard: {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
+    active1Card: {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+    active2Card: {fileID: 11400000, guid: fd039a11222e24eb99aa6790758da01e, type: 2}
+    requiredField: {fileID: 11400000, guid: 0a5f10d97ee1e446ab4786633cb853ff, type: 2}
+    combinationDescription: 

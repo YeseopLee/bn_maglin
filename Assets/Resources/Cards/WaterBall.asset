@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
+  m_Name: WaterBall
+  m_EditorClassIdentifier: 
+  cardName: WaterBall
+  cardType: 3
+  elementType: 1
+  baseDamage: 8
+  baseHeal: 0
+  manaCost: 0
+  targetType: 0
+  targetCount: 1
+  cardDescription: WaterBall
+  cardImage: {fileID: 0}
+  cardEffect: {fileID: 0}
+  cardSound: {fileID: 0}
+  comboFailureType: 0
+  cardPrice: 0
+  fieldEffectToApply: {fileID: 11400000, guid: 3a314929bba404a1ab13b47d4067ec19, type: 2}
+  requiredCombinations:
+  - elementCard: {fileID: 11400000, guid: de39f22d7a9b345aaa1634c45d1bca4b, type: 2}
+    active1Card: {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+    active2Card: {fileID: 0}
+    requiredField: {fileID: 0}
+    combinationDescription: Water + EnergyBall

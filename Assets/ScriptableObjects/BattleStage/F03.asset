@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7d713e974580445e89588eae0b6d930d, type: 3}
+  m_Name: F03
+  m_EditorClassIdentifier: 
+  floorNumber: 3
+  stageType: 0
+  stageDescription: 3floor
+  availableBattles:
+  - battleData: {fileID: 11400000, guid: a04d41da3094d4652979a72820083345, type: 2}
+    spawnWeight: 0.99
+    minFloor: 3
+    maxFloor: 3
+    isUnique: 0
+  - battleData: {fileID: 11400000, guid: ed744df8910e2467787590218d47100c, type: 2}
+    spawnWeight: 0.01
+    minFloor: 3
+    maxFloor: 3
+    isUnique: 0
+  rewardPool:
+    availableCards: []
+    cardSpawnWeight: 1
+    availableRelics: []
+    relicSpawnWeight: 1
+  eventChance: 0
+  difficultyMultiplier: 1

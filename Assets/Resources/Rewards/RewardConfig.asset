@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ed8679ad2d9a1461bbff788d6b8424e1, type: 3}
+  m_Name: RewardConfig
+  m_EditorClassIdentifier: 
+  normalFloorReward:
+    floorType: 0
+    maxSelectableRewards: 3
+    alwaysShowGold: 0
+    baseGoldAmount: 15
+    goldMultiplier: 1
+  normalCardPool: {fileID: 11400000, guid: a22520e327b9147c1bb58c0ef2ee4092, type: 2}
+  normalRelicPool: {fileID: 0}
+  eliteFloorReward:
+    floorType: 1
+    maxSelectableRewards: 3
+    alwaysShowGold: 0
+    baseGoldAmount: 25
+    goldMultiplier: 1.5
+  eliteCardPool: {fileID: 0}
+  eliteRelicPool: {fileID: 11400000, guid: 541e171c0184a4131b3c6cb47802fc3e, type: 2}
+  bossFloorReward:
+    floorType: 3
+    maxSelectableRewards: 3
+    alwaysShowGold: 1
+    baseGoldAmount: 50
+    goldMultiplier: 2
+  bossCardPool: {fileID: 0}
+  bossRelicPool: {fileID: 11400000, guid: 541e171c0184a4131b3c6cb47802fc3e, type: 2}
+  startFloorReward:
+    floorType: 5
+    maxSelectableRewards: 3
+    alwaysShowGold: 1
+    baseGoldAmount: 10
+    goldMultiplier: 0.5
+  startCardPool: {fileID: 11400000, guid: a22520e327b9147c1bb58c0ef2ee4092, type: 2}
+  startRelicPool: {fileID: 0}

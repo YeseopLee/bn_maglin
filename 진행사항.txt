@@ -1,0 +1,50 @@
+=== 전투 보상 UI 시스템 구현 완료 ===
+
+## 구현 내용
+
+### 1. RewardUIGenerator.cs 생성
+- Tools -> Generate Rewards UI 메뉴를 통해 보상 선택 UI 자동 생성
+- 3개의 보상 슬롯과 건너뛰기 버튼이 포함된 팝업 UI
+- 화면 중앙에 배치되며 배경은 반투명 오버레이로 처리
+- 각 슬롯은 보상 아이콘, 이름, 설명을 표시
+
+### 2. BattleUIManager.cs 확장
+- 보상 UI 관리 기능 추가
+- 보상 UI 자동 찾기 및 연결 (FindRewardUI)
+- 보상 데이터에 따른 UI 업데이트 (UpdateRewardUI, UpdateRewardSlot)
+- 카드, 유물, 골드, 경험치 보상별 UI 표시 로직
+- 보상 선택 이벤트 처리 (OnRewardSelected, OnRewardSkipped)
+
+### 3. BattleTestController.cs 연동
+- RewardManager와 보상 UI 이벤트 연결
+- 전투 승리 시 보상 표시 로직 (ShowBattleRewards)
+- 보상 선택 및 적용 이벤트 핸들러들 구현
+- 보상 완료 후 처리 로직
+
+### 4. 기능별 세부 구현
+- 골드 보상: 노란색 아이콘, 골드 양 표시
+- 카드 보상: 카드 스프라이트 또는 타입별 색상, 카드명/설명 표시
+- 유물 보상: 유물 스프라이트 또는 등급별 색상, 유물명/설명 표시
+- 경험치 보상: 파란색 아이콘, 경험치 양 표시
+
+## 테스트 방법
+
+1. Unity 에디터에서 Tools -> Generate Rewards UI 실행
+2. 생성된 RewardSelectionUI가 Canvas에 추가되는지 확인
+3. 전투 테스트 씬에서 몬스터를 모두 처치하여 전투 승리
+4. 보상 선택 UI가 나타나는지 확인
+5. 보상 슬롯 클릭 및 건너뛰기 기능 테스트
+
+## 필요한 추가 설정
+
+1. 전투 테스트 씬에 RewardManager 게임오브젝트 추가
+2. RewardManager에 RewardConfigSO와 카드/유물 풀 설정
+3. BattleUIManager의 Inspector에서 보상 UI 참조 확인
+4. 테스트용 카드 및 유물 데이터 준비
+
+## 다음 단계
+
+- 실제 카드를 덱에 추가하는 로직 구현
+- 유물 효과 적용 시스템 연동
+- 보상 UI 애니메이션 효과 추가
+- 보상 선택 후 다음 층 진행 로직 

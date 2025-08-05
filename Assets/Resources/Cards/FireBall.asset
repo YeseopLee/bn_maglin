@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
+  m_Name: FireBall
+  m_EditorClassIdentifier: 
+  cardName: FireBall
+  cardType: 3
+  elementType: 1
+  baseDamage: 10
+  baseHeal: 0
+  manaCost: 0
+  targetType: 0
+  targetCount: 1
+  cardDescription: FireBall
+  cardImage: {fileID: 0}
+  cardEffect: {fileID: 0}
+  cardSound: {fileID: 0}
+  comboFailureType: 0
+  cardPrice: 0
+  fieldEffectToApply: {fileID: 11400000, guid: 0a5f10d97ee1e446ab4786633cb853ff, type: 2}
+  requiredCombinations:
+  - elementCard: {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
+    active1Card: {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+    active2Card: {fileID: 0}
+    requiredField: {fileID: 0}
+    combinationDescription: Fire + EnergyBall

@@ -1,0 +1,94 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45989072dde3d4871aa264d67c5c7c52, type: 3}
+  m_Name: New Shop
+  m_EditorClassIdentifier: 
+  shopName: 
+  shopDescription: 
+  shopIcon: {fileID: 0}
+  availableItems:
+  - itemType: 0
+    itemName: 
+    itemDescription: 
+    itemIcon: {fileID: 0}
+    cardData: {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
+    relicData: {fileID: 0}
+    healthRestoreAmount: 0
+    basePrice: 0
+    isPriceFixed: 0
+    spawnWeight: 0
+    minFloor: 0
+    maxFloor: 0
+  - itemType: 0
+    itemName: 
+    itemDescription: 
+    itemIcon: {fileID: 0}
+    cardData: {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+    relicData: {fileID: 0}
+    healthRestoreAmount: 0
+    basePrice: 0
+    isPriceFixed: 0
+    spawnWeight: 0
+    minFloor: 0
+    maxFloor: 0
+  - itemType: 0
+    itemName: 
+    itemDescription: 
+    itemIcon: {fileID: 0}
+    cardData: {fileID: 11400000, guid: de39f22d7a9b345aaa1634c45d1bca4b, type: 2}
+    relicData: {fileID: 0}
+    healthRestoreAmount: 0
+    basePrice: 0
+    isPriceFixed: 0
+    spawnWeight: 0
+    minFloor: 0
+    maxFloor: 0
+  - itemType: 0
+    itemName: 
+    itemDescription: 
+    itemIcon: {fileID: 0}
+    cardData: {fileID: 11400000, guid: fd039a11222e24eb99aa6790758da01e, type: 2}
+    relicData: {fileID: 0}
+    healthRestoreAmount: 0
+    basePrice: 0
+    isPriceFixed: 0
+    spawnWeight: 0
+    minFloor: 0
+    maxFloor: 0
+  - itemType: 0
+    itemName: 
+    itemDescription: 
+    itemIcon: {fileID: 0}
+    cardData: {fileID: 11400000, guid: 3c2f27f5a520449bca484d621b5efd7b, type: 2}
+    relicData: {fileID: 0}
+    healthRestoreAmount: 0
+    basePrice: 0
+    isPriceFixed: 0
+    spawnWeight: 0
+    minFloor: 0
+    maxFloor: 0
+  - itemType: 1
+    itemName: 
+    itemDescription: 
+    itemIcon: {fileID: 0}
+    cardData: {fileID: 11400000, guid: 3c2f27f5a520449bca484d621b5efd7b, type: 2}
+    relicData: {fileID: 0}
+    healthRestoreAmount: 0
+    basePrice: 0
+    isPriceFixed: 0
+    spawnWeight: 0
+    minFloor: 0
+    maxFloor: 0
+  maxItemsPerVisit: 6
+  priceMultiplier: 1
+  cardRemovalPrice: 50
+  healthRestorePrice: 30
