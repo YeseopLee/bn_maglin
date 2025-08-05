@@ -1,0 +1,151 @@
+# Phase 1: 기본 전환 시스템 테스트 가이드
+
+## 개요
+게임 시작 버튼에서 전투 씬까지의 전환이 부자연스러운 문제를 해결하기 위해
+새로운 로딩 시스템, 씬 전환 효과, 초기화 중 UI 블록 기능을 구현했습니다.
+
+## 구현된 주요 시스템
+
+### 1. LoadingManager (Assets/Scripts/Core/LoadingManager.cs)
+- 로딩 화면 표시/숨김
+- 진행률 바와 메시지 업데이트
+- 회전하는 로딩 스피너
+- UI 블록 기능
+
+### 2. SceneTransitionManager (Assets/Scripts/Core/SceneTransitionManager.cs)
+- 씬 전환 시 페이드 인/아웃 효과
+- 부드러운 화면 전환
+- 전환 중 상태 관리
+
+### 3. BattleInitializationSequence (Assets/Scripts/Battle/BattleInitializationSequence.cs)
+- 전투 초기화 단계별 처리
+- 각 단계별 진행률 표시
+- 초기화 중 플레이어 입력 차단
+
+### 4. MainGameController 개선
+- async/await 패턴으로 전환
+- 새로운 로딩 및 전환 시스템 연동
+
+### 5. BattleController 개선
+- 플레이어 입력 차단/허용 기능 추가
+
+## 필요한 설정 작업
+
+### Unity 에디터에서 설정해야 할 사항:
+
+1. **MainGame 씬에 LoadingManager 설정:**
+   - 빈 GameObject 생성 → "LoadingManager" 이름 변경
+   - LoadingManager 스크립트 추가
+   - Canvas 생성 → "LoadingCanvas" 
+   - LoadingCanvas 설정:
+     * Canvas → Render Mode: Screen Space - Overlay
+     * Canvas → Sort Order: 1000 (가장 위에 표시)
+   - LoadingCanvas 하위에 UI 요소들 생성:
+     * Panel (배경) → 검은색, 알파 0.8
+     * Loading Text (TextMeshPro)
+     * Progress Bar (Slider)
+     * Loading Spinner (Image, 회전할 아이콘)
+   - LoadingManager 스크립트의 필드들을 해당 UI 요소들에 연결
+
+2. **MainGame 씬에 SceneTransitionManager 설정:**
+   - 빈 GameObject 생성 → "SceneTransitionManager" 이름 변경
+   - SceneTransitionManager 스크립트 추가
+   - Canvas 생성 → "TransitionCanvas"
+   - TransitionCanvas 설정:
+     * Canvas → Render Mode: Screen Space - Overlay
+     * Canvas → Sort Order: 2000 (로딩보다도 위에)
+   - TransitionCanvas 하위에 Fade Panel 생성:
+     * Panel → 검은색, 전체 화면 크기
+     * CanvasGroup 컴포넌트 추가
+   - SceneTransitionManager 스크립트의 fadePanel을 해당 CanvasGroup에 연결
+
+3. **TestBattleScene 씬에 BattleInitializationSequence 설정:**
+   - 빈 GameObject 생성 → "BattleInitializationSequence" 이름 변경
+   - BattleInitializationSequence 스크립트 추가
+
+4. **MainGameController 연결 확인:**
+   - MainGame 씬의 MainController 오브젝트 확인
+   - MainGameController 스크립트의 모든 필드가 올바르게 연결되어 있는지 확인
+
+## 테스트 절차
+
+### 기본 테스트 시나리오:
+
+1. **Unity 에디터에서 MainGame 씬 실행**
+
+2. **게임 시작 버튼 클릭 테스트:**
+   - "GameStart" 버튼 클릭
+   - 예상 동작:
+     * 로딩 화면이 나타남 ("게임 준비 중...")
+     * 진행률 바가 점진적으로 증가
+     * 로딩 스피너가 회전
+     * 단계별 메시지 변경:
+       - "게임 매니저 확인 중..."
+       - "게임 데이터 초기화 중..."
+       - "전투 준비 중..."
+       - "게임 시작!"
+   - 로딩 완료 후 화면이 어두워짐 (페이드 인)
+   - TestBattleScene으로 전환
+   - 화면이 밝아짐 (페이드 아웃)
+
+3. **전투 씬 초기화 테스트:**
+   - TestBattleScene 로드 후:
+     * 다시 로딩 화면 표시 ("전투 준비 중...")
+     * 초기화 단계별 진행:
+       - "입력 차단 중..."
+       - "전투 필드 설정 중..."
+       - "플레이어 상태 초기화 중..."
+       - "적 등장 중..."
+       - "덱 준비 중..."
+       - "UI 설정 중..."
+       - "전투 시작 준비 완료!"
+   - 초기화 중에는 모든 UI 버튼/카드가 클릭 불가능
+   - 초기화 완료 후 정상적인 플레이 가능
+
+### 디버그 테스트:
+
+1. **콘솔 로그 확인:**
+   - LoadingManager, SceneTransitionManager, BattleInitializationSequence의 
+     디버그 모드를 true로 설정
+   - 각 단계별 로그 메시지가 올바르게 출력되는지 확인
+
+2. **Context Menu 테스트:**
+   - Runtime에 LoadingManager → "Force Reset Loading" 실행
+   - Runtime에 SceneTransitionManager → "Force Reset Transition" 실행
+   - Runtime에 BattleInitializationSequence → "Force Stop Initialization" 실행
+
+### 예상 문제점과 해결방법:
+
+1. **로딩 화면이 나타나지 않음:**
+   - LoadingManager의 loadingPanel이 올바르게 연결되었는지 확인
+   - Canvas의 Sort Order가 충분히 높은지 확인
+
+2. **페이드 효과가 작동하지 않음:**
+   - SceneTransitionManager의 fadePanel이 CanvasGroup 컴포넌트를 가지고 있는지 확인
+   - Canvas가 Screen Space - Overlay 모드인지 확인
+
+3. **씬 전환이 되지 않음:**
+   - Build Settings에 TestBattleScene이 추가되어 있는지 확인
+   - 씬 이름이 정확한지 확인
+
+4. **초기화 중 입력이 차단되지 않음:**
+   - BattleController가 씬에 존재하는지 확인
+   - EventSystem이 올바르게 설정되어 있는지 확인
+
+## 성공 기준
+
+✅ 게임 시작 버튼 클릭 시 즉시 로딩 화면 표시
+✅ 로딩 진행률과 메시지가 단계별로 업데이트
+✅ 로딩 완료 후 부드러운 페이드 전환
+✅ 전투 씬 로드 후 추가 초기화 로딩 표시
+✅ 초기화 중 모든 사용자 입력 차단
+✅ 초기화 완료 후 정상적인 게임 플레이 가능
+✅ 전체 과정이 자연스럽고 매끄러움
+
+## 추가 개선 예정 사항 (Phase 2)
+
+- 카드 드로우 애니메이션
+- 몬스터 등장 애니메이션  
+- 사운드 효과 추가
+- 파티클 효과
+- 더 정교한 시각적 피드백 

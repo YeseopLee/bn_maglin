@@ -80,6 +80,12 @@ namespace Maglin.Core
         [SerializeField] private string shopSceneName = "TestShopScene";
         [SerializeField] private string eventSceneName = "TestEventScene";
         [SerializeField] private string mainGameSceneName = "MainGame";
+        
+        // Public 프로퍼티들
+        public string BattleSceneName => battleSceneName;
+        public string ShopSceneName => shopSceneName;
+        public string EventSceneName => eventSceneName;
+        public string MainGameSceneName => mainGameSceneName;
 
         // 싱글톤
         public static FloorManager Instance { get; private set; }

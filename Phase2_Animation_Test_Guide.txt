@@ -1,0 +1,174 @@
+# Phase 2: 애니메이션 효과 테스트 가이드
+
+## 개요
+DOTween Pro를 사용하여 카드 드로우 애니메이션과 몬스터 등장 애니메이션을 구현했습니다.
+자연스러운 게임 플로우를 위해 매끄러운 애니메이션 효과를 추가했습니다.
+
+## 구현된 주요 시스템
+
+### 1. CardDrawAnimationManager (Assets/Scripts/UI/CardDrawAnimationManager.cs)
+- 카드가 덱에서 손으로 드로우되는 애니메이션
+- 순차적 카드 드로우 (한 장씩 0.2초 간격)
+- 카드 플립 효과 (뒷면 → 앞면)
+- 카드 글로우 효과
+- 착지 시 바운스 효과
+- 파티클 및 사운드 효과 지원
+
+### 2. MonsterSpawnAnimationManager (Assets/Scripts/Battle/MonsterSpawnAnimationManager.cs)
+- 몬스터가 하늘에서 떨어지며 등장하는 애니메이션
+- 순차적 몬스터 스폰 (한 마리씩 0.3초 간격)
+- 착지 시 그라운드 슬램 효과
+- 몬스터 타입별 고유 등장 애니메이션
+- 화면 흔들림 효과
+- 스폰 파티클 및 사운드 효과 지원
+
+### 3. BattleInitializationSequence 개선
+- 카드 드로우 애니메이션 통합
+- 몬스터 스폰 애니메이션 통합
+- 순차적 초기화 진행 (필드 → 플레이어 → 몬스터 → 카드 → UI)
+
+### 4. MonsterSpawnManager 개선
+- 애니메이션 시스템과 연동
+- 몬스터 생성 시 비활성화 상태로 시작
+- 애니메이션 매니저가 활성화 및 등장 효과 처리
+
+## 필요한 설정 작업
+
+### Unity 에디터에서 설정해야 할 사항:
+
+1. **DOTween 설정:**
+   - DOTween Pro가 프로젝트에 설치되어 있어야 함
+   - Project Settings → Player → Scripting Compilation에서 DOTWEEN 심볼이 정의되어 있는지 확인
+
+2. **TestBattleScene에 CardDrawAnimationManager 설정:**
+   - 빈 GameObject 생성 → "CardDrawAnimationManager" 이름 변경
+   - CardDrawAnimationManager 스크립트 추가
+   - Inspector에서 설정:
+     * Deck Position: 덱 영역 Transform (또는 자동으로 "DeckArea" 찾음)
+     * Hand Area: 손 영역 Transform (또는 자동으로 "HandArea" 찾음)
+     * Animation Settings: 지속시간, 간격, 이징 설정
+     * Effect Settings: 글로우, 사운드, 파티클 효과 활성화 여부
+
+3. **TestBattleScene에 MonsterSpawnAnimationManager 설정:**
+   - 빈 GameObject 생성 → "MonsterSpawnAnimationManager" 이름 변경
+   - MonsterSpawnAnimationManager 스크립트 추가
+   - Inspector에서 설정:
+     * Spawn Animation Settings: 지속시간, 간격, 등장 높이 설정
+     * Effect Settings: 파티클, 사운드, 그라운드 슬램, 화면 흔들림 효과
+     * Ground Slam Settings: 바운스 높이, 지속시간, 진동 설정
+
+4. **파티클 프리팹 설정 (선택적):**
+   - 카드 드로우용 파티클 프리팹 생성
+   - 몬스터 스폰용 파티클 프리팹 생성
+   - 각 애니메이션 매니저에 연결
+
+## 테스트 절차
+
+### 기본 테스트 시나리오:
+
+1. **Unity 에디터에서 MainGame 씬 실행**
+
+2. **게임 시작 및 전투 씬 전환:**
+   - "GameStart" 버튼 클릭
+   - Phase 1의 로딩 및 씬 전환 효과 확인
+   - TestBattleScene으로 부드럽게 전환되는지 확인
+
+3. **전투 초기화 애니메이션 테스트:**
+   - 전투 씬 로드 후 초기화 순서 확인:
+     * 로딩 화면 ("전투 준비 중...")
+     * 필드 설정
+     * 플레이어 초기화
+     * 몬스터 애니메이션 등장 (하늘에서 떨어짐)
+     * 카드 드로우 애니메이션 (덱에서 손으로)
+     * UI 활성화
+
+4. **몬스터 스폰 애니메이션 확인:**
+   - 몬스터가 화면 위쪽에서 나타나는지 확인
+   - 떨어지면서 크기가 점진적으로 커지는지 확인
+   - 착지 시 바운스 효과가 있는지 확인
+   - 몬스터별 고유 애니메이션 차이 확인 (일반/엘리트/보스)
+   - 순차적 등장 (0.3초 간격) 확인
+
+5. **카드 드로우 애니메이션 확인:**
+   - 카드가 덱 위치에서 시작하는지 확인
+   - 손 영역으로 이동하는 애니메이션 확인
+   - 카드 플립 효과 (Y축 회전) 확인
+   - 착지 시 바운스 효과 확인
+   - 순차적 드로우 (0.2초 간격) 확인
+   - 글로우 효과 확인
+
+### 고급 테스트:
+
+1. **애니메이션 성능 테스트:**
+   - 여러 몬스터 동시 스폰 시 프레임 드롭 확인
+   - 카드 5장 동시 드로우 시 성능 확인
+   - 애니메이션 중 다른 UI 조작 차단 확인
+
+2. **애니메이션 중단 테스트:**
+   - Context Menu에서 "Stop All Draw Animations" 실행
+   - Context Menu에서 "Stop All Spawn Animations" 실행
+   - 씬 전환 시 애니메이션 정리 확인
+
+3. **디버그 모드 테스트:**
+   - 각 애니메이션 매니저의 Debug Mode 활성화
+   - 콘솔 로그에서 진행 상황 확인
+   - 애니메이션 단계별 로그 메시지 확인
+
+### 설정별 테스트:
+
+1. **카드 드로우 설정 변경:**
+   - Duration: 0.3초 ~ 1.0초 범위 테스트
+   - Interval: 0.1초 ~ 0.5초 범위 테스트
+   - Ease: OutBack, OutBounce, OutElastic 등 다양한 이징 테스트
+   - Enable Card Glow, Enable Draw Sound 토글 테스트
+
+2. **몬스터 스폰 설정 변경:**
+   - Spawn Duration: 0.5초 ~ 2.0초 범위 테스트
+   - Spawn Interval: 0.1초 ~ 1.0초 범위 테스트
+   - Entrance Height: 1f ~ 5f 범위 테스트
+   - Enable Ground Slam, Enable Screen Shake 토글 테스트
+
+### 예상 문제점과 해결방법:
+
+1. **카드가 나타나지 않음:**
+   - HandArea와 DeckArea GameObject가 씬에 존재하는지 확인
+   - CardDrawAnimationManager의 Inspector 설정 확인
+   - 카드 오브젝트들이 올바른 RectTransform을 가지고 있는지 확인
+
+2. **몬스터 애니메이션이 작동하지 않음:**
+   - MonsterSpawnAnimationManager가 씬에 존재하는지 확인
+   - MonsterSpawnManager에서 스폰된 몬스터 목록이 비어있지 않은지 확인
+   - 몬스터 오브젝트들이 올바른 Transform을 가지고 있는지 확인
+
+3. **애니메이션이 너무 빠르거나 느림:**
+   - Inspector에서 Duration, Interval 값 조정
+   - Skip Initialization Delay 설정 확인
+
+4. **DOTween 관련 오류:**
+   - DOTween Pro가 올바르게 설치되었는지 확인
+   - Scripting Define Symbols에 DOTWEEN이 포함되어 있는지 확인
+   - DOTween.Init()가 호출되었는지 확인
+
+5. **파티클 효과가 보이지 않음:**
+   - Particle Prefab이 설정되어 있는지 확인
+   - Enable Particle Effect가 활성화되어 있는지 확인
+   - 파티클 시스템이 올바르게 설정되어 있는지 확인
+
+## 성공 기준
+
+✅ 게임 시작 후 자연스러운 전투 초기화 플로우
+✅ 몬스터들이 하늘에서 순차적으로 등장
+✅ 착지 시 임팩트 있는 그라운드 슬램 효과
+✅ 카드들이 덱에서 손으로 순차적으로 드로우
+✅ 카드 플립 및 글로우 효과 정상 작동
+✅ 모든 애니메이션이 부드럽고 자연스러움
+✅ 애니메이션 중 UI 입력 차단 정상 작동
+✅ 초기화 완료 후 정상적인 게임 플레이 가능
+
+## 추가 개선 예정 사항 (Phase 3)
+
+- 사운드 효과 시스템 통합
+- 더 정교한 파티클 효과
+- 카드 및 몬스터별 고유 애니메이션
+- 전투 액션 애니메이션 (공격, 스킬 사용 등)
+- 성능 최적화 및 메모리 관리 

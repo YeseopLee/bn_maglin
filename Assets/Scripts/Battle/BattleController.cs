@@ -30,6 +30,7 @@ namespace Maglin.Battle
         private bool isBattleActive = false;
         private bool isPlayerTurn = true;
         private int currentTurn = 1;
+        private bool isInputBlocked = false;
 
         // 현재 층 정보
         private int currentFloor = 1;
@@ -582,6 +583,15 @@ namespace Maglin.Battle
             // 매니저들에 턴 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
+            // 기존 카드 UI 완전 정리 (혹시 남아있을 수 있는 UI들)
+            if (BattleUIManager.Instance != null)
+            {
+                BattleUIManager.Instance.ClearHandCardUIs();
+                
+                if (debugMode)
+                    Debug.Log("[BattleController] 기존 손패 UI 정리 완료");
+            }
+
             // 카드 드로우
             if (CardManager.Instance != null)
             {
@@ -713,6 +723,7 @@ namespace Maglin.Battle
             }
 
             ComboExecutionResult result = null;
+            bool cardsUsed = false; // 카드가 실제로 사용되었는지 추적
 
             // 단독 사용 처리
             if (comboCards.Count == 1 && comboCards[0].CardData.CanUseSolo)
@@ -723,6 +734,7 @@ namespace Maglin.Battle
                 if (CardManager.Instance != null)
                 {
                     CardManager.Instance.UseCardInstances(comboCards.ToArray());
+                    cardsUsed = true; // 카드가 사용됨
                 }
 
                 ExecuteCardEffect(comboCards[0].CardData);
@@ -751,25 +763,21 @@ namespace Maglin.Battle
                     if (result.Success)
                     {
                         ExecuteCardEffect(result.ResultCardData);
+                        cardsUsed = true; // 조합 성공 시 카드가 사용됨
                     }
                 }
             }
 
             // 조합 완료 후 슬롯 정리
-            if (result != null)
+            if (cardsUsed)
             {
-                if (result.Success)
-                {
-                    BattleUIManager.Instance?.ClearComboSlotsUIOnly();
-                }
-                else
-                {
-                    BattleUIManager.Instance?.ClearComboSlots();
-                }
+                // 카드가 사용된 경우: UI만 정리하고 카드는 손패로 되돌리지 않음
+                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
             }
             else
             {
-                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                // 카드가 사용되지 않은 경우: 카드를 손패로 되돌림
+                BattleUIManager.Instance?.ClearComboSlots();
             }
 
             // 승부 판정
@@ -1131,6 +1139,54 @@ namespace Maglin.Battle
             Debug.Log($"플레이어 위치: {PlayerBattleManager.Instance?.GetPlayerGridPosition() ?? Vector2Int.zero}");
             Debug.Log($"현재 타겟: {TargetManager.Instance?.CurrentTarget?.EnemyName ?? "없음"}");
             Debug.Log($"살아있는 몬스터: {TargetManager.Instance?.GetAliveEnemies().Count ?? 0}마리");
+        }
+        #endregion
+
+        #region Input Management
+        /// <summary>
+        /// 플레이어 입력 차단/허용 설정
+        /// </summary>
+        /// <param name="blocked">true면 입력 차단, false면 허용</param>
+        public void SetInputBlocked(bool blocked)
+        {
+            isInputBlocked = blocked;
+            
+            if (debugMode)
+                Debug.Log($"[BattleController] 플레이어 입력 {(blocked ? "차단" : "허용")}");
+            
+            // UI 요소들의 상호작용 차단/허용
+            SetUIInteractable(!blocked);
+        }
+        
+        /// <summary>
+        /// 현재 입력이 차단되어 있는지 확인
+        /// </summary>
+        public bool IsInputBlocked => isInputBlocked;
+        
+        /// <summary>
+        /// UI 요소들의 상호작용 설정
+        /// </summary>
+        private void SetUIInteractable(bool interactable)
+        {
+            // 카드 영역 차단/허용
+            var cardAreas = FindObjectsOfType<GraphicRaycaster>();
+            foreach (var area in cardAreas)
+            {
+                area.enabled = interactable;
+            }
+            
+            // EventSystem 차단/허용
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.enabled = interactable;
+            }
+            
+            // 추가적인 UI 요소들 (버튼 등) 차단/허용
+            var buttons = FindObjectsOfType<Button>();
+            foreach (var button in buttons)
+            {
+                button.interactable = interactable;
+            }
         }
         #endregion
     }

@@ -1,0 +1,80 @@
+카드 사용 후 복사 및 UI 정리 문제 해결 완료 목록
+
+===================================================
+수정된 파일 목록
+===================================================
+
+1. Assets/Scripts/Battle/BattleController.cs
+   - ExecuteCombo() 메서드 수정
+   - 카드 사용 여부를 추적하는 cardsUsed 변수 추가
+   - 카드가 사용된 경우에만 ClearComboSlotsUIOnly() 호출
+   - StartPlayerTurn()에서 기존 손패 UI 정리 로직 추가
+
+2. Assets/Scripts/Battle/BattleTestController.cs
+   - ExecuteCombo() 메서드 수정
+   - BattleController와 동일한 카드 사용 추적 로직 적용
+   - StartPlayerTurn()에서 기존 손패 UI 정리 로직 추가
+
+3. Assets/Scripts/Battle/BattleUIManager.cs
+   - ClearComboSlotsUIOnly() 메서드 완전 수정
+   - 조합 슬롯 카드 UI를 handCardUIs에서 제거 후 완전 삭제
+   - ClearAllCardUIs() 메서드 추가 (턴 종료용)
+   - ClearHandCardUIs() 메서드에 디버그 로그 추가
+   - UpdateHandUI() 메서드 단순화 (조합 슬롯 필터링 제거)
+
+4. Assets/Scripts/Cards/CardManager.cs
+   - UseCards() 메서드 유효성 검증 로직 수정
+   - 조합 슬롯에 있는 카드도 유효한 것으로 인정
+   - EndTurnProcessing() 메서드 완전 재작성
+   - UI 정리를 카드 데이터 정리 전에 실행
+
+===================================================
+해결된 문제들
+===================================================
+
+1. 카드 사용 후 조합 슬롯 카드들이 손패로 돌아오는 문제
+   - 해결: ClearComboSlotsUIOnly()에서 카드를 완전히 제거
+   - 해결: cardsUsed 플래그로 카드 사용 여부 정확히 추적
+
+2. 턴 종료 시 손패 UI가 제대로 사라지지 않는 문제
+   - 해결: EndTurnProcessing()에서 UI 먼저 정리
+   - 해결: ClearAllCardUIs()로 모든 카드 UI 완전 정리
+
+3. 새 턴 시작 시 카드 UI가 중복 생성되는 문제
+   - 해결: StartPlayerTurn()에서 드로우 전 기존 UI 정리
+   - 해결: UpdateHandUI() 로직 단순화
+
+4. 카드 사용 시 조합 슬롯 카드 검증 오류
+   - 해결: UseCards()에서 조합 슬롯 카드도 유효한 것으로 인정
+
+===================================================
+작동 원리
+===================================================
+
+카드 사용 흐름:
+1. 카드 클릭 → 조합 슬롯으로 이동
+2. Execute Combo 버튼 클릭
+3. CardManager.UseCards()로 카드를 임시무덤으로 이동
+4. cardsUsed = true 설정
+5. ClearComboSlotsUIOnly()로 사용된 카드 UI 완전 제거
+
+턴 종료 흐름:
+1. End Turn 버튼 클릭
+2. CardManager.EndTurnProcessing() 호출
+3. BattleUIManager.ClearAllCardUIs()로 모든 UI 정리
+4. 모든 카드를 메인덱으로 복귀 및 셔플
+
+턴 시작 흐름:
+1. StartPlayerTurn() 호출
+2. 기존 손패 UI 정리 (혹시 남아있을 경우)
+3. DrawCardsToMax()로 새 카드 드로우
+4. UpdateHandUI()로 새 손패 UI 생성
+
+===================================================
+핵심 개선 사항
+===================================================
+
+- 카드 사용 상태를 정확히 추적하여 UI 정리 방식 결정
+- 턴 종료 시 UI와 데이터 정리 순서 최적화
+- 중복 UI 생성 방지를 위한 사전 정리 로직 강화
+- 조합 슬롯 카드의 완전한 제거 보장 

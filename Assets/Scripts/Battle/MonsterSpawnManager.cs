@@ -333,7 +333,7 @@ namespace Maglin.Battle
         {
             // 겹치지 않는 위치 찾기
             var position = FindAvailableSpawnPosition(new Vector2Int(8, 0));
-            GameObject monsterObj = CreateMonsterGameObject("테스트 몬스터", position, null);
+            GameObject monsterObj = CreateMonsterGameObjectForAnimation("테스트 몬스터", position, null);
 
             if (monsterObj != null)
             {
@@ -357,7 +357,7 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// Grid 시스템 준비 후 몬스터 생성
+        /// Grid 시스템 준비 후 몬스터 생성 (애니메이션 없이 - 초기 설정만)
         /// </summary>
         private IEnumerator CreateMonsterAfterUIReady(EnemySO enemyData, Vector2Int gridPosition)
         {
@@ -381,8 +381,8 @@ namespace Maglin.Battle
                 }
             }
 
-            // 이제 안전하게 몬스터 생성
-            GameObject monsterObj = CreateMonsterGameObject(enemyData.EnemyName, gridPosition, enemyData);
+            // 몬스터 오브젝트 생성 (애니메이션 전 준비 상태로)
+            GameObject monsterObj = CreateMonsterGameObjectForAnimation(enemyData.EnemyName, gridPosition, enemyData);
 
             if (monsterObj != null)
             {
@@ -411,22 +411,22 @@ namespace Maglin.Battle
                     TargetManager.Instance.AddMonster(monsterObj);
                 }
 
-                // 이벤트 발생
+                // 이벤트 발생 (애니메이션 전 단계)
                 OnMonsterSpawned?.Invoke(enemy);
 
                 if (debugMode)
-                    Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 스폰 완료: {gridPosition}");
+                    Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 기본 스폰 완료 (애니메이션 대기): {gridPosition}");
             }
         }
 
         /// <summary>
-        /// 몬스터 게임오브젝트 생성 (Grid 기반)
+        /// 애니메이션용 몬스터 게임오브젝트 생성 (Grid 기반, 초기에는 숨김 상태)
         /// </summary>
-        private GameObject CreateMonsterGameObject(string monsterName, Vector2Int gridPosition, EnemySO enemyData = null)
+        private GameObject CreateMonsterGameObjectForAnimation(string monsterName, Vector2Int gridPosition, EnemySO enemyData = null)
         {
             GameObject monsterObj;
 
-            // 생성 시 잠시 비활성화 (위치 설정 완료 후 활성화)
+            // 애니메이션을 위해 처음에는 비활성화 상태로 생성
             bool shouldActivateAfterSetup = false;
 
             if (monsterPrefab != null)
@@ -435,9 +435,9 @@ namespace Maglin.Battle
                 monsterObj = Instantiate(monsterPrefab);
                 monsterObj.name = $"Monster_{monsterName}";
 
-                // 위치 설정 중 깜빡임 방지를 위해 잠시 비활성화
+                // 애니메이션 시스템에서 처리하도록 비활성화 상태로 유지
                 monsterObj.SetActive(false);
-                shouldActivateAfterSetup = true;
+                shouldActivateAfterSetup = false; // 애니메이션 매니저가 활성화 처리
 
                 // 스프라이트 설정 (EnemySO에서 가져오기)
                 var spriteRenderer = monsterObj.GetComponent<SpriteRenderer>();
@@ -456,7 +456,7 @@ namespace Maglin.Battle
                 // 프리팹이 없을 때만 기본 생성 (비상용)
                 monsterObj = new GameObject($"Monster_{monsterName}");
                 monsterObj.SetActive(false);
-                shouldActivateAfterSetup = true;
+                shouldActivateAfterSetup = false; // 애니메이션 매니저가 활성화 처리
 
                 var spriteRenderer = monsterObj.AddComponent<SpriteRenderer>();
                 spriteRenderer.color = Color.red;
@@ -512,13 +512,8 @@ namespace Maglin.Battle
                     Debug.LogWarning($"[MonsterSpawnManager] GridFieldManager가 없어 기본 위치 사용: {monsterName}");
             }
 
-            // 위치 설정 완료 후 활성화
-            if (shouldActivateAfterSetup)
-            {
-                monsterObj.SetActive(true);
-                if (debugMode)
-                    Debug.Log($"[MonsterSpawnManager] 몬스터 활성화: {monsterName}");
-            }
+            // 애니메이션 매니저가 활성화를 처리하므로 비활성화 상태 유지
+            // (MonsterSpawnAnimationManager에서 SetActive(true) 호출)
 
             return monsterObj;
         }
