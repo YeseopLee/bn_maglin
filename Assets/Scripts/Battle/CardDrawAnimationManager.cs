@@ -100,10 +100,10 @@ namespace Maglin.Battle
         [SerializeField] private float cardSpacing = 20f; // 카드 간 간격
 
         [Header("무덤 애니메이션 설정")]
-        [SerializeField] private float graveAnimationDuration = 0.8f; // 무덤으로 이동하는 시간
-        [SerializeField] private float particleScaleSize = 0.3f; // 파티클 크기 (원래 크기의 배수)
+        [SerializeField] private float graveAnimationDuration = 1.2f; // 무덤으로 이동하는 시간 (더 극적으로)
+        [SerializeField] private float particleScaleSize = 0.15f; // 파티클 크기 (원래 크기의 배수) - 더 작게
         [SerializeField] private Ease graveAnimationEase = Ease.InOutQuad; // 무덤 애니메이션 곡선
-        [SerializeField] private float particleDelay = 0.1f; // 카드별 파티클 딜레이
+        [SerializeField] private float particleDelay = 0.15f; // 카드별 파티클 딜레이 (약간 더 여유있게)
 
         [Header("효과 설정")]
         [SerializeField] private bool useCardFlip = true;
@@ -848,27 +848,70 @@ namespace Maglin.Battle
             for (int i = 0; i < cardUIs.Count; i++)
             {
                 GameObject cardUI = cardUIs[i];
-                Card card = cards[i];
+                Card card = i < cards.Count ? cards[i] : null;
 
                 if (cardUI == null) continue;
 
-                // 파티클 효과 시작 (작아지면서 무덤으로 이동)
-                var particleSequence = DOTween.Sequence();
+                Vector3 startPosition = cardUI.transform.position;
+                Vector3 cardUIPosition = cardUI.transform.position;
 
-                // 1단계: 카드가 작은 파티클로 변환 (축소)
-                particleSequence.Append(cardUI.transform.DOScale(Vector3.one * particleScaleSize, graveAnimationDuration * 0.3f)
-                    .SetEase(Ease.InQuad));
+                // 자연스러운 중간 지점 계산 (살짝 위로 올라가는 포물선)
+                Vector3 midPoint = Vector3.Lerp(startPosition, gravePosition, 0.5f);
+                midPoint.y += UnityEngine.Random.Range(30f, 50f); // 살짝만 위로 올라가는 효과
 
-                // 2단계: 동시에 무덤으로 이동 (곡선 움직임)
-                particleSequence.Join(cardUI.transform.DOMove(gravePosition, graveAnimationDuration)
-                    .SetEase(graveAnimationEase));
+                // 자연스러운 애니메이션 시퀀스 생성
+                var cardSequence = DOTween.Sequence();
 
-                // 3단계: 도착 직전에 완전히 사라짐
-                particleSequence.Append(cardUI.transform.DOScale(Vector3.zero, graveAnimationDuration * 0.2f)
-                    .SetEase(Ease.InQuad));
+                // 0단계: 카드 사용 후 살짝 뜨는 효과
+                cardSequence.Append(cardUI.transform.DOScale(Vector3.one * 1.05f, graveAnimationDuration * 0.15f)
+                    .SetEase(Ease.OutBack));
+
+                // 1단계: 중간 지점으로 이동하면서 천천히 회전하고 작아지기
+                var moveToMid = cardUI.transform.DOMove(midPoint, graveAnimationDuration * 0.6f)
+                    .SetEase(Ease.OutQuart);
+
+                // 회전을 적게 하고 자연스럽게
+                var rotateUp = cardUI.transform.DORotate(new Vector3(0, 0, UnityEngine.Random.Range(45f, 120f)), graveAnimationDuration * 0.6f, RotateMode.FastBeyond360)
+                    .SetEase(Ease.OutQuart);
+
+                var scaleDown = cardUI.transform.DOScale(Vector3.one * 0.5f, graveAnimationDuration * 0.6f)
+                    .SetEase(Ease.InOutQuart);
+
+                cardSequence.Join(moveToMid);
+                cardSequence.Join(rotateUp);
+                cardSequence.Join(scaleDown);
+
+                // 2단계: 무덤으로 부드럽게 하강
+                var finalMove = cardUI.transform.DOMove(gravePosition, graveAnimationDuration * 0.3f)
+                    .SetEase(Ease.InQuart);
+
+                // 마지막 회전은 더 적게
+                var finalRotate = cardUI.transform.DORotate(new Vector3(0, 0, UnityEngine.Random.Range(180f, 270f)), graveAnimationDuration * 0.3f, RotateMode.FastBeyond360)
+                    .SetEase(Ease.InQuart);
+
+                // 더 작게 축소
+                var finalScale = cardUI.transform.DOScale(Vector3.one * particleScaleSize, graveAnimationDuration * 0.25f)
+                    .SetEase(Ease.InBack);
+
+                cardSequence.Append(finalMove);
+                cardSequence.Join(finalRotate);
+                cardSequence.Join(finalScale);
+
+                // 3단계: 투명도와 함께 자연스럽게 사라짐
+                var image = cardUI.GetComponent<Image>();
+                if (image != null)
+                {
+                    var fadeOut = image.DOFade(0f, graveAnimationDuration * 0.15f)
+                        .SetEase(Ease.InQuart);
+                    cardSequence.Join(fadeOut);
+                }
+
+                // 완전히 사라지기 (흔들림 효과 제거)
+                cardSequence.Append(cardUI.transform.DOScale(Vector3.zero, graveAnimationDuration * 0.1f)
+                    .SetEase(Ease.InBack));
 
                 // 애니메이션 완료 시 오브젝트 제거
-                particleSequence.OnComplete(() =>
+                cardSequence.OnComplete(() =>
                 {
                     if (cardUI != null)
                     {
@@ -877,10 +920,10 @@ namespace Maglin.Battle
                 });
 
                 // 순차적으로 시작하도록 딜레이
-                particleSequence.SetDelay(i * particleDelay);
+                cardSequence.SetDelay(i * particleDelay);
 
-                if (debugMode)
-                    Debug.Log($"[CardDrawAnimationManager] 카드 무덤 애니메이션: {card.CardName} → 무덤");
+                if (debugMode && card != null)
+                    Debug.Log($"[CardDrawAnimationManager] 극적인 카드 무덤 애니메이션: {card.CardName} → 무덤");
             }
 
             // 모든 애니메이션 완료까지 대기

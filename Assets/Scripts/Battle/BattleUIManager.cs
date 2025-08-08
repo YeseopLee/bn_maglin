@@ -492,7 +492,12 @@ namespace Maglin.Battle
             if (executeComboButton != null)
             {
                 executeComboButton.onClick.RemoveAllListeners();
-                executeComboButton.onClick.AddListener(() => OnExecuteComboClicked?.Invoke());
+                executeComboButton.onClick.AddListener(() =>
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleUIManager] 조합 실행 버튼 클릭됨");
+                    OnExecuteComboClicked?.Invoke();
+                });
             }
 
             if (clearComboButton != null)

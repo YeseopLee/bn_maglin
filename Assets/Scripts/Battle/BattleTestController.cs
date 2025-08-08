@@ -728,7 +728,21 @@ namespace Maglin.Battle
         /// </summary>
         public void ExecuteCombo()
         {
-            if (!isPlayerTurn || !isBattleActive) return;
+            if (debugMode)
+                Debug.Log("[BattleTestController] ========== ExecuteCombo 시작 ==========");
+
+            if (!isPlayerTurn || !isBattleActive)
+            {
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 조합 실행 중단 - 플레이어 턴: {isPlayerTurn}, 전투 활성: {isBattleActive}");
+                return;
+            }
+
+            // 중복 실행 방지를 위해 즉시 플레이어 턴 종료
+            isPlayerTurn = false;
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] 플레이어 턴 종료 (중복 실행 방지)");
 
             // BattleUIManager에서 조합 슬롯 카드들 가져오기
             var comboCards = BattleUIManager.Instance?.GetComboSlotCards() ?? new List<Card>();
@@ -821,6 +835,9 @@ namespace Maglin.Battle
             // 조합 완료 후 카드 무덤 애니메이션 및 슬롯 정리
             StartCoroutine(ProcessCardToGraveAnimation(comboCards, result));
 
+            if (debugMode)
+                Debug.Log("[BattleTestController] ========== ExecuteCombo 완료 ==========");
+
             // 승부 판정
             CheckBattleEnd();
         }
@@ -891,6 +908,14 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log("[BattleTestController] 무덤 애니메이션 완료 후 슬롯 정리");
                 BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+
+                // 플레이어 턴 재시작 (중복 실행 방지가 해제됨)
+                if (!CheckBattleEnd())
+                {
+                    isPlayerTurn = true;
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 플레이어 턴 재시작");
+                }
             }
             else
             {
@@ -917,6 +942,14 @@ namespace Maglin.Battle
                 {
                     // 단독 카드 사용 시: 카드가 이미 소모되었으므로 UI만 정리
                     BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                }
+
+                // 플레이어 턴 재시작 (중복 실행 방지가 해제됨)
+                if (!CheckBattleEnd())
+                {
+                    isPlayerTurn = true;
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 플레이어 턴 재시작 (애니메이션 없음)");
                 }
             }
         }
