@@ -1137,6 +1137,9 @@ namespace Maglin.Cards
             if (debugMode)
                 Debug.Log($"[CardManager] 턴 종료 - 모든 Card 인스턴스 메인덱으로 회수");
 
+            // 조합창에 있는 카드들을 먼저 임시무덤으로 이동
+            ProcessComboSlotCardsOnTurnEnd();
+
             // 모든 Card 인스턴스를 메인덱으로 되돌리고 셔플
             ReturnAllCardInstancesToDeck();
 
@@ -1145,6 +1148,42 @@ namespace Maglin.Cards
 
             // 드로우 비용 초기화
             ResetDrawCosts();
+        }
+
+        /// <summary>
+        /// 턴 종료 시 조합창에 있는 카드들을 임시무덤으로 이동
+        /// </summary>
+        private void ProcessComboSlotCardsOnTurnEnd()
+        {
+            if (BattleUIManager.Instance == null) return;
+
+            var comboSlotCards = BattleUIManager.Instance.GetComboSlotCards();
+            if (comboSlotCards.Count == 0) return;
+
+            if (debugMode)
+                Debug.Log($"[CardManager] 턴 종료 - 조합창 카드 {comboSlotCards.Count}장을 임시무덤으로 이동");
+
+            // 조합창 카드들을 임시무덤으로 이동
+            foreach (var card in comboSlotCards)
+            {
+                if (card != null)
+                {
+                    tempGraveyard.Add(card);
+
+                    // CardSO 시스템도 동기화
+                    var cardSO = ExtractCardSO(card);
+                    if (cardSO != null)
+                    {
+                        discardPile.Add(cardSO);
+                    }
+
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 조합창 카드 임시무덤 이동: {card.CardName}");
+                }
+            }
+
+            // 조합창 UI 정리
+            BattleUIManager.Instance.ClearComboSlotsUIOnly();
         }
 
         /// <summary>

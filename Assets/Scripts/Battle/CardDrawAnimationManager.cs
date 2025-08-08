@@ -1,0 +1,898 @@
+using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
+using System.Collections.Generic;
+using Maglin.Cards;
+using Maglin.UI;
+using DG.Tweening;
+
+namespace Maglin.Battle
+{
+    /// <summary>
+    /// 카드 드로우 애니메이션을 관리하는 매니저
+    /// 싱글톤 패턴으로 구현되며, 하이어라키에서 직접 설정
+    /// </summary>
+    public class CardDrawAnimationManager : MonoBehaviour
+    {
+        #region Singleton Implementation
+        private static CardDrawAnimationManager _instance;
+
+        public static CardDrawAnimationManager Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    _instance = FindObjectOfType<CardDrawAnimationManager>();
+                }
+                return _instance;
+            }
+        }
+
+        private void Awake()
+        {
+            if (_instance == null)
+            {
+                _instance = this;
+                DontDestroyOnLoad(gameObject);
+            }
+            else if (_instance != this)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
+            InitializeManager();
+        }
+
+        private void OnDestroy()
+        {
+            if (_instance == this)
+            {
+                _instance = null;
+            }
+        }
+        #endregion
+
+        #region Events
+        /// <summary>
+        /// 카드 드로우 애니메이션 시작 이벤트
+        /// </summary>
+        public static event System.Action<Card> OnCardDrawAnimationStarted;
+
+        /// <summary>
+        /// 개별 카드 드로우 애니메이션 완료 이벤트
+        /// </summary>
+        public static event System.Action<Card, GameObject> OnCardDrawAnimationCompleted;
+
+        /// <summary>
+        /// 모든 카드 드로우 애니메이션 완료 이벤트
+        /// </summary>
+        public static event System.Action<List<Card>> OnAllCardDrawAnimationsCompleted;
+
+        /// <summary>
+        /// 카드 재배치 애니메이션 완료 이벤트
+        /// </summary>
+        public static event System.Action OnCardArrangementCompleted;
+
+        /// <summary>
+        /// 카드 무덤 애니메이션 완료 이벤트
+        /// </summary>
+        public static event System.Action<List<Card>> OnCardGraveAnimationCompleted;
+        #endregion
+
+        #region Serialized Fields
+        [Header("UI 참조")]
+        [SerializeField] private Transform deckArea;
+        [SerializeField] private Transform handContent;
+        [SerializeField] private Transform graveArea; // 무덤 영역
+        [SerializeField] private GameObject cardUIPrefab;
+
+        [Header("애니메이션 설정")]
+        [SerializeField] private float cardDrawDuration = 0.2f; // 각 카드 뽑는 시간
+        [SerializeField] private float cardInterval = 0.12f; // 카드 간 간격 (연속 뽑기 속도)
+        [SerializeField] private Ease cardMoveEase = Ease.OutCubic; // 안정적인 움직임
+        [SerializeField] private float cardSpawnScale = 0.3f; // 적당한 크기로 시작
+        [SerializeField] private float cardRotationRange = 15f; // 적당한 회전
+
+        [Header("위치 설정")]
+        [SerializeField] private float cardWidth = 150f; // 카드 UI 너비
+        [SerializeField] private float cardSpacing = 20f; // 카드 간 간격
+
+        [Header("무덤 애니메이션 설정")]
+        [SerializeField] private float graveAnimationDuration = 0.8f; // 무덤으로 이동하는 시간
+        [SerializeField] private float particleScaleSize = 0.3f; // 파티클 크기 (원래 크기의 배수)
+        [SerializeField] private Ease graveAnimationEase = Ease.InOutQuad; // 무덤 애니메이션 곡선
+        [SerializeField] private float particleDelay = 0.1f; // 카드별 파티클 딜레이
+
+        [Header("효과 설정")]
+        [SerializeField] private bool useCardFlip = true;
+        [SerializeField] private bool useScaleEffect = true;
+        [SerializeField] private bool useRotationEffect = true;
+        [SerializeField] private bool useGlowEffect = true;
+
+        [Header("디버그")]
+        [SerializeField] private bool debugMode = true;
+        #endregion
+
+        #region Private Fields
+        private bool isAnimating = false;
+
+        /// <summary>
+        /// 애니메이션 진행 중 여부 (외부 접근용)
+        /// </summary>
+        public bool IsAnimating => isAnimating;
+        private List<GameObject> animatingCards = new List<GameObject>();
+        private Queue<CardDrawRequest> drawQueue = new Queue<CardDrawRequest>();
+        private bool isProcessingQueue = false;
+
+        // UI 자동 탐지 필드
+        private Transform autoDeckArea;
+        private Transform autoHandContent;
+        private GameObject autoCardUIPrefab;
+        #endregion
+
+        #region Initialization
+        /// <summary>
+        /// 매니저 초기화
+        /// </summary>
+        private void InitializeManager()
+        {
+            if (debugMode)
+                Debug.Log("[CardDrawAnimationManager] 초기화 시작");
+
+            // UI 참조가 설정되지 않은 경우 자동 탐지
+            AutoDetectUIReferences();
+
+            // DOTween 초기화 (항상 안전하게 초기화)
+            DOTween.Init(false, true, LogBehaviour.ErrorsOnly);
+
+            if (debugMode)
+                Debug.Log("[CardDrawAnimationManager] 초기화 완료");
+        }
+
+        /// <summary>
+        /// UI 참조 자동 탐지
+        /// </summary>
+        private void AutoDetectUIReferences()
+        {
+            // DeckArea 자동 탐지
+            if (deckArea == null)
+            {
+                GameObject deckAreaObj = GameObject.Find("DeckArea");
+                if (deckAreaObj != null)
+                {
+                    autoDeckArea = deckAreaObj.transform;
+                    if (debugMode)
+                        Debug.Log("[CardDrawAnimationManager] DeckArea 자동 탐지됨");
+                }
+            }
+
+            // HandContent 자동 탐지
+            if (handContent == null)
+            {
+                GameObject handContentObj = GameObject.Find("HandContent");
+                if (handContentObj != null)
+                {
+                    autoHandContent = handContentObj.transform;
+                    if (debugMode)
+                        Debug.Log("[CardDrawAnimationManager] HandContent 자동 탐지됨");
+                }
+            }
+
+            // CardUIPrefab 자동 탐지 (BattleUIManager에서)
+            if (cardUIPrefab == null && BattleUIManager.Instance != null)
+            {
+                // BattleUIManager의 cardUIPrefab을 리플렉션으로 가져오기
+                var field = typeof(BattleUIManager).GetField("cardUIPrefab",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (field != null)
+                {
+                    autoCardUIPrefab = field.GetValue(BattleUIManager.Instance) as GameObject;
+                    if (autoCardUIPrefab != null && debugMode)
+                        Debug.Log("[CardDrawAnimationManager] CardUIPrefab 자동 탐지됨");
+                }
+            }
+        }
+        #endregion
+
+        #region Public Methods
+        /// <summary>
+        /// UI 참조 설정 (수동)
+        /// </summary>
+        public void SetUIReferences(Transform deckArea, Transform handContent, GameObject cardUIPrefab)
+        {
+            this.deckArea = deckArea;
+            this.handContent = handContent;
+            this.cardUIPrefab = cardUIPrefab;
+
+            if (debugMode)
+                Debug.Log("[CardDrawAnimationManager] UI 참조가 수동으로 설정됨");
+        }
+
+        /// <summary>
+        /// 카드 드로우 애니메이션 시작
+        /// </summary>
+        public void PlayCardDrawAnimation(List<Card> cardsToAnimate)
+        {
+            if (cardsToAnimate == null || cardsToAnimate.Count == 0) return;
+
+            if (isAnimating)
+            {
+                // 현재 애니메이션 중이면 큐에 추가
+                drawQueue.Enqueue(new CardDrawRequest(cardsToAnimate));
+                ProcessDrawQueue();
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 카드 드로우 애니메이션 시작: {cardsToAnimate.Count}장");
+
+            StartCoroutine(ExecuteCardDrawAnimation(cardsToAnimate));
+        }
+
+        /// <summary>
+        /// 단일 카드 드로우 애니메이션
+        /// </summary>
+        public void PlaySingleCardDrawAnimation(Card card)
+        {
+            if (card == null) return;
+            PlayCardDrawAnimation(new List<Card> { card });
+        }
+
+        /// <summary>
+        /// 현재 진행 중인 모든 애니메이션 중단
+        /// </summary>
+        public void StopAllAnimations()
+        {
+            if (debugMode)
+                Debug.Log("[CardDrawAnimationManager] 모든 애니메이션 중단");
+
+            isAnimating = false;
+
+            // 진행 중인 애니메이션 카드들 정리
+            foreach (var card in animatingCards)
+            {
+                if (card != null)
+                {
+                    card.transform.DOKill();
+                }
+            }
+
+            animatingCards.Clear();
+            drawQueue.Clear();
+        }
+
+        /// <summary>
+        /// 카드 재배치 애니메이션만 실행
+        /// </summary>
+        public void PlayCardArrangementAnimation()
+        {
+            if (GetHandContent() == null) return;
+
+            StartCoroutine(ExecuteCardArrangementAnimation());
+        }
+
+        /// <summary>
+        /// 카드들을 무덤으로 보내는 파티클 애니메이션
+        /// </summary>
+        public void PlayCardToGraveAnimation(List<Card> cards, List<GameObject> cardUIs)
+        {
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] PlayCardToGraveAnimation 호출됨 - 카드: {cards?.Count ?? 0}장, UI: {cardUIs?.Count ?? 0}개");
+
+            if (cards == null || cardUIs == null || cards.Count == 0 || cardUIs.Count == 0)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[CardDrawAnimationManager] 무덤 애니메이션: 카드 데이터가 없습니다.");
+                OnCardGraveAnimationCompleted?.Invoke(cards);
+                return;
+            }
+
+            var graveTransform = GetGraveArea();
+            if (graveTransform == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[CardDrawAnimationManager] 무덤 영역을 찾을 수 없어 애니메이션을 건너뜁니다.");
+                OnCardGraveAnimationCompleted?.Invoke(cards);
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 카드 무덤 애니메이션 시작: {cards.Count}장 → {graveTransform.name}");
+
+            StartCoroutine(ExecuteCardToGraveAnimation(cards, cardUIs, graveTransform));
+        }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// 카드 UI 생성 헬퍼 메서드
+        /// </summary>
+        private GameObject CreateCardUI(Card card, GameObject prefab, Transform parent)
+        {
+            GameObject cardUI = Instantiate(prefab, parent);
+
+            // 카드 데이터 설정 (BattleUIManager와 동일한 방식)
+            var cardUIData = cardUI.GetComponent<CardUIData>();
+            if (cardUIData == null)
+            {
+                cardUIData = cardUI.AddComponent<CardUIData>();
+            }
+            cardUIData.CardInstance = card;
+
+            // CardDraggable 컴포넌트 추가
+            var cardDraggable = cardUI.GetComponent<CardDraggable>();
+            if (cardDraggable == null)
+            {
+                cardDraggable = cardUI.AddComponent<CardDraggable>();
+            }
+
+            // Button 컴포넌트 추가
+            var button = cardUI.GetComponent<Button>();
+            if (button == null)
+            {
+                button = cardUI.AddComponent<Button>();
+            }
+
+            // 버튼 이벤트 설정 (BattleUIManager와 동일한 방식)
+            button.onClick.RemoveAllListeners();
+            button.onClick.AddListener(() =>
+            {
+                // BattleUIManager의 카드 클릭 이벤트 발생
+                if (BattleUIManager.Instance != null)
+                {
+                    BattleUIManager.Instance.TriggerCardClicked(cardUI);
+                }
+            });
+
+            // 카드 UI 정보 업데이트 (BattleUIManager의 UpdateCardUIInfo와 동일한 로직)
+            UpdateCardUIInfo(cardUI, card);
+
+            // BattleUIManager의 handCardUIs 리스트에 추가
+            if (BattleUIManager.Instance != null)
+            {
+                var handCardUIsList = BattleUIManager.Instance.GetType()
+                    .GetField("handCardUIs", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)?
+                    .GetValue(BattleUIManager.Instance) as List<GameObject>;
+                handCardUIsList?.Add(cardUI);
+            }
+
+            return cardUI;
+        }
+
+        /// <summary>
+        /// 카드 UI 정보 업데이트 (BattleUIManager와 동일한 로직)
+        /// </summary>
+        private void UpdateCardUIInfo(GameObject cardUI, Card card)
+        {
+            var nameText = cardUI.transform.Find("CardName")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (nameText != null)
+            {
+                nameText.text = card.CardName;
+            }
+
+            var costText = cardUI.transform.Find("CardCost")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (costText != null)
+            {
+                costText.text = $"비용: {card.CurrentManaCost}";
+            }
+
+            var descText = cardUI.transform.Find("CardDescription")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (descText != null)
+            {
+                descText.text = card.Description;
+            }
+
+            var infoText = cardUI.transform.Find("CardInfo")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (infoText != null)
+            {
+                infoText.text = $"{card.Element} | {card.Type}";
+            }
+        }
+
+        // 더 이상 사용하지 않는 펼침 애니메이션 (바로 최종 위치로 뽑는 방식으로 변경됨)
+        /*
+        /// <summary>
+        /// 카드 펼침 애니메이션 실행 (사용 안함)
+        /// </summary>
+        private IEnumerator ExecuteCardSpreadAnimation(List<GameObject> cardUIs, List<Card> cards)
+        {
+            // 이제 카드 드로우에서 바로 최종 위치로 이동하므로 별도 펼침 애니메이션 불필요
+            yield break;
+        }
+        */
+        #endregion
+
+        #region Animation Execution
+        /// <summary>
+        /// 카드 드로우 애니메이션 실행 (최종 위치로 바로 뽑기)
+        /// </summary>
+        private IEnumerator ExecuteCardDrawAnimation(List<Card> cards)
+        {
+            isAnimating = true;
+            animatingCards.Clear();
+
+            var deckTransform = GetDeckArea();
+            var handTransform = GetHandContent();
+            var prefab = GetCardUIPrefab();
+
+            if (deckTransform == null || handTransform == null || prefab == null)
+            {
+                Debug.LogWarning("[CardDrawAnimationManager] 필수 UI 참조가 없어 애니메이션을 건너뛰고 폴백 모드로 실행합니다");
+
+                // 애니메이션 실패 시 직접 UI 생성으로 폴백
+                isAnimating = false;
+                CreateCardsDirectly(cards);
+                yield break;
+            }
+
+            // 레이아웃 그룹 임시 비활성화 (수동 배치를 위해)
+            var layoutGroup = handTransform.GetComponent<HorizontalLayoutGroup>();
+            bool wasLayoutActive = false;
+            if (layoutGroup != null)
+            {
+                wasLayoutActive = layoutGroup.enabled;
+                layoutGroup.enabled = false;
+            }
+
+            List<GameObject> cardUIs = new List<GameObject>();
+
+            // 실제 HorizontalLayoutGroup의 spacing 값 가져오기
+            float actualSpacing = cardSpacing; // 기본값
+            if (layoutGroup != null)
+            {
+                actualSpacing = layoutGroup.spacing;
+                if (debugMode)
+                    Debug.Log($"[CardDrawAnimationManager] 실제 HandContent spacing: {actualSpacing}");
+            }
+
+            // 실제 카드 프리팹의 너비 가져오기
+            float actualCardWidth = cardWidth; // 기본값
+            if (prefab != null)
+            {
+                var rectTransform = prefab.GetComponent<RectTransform>();
+                if (rectTransform != null)
+                {
+                    actualCardWidth = rectTransform.sizeDelta.x;
+                    if (debugMode)
+                        Debug.Log($"[CardDrawAnimationManager] 실제 카드 너비: {actualCardWidth}");
+                }
+            }
+
+            // 최종 위치들을 미리 계산 (전체 카드 수 기준, 실제 값들 사용)
+            float totalWidth = (cards.Count - 1) * (actualCardWidth + actualSpacing);
+            float startX = -totalWidth * 0.5f;
+
+            for (int i = 0; i < cards.Count; i++)
+            {
+                // 카드 UI 생성
+                GameObject cardUI = CreateCardUI(cards[i], prefab, handTransform);
+                cardUIs.Add(cardUI);
+                animatingCards.Add(cardUI);
+
+                // 덱 위치에서 시작
+                cardUI.transform.position = deckTransform.position;
+                cardUI.transform.localScale = Vector3.one * cardSpawnScale;
+
+                // 최종 위치 계산 (i번째 카드 위치, 실제 값들 사용)
+                Vector3 finalLocalPosition = new Vector3(startX + i * (actualCardWidth + actualSpacing), 0, 0);
+
+                // 바로 최종 위치로 이동하는 애니메이션
+                var moveSequence = DOTween.Sequence();
+                moveSequence.Append(cardUI.transform.DOLocalMove(finalLocalPosition, cardDrawDuration).SetEase(cardMoveEase));
+                moveSequence.Join(cardUI.transform.DOScale(Vector3.one, cardDrawDuration).SetEase(Ease.OutBack));
+
+                // 개별 카드 완료 이벤트
+                int index = i;
+                moveSequence.OnComplete(() =>
+                {
+                    OnCardDrawAnimationCompleted?.Invoke(cards[index], cardUIs[index]);
+                });
+
+                OnCardDrawAnimationStarted?.Invoke(cards[i]);
+
+                if (debugMode)
+                    Debug.Log($"[CardDrawAnimationManager] 카드 {i + 1}/{cards.Count} 뽑기: {cards[i].CardName} → 위치 {finalLocalPosition}");
+
+                // 다음 카드 뽑기 전 딜레이
+                yield return new WaitForSeconds(cardInterval);
+            }
+
+            // 마지막 카드 애니메이션 완료까지 대기
+            yield return new WaitForSeconds(cardDrawDuration);
+
+            // 레이아웃 그룹 복원
+            if (layoutGroup != null)
+            {
+                layoutGroup.enabled = wasLayoutActive;
+                if (wasLayoutActive)
+                {
+                    // 레이아웃 강제 업데이트 (정확한 위치 조정)
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(handTransform.GetComponent<RectTransform>());
+                }
+            }
+
+            isAnimating = false;
+
+            // 완료 이벤트 발생
+            OnAllCardDrawAnimationsCompleted?.Invoke(cards);
+
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 모든 카드 드로우 애니메이션 완료: {cards.Count}장");
+
+            // 대기 중인 애니메이션 처리
+            ProcessDrawQueue();
+        }
+
+        /// <summary>
+        /// 단일 카드 드로우 애니메이션
+        /// </summary>
+        private IEnumerator AnimateSingleCardDraw(Card card, int index, Transform deckPos, Transform handPos, GameObject prefab)
+        {
+            if (card == null) yield break;
+
+            // 이벤트 발생
+            OnCardDrawAnimationStarted?.Invoke(card);
+
+            // 카드 UI 생성
+            GameObject cardUI = Instantiate(prefab);
+            animatingCards.Add(cardUI);
+
+            // 카드 데이터 설정
+            SetupCardUI(cardUI, card);
+
+            // 덱 위치에서 시작
+            cardUI.transform.SetParent(deckPos, false);
+            cardUI.transform.localPosition = Vector3.zero;
+            cardUI.transform.localScale = Vector3.one * cardSpawnScale;
+
+            // 초기 회전 설정
+            float randomRotation = Random.Range(-cardRotationRange, cardRotationRange);
+            cardUI.transform.rotation = Quaternion.Euler(0, 0, randomRotation);
+
+            // 애니메이션 시퀀스 생성
+            Sequence drawSequence = DOTween.Sequence();
+
+            // 1. 카드 스케일 증가
+            if (useScaleEffect)
+            {
+                drawSequence.Append(cardUI.transform.DOScale(Vector3.one, cardDrawDuration * 0.3f).SetEase(Ease.OutQuad));
+            }
+
+            // 2. 손패 위치로 이동
+            cardUI.transform.SetParent(handPos, true);
+            Vector3 targetPosition = CalculateTemporaryPosition(index, handPos);
+
+            drawSequence.Append(cardUI.transform.DOLocalMove(targetPosition, cardDrawDuration * 0.6f).SetEase(cardMoveEase));
+
+            // 3. 회전 정리
+            if (useRotationEffect)
+            {
+                drawSequence.Join(cardUI.transform.DORotateQuaternion(Quaternion.identity, cardDrawDuration * 0.4f).SetEase(Ease.OutQuad));
+            }
+
+            // 4. 글로우 효과 (선택적)
+            if (useGlowEffect)
+            {
+                var image = cardUI.GetComponent<Image>();
+                if (image != null)
+                {
+                    Color originalColor = image.color;
+                    Color glowColor = new Color(originalColor.r, originalColor.g, originalColor.b, 0.7f);
+
+                    drawSequence.Insert(cardDrawDuration * 0.2f,
+                        image.DOColor(glowColor, cardDrawDuration * 0.2f).SetEase(Ease.OutQuad));
+                    drawSequence.Insert(cardDrawDuration * 0.4f,
+                        image.DOColor(originalColor, cardDrawDuration * 0.3f).SetEase(Ease.InQuad));
+                }
+            }
+
+            // 애니메이션 완료 대기
+            yield return drawSequence.WaitForCompletion();
+
+            // 완료 이벤트 발생
+            OnCardDrawAnimationCompleted?.Invoke(card, cardUI);
+
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 카드 드로우 애니메이션 완료: {card.CardName}");
+        }
+
+        /// <summary>
+        /// 카드 재배치 애니메이션 실행
+        /// </summary>
+        private IEnumerator ExecuteCardArrangementAnimation()
+        {
+            var handTransform = GetHandContent();
+            if (handTransform == null) yield break;
+
+            if (debugMode)
+                Debug.Log("[CardDrawAnimationManager] 카드 재배치 애니메이션 시작");
+
+            var cardUIs = new List<Transform>();
+            for (int i = 0; i < handTransform.childCount; i++)
+            {
+                cardUIs.Add(handTransform.GetChild(i));
+            }
+
+            if (cardUIs.Count == 0) yield break;
+
+            // 레이아웃 강제 업데이트
+            var layoutGroup = handTransform.GetComponent<HorizontalLayoutGroup>();
+            if (layoutGroup != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(handTransform as RectTransform);
+            }
+
+            // 각 카드를 최종 위치로 애니메이션
+            for (int i = 0; i < cardUIs.Count; i++)
+            {
+                var cardTransform = cardUIs[i];
+                if (cardTransform == null) continue;
+
+                // 최종 위치 계산 (레이아웃에 의해 결정됨)
+                Vector3 targetPosition = cardTransform.localPosition;
+
+                // 약간의 오프셋을 주고 애니메이션
+                Vector3 startOffset = new Vector3(Random.Range(-50f, 50f), Random.Range(-20f, 20f), 0);
+                cardTransform.localPosition = targetPosition + startOffset;
+
+                // 애니메이션 실행 (새 파라미터 사용)
+                cardTransform.DOLocalMove(targetPosition, cardDrawDuration)
+    .SetEase(cardMoveEase)
+    .SetDelay(i * 0.05f); // 짧은 딜레이로 순차 효과
+
+                // 스케일 펀치 효과
+                cardTransform.DOPunchScale(Vector3.one * 0.1f, cardDrawDuration * 0.5f, 1, 0.3f)
+                    .SetDelay(i * 0.05f);
+            }
+
+            // 모든 애니메이션 완료 대기
+            yield return new WaitForSeconds(cardDrawDuration + (cardUIs.Count * 0.05f));
+
+            // 완료 이벤트 발생
+            OnCardArrangementCompleted?.Invoke();
+
+            if (debugMode)
+                Debug.Log("[CardDrawAnimationManager] 카드 재배치 애니메이션 완료");
+        }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// 카드 UI 설정
+        /// </summary>
+        private void SetupCardUI(GameObject cardUI, Card card)
+        {
+            // BattleUIManager의 UpdateCardUIInfo 메서드 활용
+            if (BattleUIManager.Instance != null)
+            {
+                var method = typeof(BattleUIManager).GetMethod("UpdateCardUIInfo",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (method != null)
+                {
+                    method.Invoke(BattleUIManager.Instance, new object[] { cardUI, card });
+                }
+            }
+
+            // CardUIData 컴포넌트 설정
+            var cardUIData = cardUI.GetComponent<CardUIData>();
+            if (cardUIData == null)
+            {
+                cardUIData = cardUI.AddComponent<CardUIData>();
+            }
+            cardUIData.CardInstance = card;
+        }
+
+        /// <summary>
+        /// 임시 위치 계산 (재배치 전)
+        /// </summary>
+        private Vector3 CalculateTemporaryPosition(int index, Transform handParent)
+        {
+            // 손패 영역의 중앙에서 약간 분산된 위치
+            float spreadRange = 100f;
+            float xOffset = (index - 2.5f) * (spreadRange / 5f); // 최대 5장 기준
+            float yOffset = Random.Range(-10f, 10f);
+
+            return new Vector3(xOffset, yOffset, 0);
+        }
+
+        /// <summary>
+        /// 드로우 큐 처리
+        /// </summary>
+        private void ProcessDrawQueue()
+        {
+            if (isProcessingQueue || drawQueue.Count == 0 || isAnimating) return;
+
+            isProcessingQueue = true;
+            var request = drawQueue.Dequeue();
+            StartCoroutine(ProcessQueuedRequest(request));
+        }
+
+        /// <summary>
+        /// 큐된 요청 처리
+        /// </summary>
+        private IEnumerator ProcessQueuedRequest(CardDrawRequest request)
+        {
+            yield return new WaitUntil(() => !isAnimating);
+
+            PlayCardDrawAnimation(request.Cards);
+            isProcessingQueue = false;
+        }
+
+        /// <summary>
+        /// DeckArea 참조 가져오기
+        /// </summary>
+        private Transform GetDeckArea()
+        {
+            return deckArea != null ? deckArea : autoDeckArea;
+        }
+
+        /// <summary>
+        /// HandContent 참조 가져오기
+        /// </summary>
+        private Transform GetHandContent()
+        {
+            return handContent != null ? handContent : autoHandContent;
+        }
+
+        /// <summary>
+        /// 무덤 영역 참조 가져오기
+        /// </summary>
+        private Transform GetGraveArea()
+        {
+            if (graveArea != null) return graveArea;
+
+            // 자동 탐지 시도
+            var graveObject = GameObject.Find("Grave");
+            if (graveObject != null)
+            {
+                return graveObject.transform;
+            }
+
+            // CardArea 하위에서 찾기
+            var cardArea = GameObject.Find("CardArea");
+            if (cardArea != null)
+            {
+                var grave = cardArea.transform.Find("Grave");
+                if (grave != null)
+                {
+                    return grave;
+                }
+            }
+
+            if (debugMode)
+                Debug.LogWarning("[CardDrawAnimationManager] 무덤 영역을 찾을 수 없습니다. Inspector에서 graveArea를 설정해주세요.");
+
+            return null;
+        }
+
+        /// <summary>
+        /// CardUIPrefab 참조 가져오기
+        /// </summary>
+        private GameObject GetCardUIPrefab()
+        {
+            return cardUIPrefab != null ? cardUIPrefab : autoCardUIPrefab;
+        }
+        #endregion
+
+        #region Data Classes
+        /// <summary>
+        /// 카드 드로우 요청 데이터
+        /// </summary>
+        private class CardDrawRequest
+        {
+            public List<Card> Cards { get; private set; }
+
+            public CardDrawRequest(List<Card> cards)
+            {
+                Cards = new List<Card>(cards);
+            }
+        }
+        #endregion
+
+        #region Debug
+        /// <summary>
+        /// 디버그 정보 출력
+        /// </summary>
+        [ContextMenu("Debug Animation Info")]
+        public void DebugAnimationInfo()
+        {
+            Debug.Log($"=== CardDrawAnimationManager Debug Info ===");
+            Debug.Log($"애니메이션 진행 중: {isAnimating}");
+            Debug.Log($"애니메이션 카드 수: {animatingCards.Count}");
+            Debug.Log($"대기 중인 요청: {drawQueue.Count}");
+            Debug.Log($"DeckArea: {GetDeckArea()?.name ?? "없음"}");
+            Debug.Log($"HandContent: {GetHandContent()?.name ?? "없음"}");
+            Debug.Log($"CardUIPrefab: {GetCardUIPrefab()?.name ?? "없음"}");
+        }
+
+        /// <summary>
+        /// 애니메이션 실패 시 직접 카드 UI 생성 (폴백)
+        /// </summary>
+        private void CreateCardsDirectly(List<Card> cards)
+        {
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 폴백 모드로 카드 UI 직접 생성: {cards.Count}장");
+
+            // BattleUIManager의 직접 업데이트 방식으로 폴백
+            if (BattleUIManager.Instance != null)
+            {
+                BattleUIManager.Instance.UpdateHandUIWithoutAnimation(cards);
+            }
+        }
+
+        /// <summary>
+        /// 카드들을 무덤으로 보내는 파티클 애니메이션 실행
+        /// </summary>
+        private IEnumerator ExecuteCardToGraveAnimation(List<Card> cards, List<GameObject> cardUIs, Transform graveTransform)
+        {
+            if (cards.Count != cardUIs.Count)
+            {
+                Debug.LogWarning($"[CardDrawAnimationManager] 카드 데이터({cards.Count}장)와 UI 개수({cardUIs.Count}개)가 맞지 않지만 애니메이션을 계속 진행합니다.");
+            }
+
+            // null UI 제거
+            cardUIs.RemoveAll(ui => ui == null);
+
+            if (cardUIs.Count == 0)
+            {
+                Debug.LogWarning("[CardDrawAnimationManager] 유효한 카드 UI가 없어 무덤 애니메이션을 건너뜁니다.");
+                OnCardGraveAnimationCompleted?.Invoke(cards);
+                yield break;
+            }
+
+            Vector3 gravePosition = graveTransform.position;
+
+            // 각 카드를 파티클로 변환하고 무덤으로 이동
+            for (int i = 0; i < cardUIs.Count; i++)
+            {
+                GameObject cardUI = cardUIs[i];
+                Card card = cards[i];
+
+                if (cardUI == null) continue;
+
+                // 파티클 효과 시작 (작아지면서 무덤으로 이동)
+                var particleSequence = DOTween.Sequence();
+
+                // 1단계: 카드가 작은 파티클로 변환 (축소)
+                particleSequence.Append(cardUI.transform.DOScale(Vector3.one * particleScaleSize, graveAnimationDuration * 0.3f)
+                    .SetEase(Ease.InQuad));
+
+                // 2단계: 동시에 무덤으로 이동 (곡선 움직임)
+                particleSequence.Join(cardUI.transform.DOMove(gravePosition, graveAnimationDuration)
+                    .SetEase(graveAnimationEase));
+
+                // 3단계: 도착 직전에 완전히 사라짐
+                particleSequence.Append(cardUI.transform.DOScale(Vector3.zero, graveAnimationDuration * 0.2f)
+                    .SetEase(Ease.InQuad));
+
+                // 애니메이션 완료 시 오브젝트 제거
+                particleSequence.OnComplete(() =>
+                {
+                    if (cardUI != null)
+                    {
+                        Destroy(cardUI);
+                    }
+                });
+
+                // 순차적으로 시작하도록 딜레이
+                particleSequence.SetDelay(i * particleDelay);
+
+                if (debugMode)
+                    Debug.Log($"[CardDrawAnimationManager] 카드 무덤 애니메이션: {card.CardName} → 무덤");
+            }
+
+            // 모든 애니메이션 완료까지 대기
+            float totalDuration = graveAnimationDuration + (cardUIs.Count - 1) * particleDelay;
+            yield return new WaitForSeconds(totalDuration);
+
+            // 완료 이벤트 발생
+            OnCardGraveAnimationCompleted?.Invoke(cards);
+
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 모든 카드 무덤 애니메이션 완료: {cards.Count}장");
+        }
+        #endregion
+    }
+}

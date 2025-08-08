@@ -818,26 +818,8 @@ namespace Maglin.Battle
                 return;
             }
 
-            // 조합 완료 후 슬롯 정리
-            if (result != null)
-            {
-                // 조합 시도 후 처리
-                if (result.Success)
-                {
-                    // 성공 시: 카드가 이미 소모되었으므로 UI만 정리
-                    BattleUIManager.Instance?.ClearComboSlotsUIOnly();
-                }
-                else
-                {
-                    // 실패 시: 카드를 손패로 되돌림
-                    BattleUIManager.Instance?.ClearComboSlots();
-                }
-            }
-            else
-            {
-                // 단독 카드 사용 시: 카드가 이미 소모되었으므로 UI만 정리
-                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
-            }
+            // 조합 완료 후 카드 무덤 애니메이션 및 슬롯 정리
+            StartCoroutine(ProcessCardToGraveAnimation(comboCards, result));
 
             // 승부 판정
             CheckBattleEnd();
@@ -849,6 +831,94 @@ namespace Maglin.Battle
         public void ClearComboSlots()
         {
             BattleUIManager.Instance?.ClearComboSlots();
+        }
+
+        /// <summary>
+        /// 사용된 카드들을 무덤으로 보내는 애니메이션 처리
+        /// </summary>
+        private IEnumerator ProcessCardToGraveAnimation(List<Card> usedCards, ComboExecutionResult result)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleTestController] ProcessCardToGraveAnimation 시작: {usedCards?.Count ?? 0}장");
+
+            if (usedCards == null || usedCards.Count == 0)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 사용된 카드가 없어 무덤 애니메이션 건너뜀");
+                yield break;
+            }
+
+            // 조합창에서 카드 UI들 가져오기
+            var comboSlotCardUIs = new List<GameObject>();
+            if (BattleUIManager.Instance != null)
+            {
+                // 조합창의 카드 UI들 수집
+                var elementSlotUI = BattleUIManager.Instance.GetElementSlotUI();
+                var active1SlotUI = BattleUIManager.Instance.GetActive1SlotUI();
+                var active2SlotUI = BattleUIManager.Instance.GetActive2SlotUI();
+
+                if (debugMode)
+                {
+                    Debug.Log($"[BattleTestController] 슬롯 UI 확인 - Element: {(elementSlotUI != null ? "있음" : "없음")}, Active1: {(active1SlotUI != null ? "있음" : "없음")}, Active2: {(active2SlotUI != null ? "있음" : "없음")}");
+                }
+
+                if (elementSlotUI != null) comboSlotCardUIs.Add(elementSlotUI);
+                if (active1SlotUI != null) comboSlotCardUIs.Add(active1SlotUI);
+                if (active2SlotUI != null) comboSlotCardUIs.Add(active2SlotUI);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 수집된 조합창 UI: {comboSlotCardUIs.Count}개");
+            }
+
+            // 무덤 애니메이션 실행
+            if (CardDrawAnimationManager.Instance != null && comboSlotCardUIs.Count > 0)
+            {
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 카드 무덤 애니메이션 시작: {usedCards.Count}장");
+
+                CardDrawAnimationManager.Instance.PlayCardToGraveAnimation(usedCards, comboSlotCardUIs);
+
+                // 애니메이션 완료까지 대기
+                bool animationCompleted = false;
+                System.Action<List<Card>> onAnimationComplete = (cards) => animationCompleted = true;
+                CardDrawAnimationManager.OnCardGraveAnimationCompleted += onAnimationComplete;
+
+                yield return new WaitUntil(() => animationCompleted);
+
+                CardDrawAnimationManager.OnCardGraveAnimationCompleted -= onAnimationComplete;
+
+                // 애니메이션 완료 후 슬롯 정리
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 무덤 애니메이션 완료 후 슬롯 정리");
+                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+            }
+            else
+            {
+                // 애니메이션이 없으면 바로 슬롯 정리
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 무덤 애니메이션 없이 바로 슬롯 정리");
+
+                // 조합 결과에 따른 슬롯 정리
+                if (result != null)
+                {
+                    // 조합 시도 후 처리
+                    if (result.Success)
+                    {
+                        // 성공 시: 카드가 이미 소모되었으므로 UI만 정리
+                        BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                    }
+                    else
+                    {
+                        // 실패 시: 카드를 손패로 되돌림
+                        BattleUIManager.Instance?.ClearComboSlots();
+                    }
+                }
+                else
+                {
+                    // 단독 카드 사용 시: 카드가 이미 소모되었으므로 UI만 정리
+                    BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+                }
+            }
         }
 
         /// <summary>

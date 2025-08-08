@@ -1,0 +1,79 @@
+카드 드로우 애니메이션 디버그 및 수정사항
+===============================================
+
+## 문제점 분석
+1. 카드가 손패에 표시되지 않는 문제
+2. 애니메이션 효과가 작동하지 않는 문제
+3. CardDrawAnimationManager 초기화 문제
+4. UI 요소를 찾지 못하는 문제
+
+## 주요 수정사항
+
+### 1. BattleUIManager.cs
+- UpdateHandUI 메서드 개선
+  - CardDrawAnimationManager 초기화 상태 확인 추가
+  - 애니메이션 실패 시 폴백 메커니즘 구현
+  - 디버그 로그 개선으로 어떤 모드로 실행되는지 확인 가능
+
+- UpdateHandUIDirectly 메서드 추가
+  - 애니메이션 없이 직접 카드 UI 생성하는 폴백 메서드
+  - CardDrawAnimationManager 실패 시 안전장치 역할
+
+### 2. CardDrawAnimationManager.cs
+- IsInitialized 프로퍼티 추가
+  - 초기화 완료 여부를 명확히 확인 가능
+  - UI 요소 찾기 실패 시 false로 설정
+
+- FindUIElements 메서드 개선
+  - Canvas 하위에서도 UI 요소 찾기 시도
+  - 각 UI 요소별 상세한 에러 메시지
+  - 반환값으로 성공/실패 여부 확인
+
+- StartCardDrawAnimation 메서드 강화
+  - 초기화 상태 재확인 로직
+  - UI 요소 재탐색 기능
+  - 애니메이션 실패 시 폴백 실행
+
+- CreateCardsDirectly 메서드 추가
+  - 애니메이션 실패 시 직접 카드 생성하는 폴백 메서드
+
+### 3. BattleController.cs
+- SpawnMonstersAndSetTarget 코루틴 개선
+  - 몬스터 스폰 완료 후 0.5초 딜레이 추가
+  - CardDrawAnimationManager 초기화 상태 확인
+  - 애니메이션 매니저 실패 시 직접 UI 업데이트 폴백
+
+## 동작 원리
+
+### 정상 동작 시 (애니메이션 모드)
+1. 몬스터 스폰 애니메이션 완료
+2. 0.5초 딜레이 후 카드 드로우 실행
+3. CardDrawAnimationManager가 카드 드로우 애니메이션 실행
+4. DeckArea에서 HandContent로 카드가 순차적으로 이동
+5. 모든 카드 배치 후 펼침 애니메이션 실행
+
+### 폴백 동작 시 (직접 모드)
+1. CardDrawAnimationManager 초기화 실패 감지
+2. 자동으로 직접 모드로 전환
+3. 기존 방식대로 즉시 카드 UI 생성
+4. 애니메이션은 없지만 카드는 정상 표시
+
+## 디버그 로그 추가
+- "[BattleUIManager] 손패 UI 업데이트 (애니메이션 모드)" - 애니메이션 모드로 실행
+- "[BattleUIManager] 손패 UI 업데이트 (직접 모드)" - 직접 모드로 실행
+- "[CardDrawAnimationManager] 초기화되지 않았습니다" - 초기화 실패 감지
+- "[CardDrawAnimationManager] 폴백 모드로 카드 UI 직접 생성" - 폴백 실행
+
+## 안전장치
+1. UI 요소 찾기 실패 시 자동 재시도
+2. 애니메이션 매니저 실패 시 즉시 폴백
+3. 모든 단계에서 null 체크 및 에러 처리
+4. 사용자가 카드를 볼 수 없는 상황 방지
+
+## 하이어라키 설정 필요사항
+- CardDrawAnimationManager는 씬에 GameObject로 추가해야 함
+- DeckArea, HandArea, HandContent가 올바른 이름으로 존재해야 함
+- 이름이 다르거나 없는 경우 폴백 모드로 동작
+
+이제 게임을 실행하면 카드가 정상적으로 표시될 것입니다.
+애니메이션이 작동하지 않는 경우에도 최소한 카드는 볼 수 있도록 보장됩니다.

@@ -122,6 +122,7 @@ namespace Maglin.Battle
         // 전투 상태
         private bool isBattleActive = false;
         private bool isPlayerTurn = true;
+        private int lastHandCardCount = 0; // 이전 손패 카드 수 추적
 
         // 현재 보상 목록
         private RewardItem[] currentRewards;
@@ -139,10 +140,10 @@ namespace Maglin.Battle
             {
                 _instance = this;
                 DontDestroyOnLoad(gameObject);
-                
+
                 // 초기 블랙스크린 먼저 생성 (다른 초기화보다 우선)
                 CreateInitialBlackScreen();
-                
+
                 InitializeUIManager();
             }
             else if (_instance != this)
@@ -178,6 +179,14 @@ namespace Maglin.Battle
             if (LoadingManager.Instance != null)
             {
                 LoadingManager.Instance.OnLoadingCompleted += OnLoadingCompleted;
+            }
+
+            // CardDrawAnimationManager 이벤트 구독
+            if (CardDrawAnimationManager.Instance != null)
+            {
+                CardDrawAnimationManager.OnCardDrawAnimationCompleted += OnCardDrawAnimationCompleted;
+                CardDrawAnimationManager.OnAllCardDrawAnimationsCompleted += OnAllCardDrawAnimationsCompleted;
+                CardDrawAnimationManager.OnCardArrangementCompleted += OnCardArrangementCompleted;
             }
 
             // 자체 이벤트 구독
@@ -222,6 +231,14 @@ namespace Maglin.Battle
             if (LoadingManager.Instance != null)
             {
                 LoadingManager.Instance.OnLoadingCompleted -= OnLoadingCompleted;
+            }
+
+            // CardDrawAnimationManager 이벤트 구독 해제
+            if (CardDrawAnimationManager.Instance != null)
+            {
+                CardDrawAnimationManager.OnCardDrawAnimationCompleted -= OnCardDrawAnimationCompleted;
+                CardDrawAnimationManager.OnAllCardDrawAnimationsCompleted -= OnAllCardDrawAnimationsCompleted;
+                CardDrawAnimationManager.OnCardArrangementCompleted -= OnCardArrangementCompleted;
             }
 
             // 자체 이벤트 구독 해제
@@ -295,7 +312,7 @@ namespace Maglin.Battle
             if (initialCanvas != null)
             {
                 initialCanvas.sortingOrder = 999; // LoadingManager의 sortingOrder(1000)보다 낮게
-                
+
                 if (debugMode)
                     Debug.Log($"[BattleUIManager] 초기 블랙스크린 Canvas sortingOrder: {initialCanvas.sortingOrder}");
             }
@@ -339,7 +356,7 @@ namespace Maglin.Battle
             if (loadingContainer != null)
             {
                 loadingContainer.gameObject.SetActive(false);
-                
+
                 if (debugMode)
                     Debug.Log("[BattleUIManager] 로딩 UI 요소들 숨김 (배경만 유지)");
             }
@@ -432,7 +449,7 @@ namespace Maglin.Battle
             this.fieldEffectTurnsText = fieldEffectTurnsText;
             this.cardUIPrefab = cardUIPrefab;
             this.monsterPrefab = monsterPrefab;
-            
+
             // 로딩 UI 프리팹 설정 (제공된 경우)
             if (loadingUIPrefab != null)
             {
@@ -459,17 +476,30 @@ namespace Maglin.Battle
         /// </summary>
         private void SetupButtonEvents()
         {
+            // 기존 리스너 제거 후 새로 등록하여 중복 방지
             if (endTurnButton != null)
+            {
+                endTurnButton.onClick.RemoveAllListeners();
                 endTurnButton.onClick.AddListener(() => OnEndTurnClicked?.Invoke());
+            }
 
             if (drawButton != null)
+            {
+                drawButton.onClick.RemoveAllListeners();
                 drawButton.onClick.AddListener(() => OnDrawCardClicked?.Invoke());
+            }
 
             if (executeComboButton != null)
+            {
+                executeComboButton.onClick.RemoveAllListeners();
                 executeComboButton.onClick.AddListener(() => OnExecuteComboClicked?.Invoke());
+            }
 
             if (clearComboButton != null)
+            {
+                clearComboButton.onClick.RemoveAllListeners();
                 clearComboButton.onClick.AddListener(() => OnClearComboClicked?.Invoke());
+            }
         }
 
         /// <summary>
@@ -939,6 +969,14 @@ namespace Maglin.Battle
         }
 
         /// <summary>
+        /// 외부에서 카드 클릭 이벤트를 발생시키는 공개 메서드
+        /// </summary>
+        public void TriggerCardClicked(GameObject cardUI)
+        {
+            OnCardClicked?.Invoke(cardUI);
+        }
+
+        /// <summary>
         /// 카드 클릭 이벤트 처리
         /// </summary>
         private void HandleCardClicked(GameObject cardUI)
@@ -1149,21 +1187,51 @@ namespace Maglin.Battle
         /// </summary>
         private void UpdateHandUI(List<Card> handCards)
         {
+            UpdateHandUI(handCards, false);
+        }
+
+        /// <summary>
+        /// 손패 UI 업데이트 (애니메이션 강제 비활성화 옵션 포함)
+        /// </summary>
+        private void UpdateHandUI(List<Card> handCards, bool forceNoAnimation)
+        {
             if (handContent == null) return;
 
-            ClearHandCardUIs();
+            // 카드 수 변화 감지 (드로우 vs 사용/제거)
+            bool isCardIncrease = handCards.Count > lastHandCardCount;
+            lastHandCardCount = handCards.Count;
 
-            foreach (var card in handCards)
+            // 강제로 애니메이션 없이 업데이트하거나, 애니메이션 매니저가 없거나 카드가 없는 경우
+            // 또는 카드 수가 감소한 경우 (카드 사용/제거시)
+            if (forceNoAnimation || CardDrawAnimationManager.Instance == null || handCards.Count == 0 || !isCardIncrease)
             {
-                GameObject cardUI = CreateCardUI(card);
-                if (cardUI != null)
-                {
-                    handCardUIs.Add(cardUI);
-                }
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] 손패 UI 업데이트 (직접 모드): {handCards.Count}장 (증가: {isCardIncrease})");
+
+                UpdateHandUIWithoutAnimation(handCards);
+                return;
+            }
+
+            // 이미 애니메이션이 진행 중이면 건너뛰기 (카드 사용 후 재실행 방지)
+            if (CardDrawAnimationManager.Instance.IsAnimating)
+            {
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] 애니메이션 진행 중이므로 손패 UI 업데이트 건너뜀");
+                return;
             }
 
             if (debugMode)
-                Debug.Log($"[BattleUIManager] 손패 UI 업데이트: {handCards.Count}장");
+                Debug.Log($"[BattleUIManager] 손패 UI 업데이트 (애니메이션 모드): {handCards.Count}장");
+
+            // 기존 UI 정리
+            ClearHandCardUIs();
+
+            // 덱 카운트 및 버튼 상태 업데이트
+            UpdateDeckCountUI();
+            UpdateButtonStates();
+
+            // 애니메이션 실행 - 이 부분이 실제로 카드를 생성합니다
+            CardDrawAnimationManager.Instance.PlayCardDrawAnimation(handCards);
         }
 
         /// <summary>
@@ -1363,6 +1431,13 @@ namespace Maglin.Battle
             if (active2SlotCard != null) cards.Add(active2SlotCard);
             return cards;
         }
+
+        /// <summary>
+        /// 조합 슬롯 UI 가져오기 (무덤 애니메이션용)
+        /// </summary>
+        public GameObject GetElementSlotUI() { return elementSlotUI; }
+        public GameObject GetActive1SlotUI() { return active1SlotUI; }
+        public GameObject GetActive2SlotUI() { return active2SlotUI; }
 
         /// <summary>
         /// 조합 슬롯 초기화
@@ -1951,6 +2026,126 @@ namespace Maglin.Battle
             }
             return null;
         }
+
+        #region Card Draw Animation Event Handlers
+        /// <summary>
+        /// 개별 카드 드로우 애니메이션 완료 이벤트 핸들러
+        /// </summary>
+        private void OnCardDrawAnimationCompleted(Card card, GameObject cardUI)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 카드 드로우 애니메이션 완료: {card?.CardName}");
+
+            // 카드 UI를 손패 리스트에 추가
+            if (cardUI != null && !handCardUIs.Contains(cardUI))
+            {
+                handCardUIs.Add(cardUI);
+            }
+
+            // 필요시 추가 UI 업데이트
+            UpdateDeckCountUI();
+        }
+
+        /// <summary>
+        /// 모든 카드 드로우 애니메이션 완료 이벤트 핸들러
+        /// </summary>
+        private void OnAllCardDrawAnimationsCompleted(List<Card> cards)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 모든 카드 드로우 애니메이션 완료: {cards?.Count ?? 0}장");
+
+            // 전체 UI 업데이트
+            UpdateAllUI();
+        }
+
+        /// <summary>
+        /// 카드 재배치 애니메이션 완료 이벤트 핸들러
+        /// </summary>
+        private void OnCardArrangementCompleted()
+        {
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 카드 재배치 애니메이션 완료");
+
+            // 손패 UI 최종 정리
+            UpdateHandUILayout();
+        }
+
+        /// <summary>
+        /// 손패 UI 레이아웃 업데이트
+        /// </summary>
+        private void UpdateHandUILayout()
+        {
+            if (handContent == null) return;
+
+            // 레이아웃 강제 업데이트
+            var layoutGroup = handContent.GetComponent<HorizontalLayoutGroup>();
+            if (layoutGroup != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(handContent as RectTransform);
+            }
+
+            // 버튼 상태 업데이트
+            UpdateButtonStates();
+        }
+
+        /// <summary>
+        /// 애니메이션 없이 손패 UI 업데이트 (폴백용)
+        /// </summary>
+        public void UpdateHandUIWithoutAnimation(List<Card> handCards)
+        {
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 애니메이션 없이 손패 UI 업데이트");
+
+            // 기존 카드 UI 정리
+            ClearHandCardUIs();
+
+            // 새로운 카드 UI 생성
+            foreach (var card in handCards)
+            {
+                var cardUI = CreateCardUI(card);
+                handCardUIs.Add(cardUI);
+            }
+
+            // UI 업데이트
+            UpdateHandUILayout();
+        }
+
+        /// <summary>
+        /// 애니메이션 없이 직접 손패 UI 업데이트 (폴백용)
+        /// </summary>
+        private void UpdateHandUIDirectly(List<Card> handCards)
+        {
+            if (handContent == null) return;
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 손패 UI 직접 업데이트: {handCards.Count}장");
+
+            ClearHandCardUIs();
+
+            foreach (var card in handCards)
+            {
+                GameObject cardUI = CreateCardUI(card);
+                if (cardUI != null)
+                {
+                    handCardUIs.Add(cardUI);
+                }
+            }
+
+            UpdateDeckCountUI();
+        }
+
+        /// <summary>
+        /// 카드 사용 후 손패 UI 업데이트 (애니메이션 없이)
+        /// </summary>
+        public void UpdateHandUIAfterCardUsage()
+        {
+            if (CardManager.Instance != null)
+            {
+                var handCards = CardManager.Instance.HandCards.ToList();
+                UpdateHandUI(handCards, true); // 강제로 애니메이션 없이 업데이트
+            }
+        }
+        #endregion
     }
 
     /// <summary>

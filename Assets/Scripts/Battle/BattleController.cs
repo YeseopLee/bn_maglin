@@ -533,6 +533,15 @@ namespace Maglin.Battle
         /// </summary>
         private IEnumerator SpawnMonstersAndSetTarget()
         {
+            // MonsterSpawnAnimationManager의 모든 스폰 완료 이벤트 구독
+            bool spawnCompleted = false;
+            System.Action onSpawnCompleted = () => { spawnCompleted = true; };
+
+            if (MonsterSpawnAnimationManager.Instance != null)
+            {
+                MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted += onSpawnCompleted;
+            }
+
             // MonsterSpawnManager를 통해 몬스터 스폰
             if (MonsterSpawnManager.Instance != null && currentBattleStage != null)
             {
@@ -555,8 +564,20 @@ namespace Maglin.Battle
                 }
             }
 
-            // 몬스터 스폰 완료 대기
-            yield return new WaitForSeconds(1f);
+            // 몬스터 스폰 애니메이션 완료 대기
+            if (MonsterSpawnAnimationManager.Instance != null)
+            {
+                yield return new WaitUntil(() => spawnCompleted);
+                MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted -= onSpawnCompleted;
+
+                if (debugMode)
+                    Debug.Log("[BattleController] 몬스터 스폰 애니메이션 완료");
+            }
+            else
+            {
+                // 애니메이션 매니저가 없으면 기본 대기
+                yield return new WaitForSeconds(1f);
+            }
 
             // 타겟 설정
             if (TargetManager.Instance != null)
@@ -567,6 +588,16 @@ namespace Maglin.Battle
                     if (debugMode)
                         Debug.Log("[BattleController] 초기 타겟 설정 완료");
                 }
+            }
+
+            // 첫 턴 카드 드로우 (몬스터 스폰 완료 후)
+            if (currentTurn == 1)
+            {
+                yield return new WaitForSeconds(0.5f); // 잠시 대기 후 카드 드로우
+                DrawCardsWithAnimation();
+
+                if (debugMode)
+                    Debug.Log("[BattleController] 첫 턴 카드 드로우 완료");
             }
         }
 
@@ -583,12 +614,17 @@ namespace Maglin.Battle
             // 매니저들에 턴 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
-            // 카드 드로우
-            if (CardManager.Instance != null)
+            // 첫 번째 턴이면 몬스터 스폰 후 카드 드로우, 아니면 바로 드로우
+            if (currentTurn == 1)
             {
-                var drawnCards = CardManager.Instance.DrawCardsToMax();
+                // 첫 턴은 몬스터 스폰 후 카드 드로우가 별도로 호출됨
                 if (debugMode)
-                    Debug.Log($"[BattleController] {drawnCards.Count}장 드로우 완료");
+                    Debug.Log("[BattleController] 첫 턴 - 몬스터 스폰 후 카드 드로우 예정");
+            }
+            else
+            {
+                // 일반 턴은 바로 카드 드로우
+                DrawCardsWithAnimation();
             }
 
             // 조합 슬롯 초기화
@@ -596,6 +632,32 @@ namespace Maglin.Battle
 
             // 타겟 검증
             TargetManager.Instance?.ValidateTarget();
+        }
+
+        /// <summary>
+        /// 애니메이션과 함께 카드 드로우
+        /// </summary>
+        private void DrawCardsWithAnimation()
+        {
+            if (CardManager.Instance == null) return;
+
+            var drawnCards = CardManager.Instance.DrawCardsToMax();
+            if (drawnCards.Count > 0)
+            {
+                if (debugMode)
+                    Debug.Log($"[BattleController] {drawnCards.Count}장 드로우 완료");
+
+                // 카드 드로우 애니메이션 실행
+                if (CardDrawAnimationManager.Instance != null)
+                {
+                    CardDrawAnimationManager.Instance.PlayCardDrawAnimation(drawnCards);
+                }
+                else
+                {
+                    // 애니메이션 매니저가 없으면 UI만 업데이트
+                    BattleUIManager.Instance?.UpdateAllUI();
+                }
+            }
         }
 
         /// <summary>
@@ -690,9 +752,21 @@ namespace Maglin.Battle
             if (CardManager.Instance != null)
             {
                 var drawnCard = CardManager.Instance.DrawAdditionalCardWithMana();
-                if (drawnCard != null && debugMode)
+                if (drawnCard != null)
                 {
-                    Debug.Log($"[BattleController] 추가 드로우 성공: {drawnCard.CardName}");
+                    if (debugMode)
+                        Debug.Log($"[BattleController] 추가 드로우 성공: {drawnCard.CardName}");
+
+                    // 단일 카드 드로우 애니메이션 실행
+                    if (CardDrawAnimationManager.Instance != null)
+                    {
+                        CardDrawAnimationManager.Instance.PlaySingleCardDrawAnimation(drawnCard);
+                    }
+                    else
+                    {
+                        // 애니메이션 매니저가 없으면 UI만 업데이트
+                        BattleUIManager.Instance?.UpdateAllUI();
+                    }
                 }
             }
         }
@@ -756,20 +830,59 @@ namespace Maglin.Battle
                 }
             }
 
-            // 조합 완료 후 슬롯 정리
-            if (result != null)
+            // 조합 완료 후 카드 무덤 애니메이션 및 슬롯 정리
+            StartCoroutine(ProcessCardToGraveAnimation(comboCards));
+        }
+
+        /// <summary>
+        /// 사용된 카드들을 무덤으로 보내는 애니메이션 처리
+        /// </summary>
+        private IEnumerator ProcessCardToGraveAnimation(List<Card> usedCards)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleController] ProcessCardToGraveAnimation 시작: {usedCards?.Count ?? 0}장");
+
+            if (usedCards == null || usedCards.Count == 0)
             {
-                if (result.Success)
-                {
-                    BattleUIManager.Instance?.ClearComboSlotsUIOnly();
-                }
-                else
-                {
-                    BattleUIManager.Instance?.ClearComboSlots();
-                }
+                if (debugMode)
+                    Debug.Log("[BattleController] 사용된 카드가 없어 무덤 애니메이션 건너뜀");
+                yield break;
+            }
+
+            // 조합창에서 카드 UI들 가져오기
+            var comboSlotCardUIs = new List<GameObject>();
+            if (BattleUIManager.Instance != null)
+            {
+                // 조합창의 카드 UI들 수집
+                var elementSlotUI = BattleUIManager.Instance.GetElementSlotUI();
+                var active1SlotUI = BattleUIManager.Instance.GetActive1SlotUI();
+                var active2SlotUI = BattleUIManager.Instance.GetActive2SlotUI();
+
+                if (elementSlotUI != null) comboSlotCardUIs.Add(elementSlotUI);
+                if (active1SlotUI != null) comboSlotCardUIs.Add(active1SlotUI);
+                if (active2SlotUI != null) comboSlotCardUIs.Add(active2SlotUI);
+            }
+
+            // 무덤 애니메이션 실행
+            if (CardDrawAnimationManager.Instance != null && comboSlotCardUIs.Count > 0)
+            {
+                if (debugMode)
+                    Debug.Log($"[BattleController] 카드 무덤 애니메이션 시작: {usedCards.Count}장");
+
+                CardDrawAnimationManager.Instance.PlayCardToGraveAnimation(usedCards, comboSlotCardUIs);
+
+                // 애니메이션 완료까지 대기
+                bool animationCompleted = false;
+                System.Action<List<Card>> onAnimationComplete = (cards) => animationCompleted = true;
+                CardDrawAnimationManager.OnCardGraveAnimationCompleted += onAnimationComplete;
+
+                yield return new WaitUntil(() => animationCompleted);
+
+                CardDrawAnimationManager.OnCardGraveAnimationCompleted -= onAnimationComplete;
             }
             else
             {
+                // 애니메이션이 없으면 바로 슬롯 정리
                 BattleUIManager.Instance?.ClearComboSlotsUIOnly();
             }
 
@@ -1143,19 +1256,19 @@ namespace Maglin.Battle
         public void SetInputBlocked(bool blocked)
         {
             isInputBlocked = blocked;
-            
+
             if (debugMode)
                 Debug.Log($"[BattleController] 플레이어 입력 {(blocked ? "차단" : "허용")}");
-            
+
             // UI 요소들의 상호작용 차단/허용
             SetUIInteractable(!blocked);
         }
-        
+
         /// <summary>
         /// 현재 입력이 차단되어 있는지 확인
         /// </summary>
         public bool IsInputBlocked => isInputBlocked;
-        
+
         /// <summary>
         /// UI 요소들의 상호작용 설정
         /// </summary>
@@ -1167,13 +1280,13 @@ namespace Maglin.Battle
             {
                 area.enabled = interactable;
             }
-            
+
             // EventSystem 차단/허용
             if (EventSystem.current != null)
             {
                 EventSystem.current.enabled = interactable;
             }
-            
+
             // 추가적인 UI 요소들 (버튼 등) 차단/허용
             var buttons = FindObjectsOfType<Button>();
             foreach (var button in buttons)
