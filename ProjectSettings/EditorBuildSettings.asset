@@ -20,4 +20,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/EventScene/TestEventScene.unity
     guid: 8456445b8ff0343f2adf3519f2388996
+  - enabled: 1
+    path: Assets/Scenes/TestSc.unity
+    guid: a42c146c86fa64befbda120d658772da
+  - enabled: 1
+    path: Assets/Scenes/TempScene.unity
+    guid: fc81a6c5aa030d546b97f6c9412f58e4
   m_configObjects: {}

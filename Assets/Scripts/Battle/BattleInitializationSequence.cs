@@ -25,14 +25,14 @@ namespace Maglin.Battle
         public System.Action<float> OnInitializationProgressChanged;
         
         private bool isInitializing = false;
-        private BattleController battleController;
+        private BattleTestController battleTestController;
         
         private void Awake()
         {
             if (Instance == null)
             {
                 Instance = this;
-                battleController = FindObjectOfType<BattleController>();
+                battleTestController = FindObjectOfType<BattleTestController>();
             }
             else
             {
@@ -101,7 +101,10 @@ namespace Maglin.Battle
                 // 10. 몬스터 스폰 애니메이션 시작 (로딩 화면이 숨겨진 후)
                 await StartMonsterSpawnAnimations();
                 
-                // 11. 씬 페이드 인 (SceneTransitionManager가 처리하지 않은 경우)
+                // 11. 몬스터 스폰 애니메이션 완료 후 초기 카드 드로우 실행
+                await PerformInitialCardDraw();
+                
+                // 12. 씬 페이드 인 (SceneTransitionManager가 처리하지 않은 경우)
                 if (SceneTransitionManager.Instance != null && !SceneTransitionManager.Instance.IsTransitioning)
                 {
                     await SceneTransitionManager.Instance.FadeOut(0.5f);
@@ -138,6 +141,9 @@ namespace Maglin.Battle
         /// </summary>
         private async Task BlockPlayerInput(bool block)
         {
+            if (debugMode)
+                Debug.Log($"BattleInitializationSequence: 플레이어 입력 {(block ? "차단" : "허용")} 시작");
+
             if (block)
             {
                 if (LoadingManager.Instance != null)
@@ -149,14 +155,27 @@ namespace Maglin.Battle
                     LoadingManager.Instance.UpdateToInputEnable();
             }
             
-            if (battleController != null)
+            if (battleTestController != null)
             {
-                // BattleController의 입력 차단 메소드 호출
-                battleController.SetInputBlocked(block);
+                // BattleTestController의 입력 차단 메소드 호출
+                battleTestController.SetInputBlocked(block);
             }
             
             if (!skipInitializationDelay)
                 await Task.Delay(100);
+                
+            // EventSystem 상태 확인
+            if (debugMode)
+            {
+                if (UnityEngine.EventSystems.EventSystem.current != null)
+                {
+                    Debug.Log($"BattleInitializationSequence: EventSystem 상태 - enabled: {UnityEngine.EventSystems.EventSystem.current.enabled}");
+                }
+                else
+                {
+                    Debug.LogWarning("BattleInitializationSequence: EventSystem.current가 null입니다!");
+                }
+            }
         }
         
         /// <summary>
@@ -168,10 +187,10 @@ namespace Maglin.Battle
                 LoadingManager.Instance.UpdateToFieldSetup();
             
             // 배경 및 필드 로딩 로직
-            if (battleController != null)
+            if (battleTestController != null)
             {
-                // BattleController의 필드 초기화 호출
-                // battleController.InitializeField();
+                // BattleTestController의 필드 초기화 호출
+                // battleTestController.InitializeField();
             }
             
             if (!skipInitializationDelay)
@@ -207,9 +226,9 @@ namespace Maglin.Battle
                 LoadingManager.Instance.UpdateToEnemySpawn();
             
             // 적 스폰 및 초기화 (로딩 화면이 있는 상태에서 준비)
-            if (battleController != null)
+            if (battleTestController != null)
             {
-                // battleController.SpawnEnemies();
+                // battleTestController.SpawnEnemies();
                 // 몬스터는 준비되지만 애니메이션은 아직 시작하지 않음
             }
             
@@ -246,9 +265,9 @@ namespace Maglin.Battle
                 LoadingManager.Instance.UpdateToUISetup();
             
             // UI 요소들 초기화
-            if (battleController != null)
+            if (battleTestController != null)
             {
-                // battleController.InitializeUI();
+                // battleTestController.InitializeUI();
             }
             
             if (!skipInitializationDelay)
@@ -264,9 +283,9 @@ namespace Maglin.Battle
                 LoadingManager.Instance.UpdateToBattleReady();
             
             // 최종 설정 및 전투 시작 신호
-            if (battleController != null)
+            if (battleTestController != null)
             {
-                // battleController.StartBattle();
+                // battleTestController.StartBattle();
             }
             
             if (!skipInitializationDelay)
@@ -337,6 +356,49 @@ namespace Maglin.Battle
             
             if (debugMode)
                 Debug.Log("BattleInitializationSequence: 몬스터 스폰 애니메이션 완료");
+        }
+
+        /// <summary>
+        /// 초기 카드 드로우 실행 (몬스터 스폰 애니메이션 완료 후)
+        /// </summary>
+        private async Task PerformInitialCardDraw()
+        {
+            if (debugMode)
+                Debug.Log("BattleInitializationSequence: 초기 카드 드로우 시작");
+
+            UpdateProgress(0.92f, "카드 준비 중...");
+
+            // CardManager를 통해 초기 카드 드로우 실행
+            if (CardManager.Instance != null)
+            {
+                CardManager.Instance.PerformInitialCardDraw();
+                
+                // 카드 드로우 애니메이션이 완료될 때까지 잠시 대기
+                if (CardDrawAnimationManager.Instance != null)
+                {
+                    // 애니메이션이 진행 중일 때까지 대기
+                    int waitCount = 0;
+                    while (!CardDrawAnimationManager.Instance.IsAnimating && waitCount < 10)
+                    {
+                        await Task.Delay(50);
+                        waitCount++;
+                    }
+                    
+                    // 애니메이션이 완료될 때까지 대기
+                    while (CardDrawAnimationManager.Instance.IsAnimating)
+                    {
+                        await Task.Delay(50);
+                    }
+                }
+                else
+                {
+                    // 애니메이션 매니저가 없으면 기본 딜레이
+                    await Task.Delay(500);
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("BattleInitializationSequence: 초기 카드 드로우 완료");
         }
 
         /// <summary>

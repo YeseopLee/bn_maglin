@@ -296,11 +296,27 @@ namespace Maglin.Battle
         /// </summary>
         private void CreateInitialBlackScreen()
         {
+            CreateBlackScreenForNewBattle();
+        }
+
+        /// <summary>
+        /// 새로운 전투를 위한 블랙스크린 생성 (씬 전환 시 호출)
+        /// </summary>
+        public void CreateBlackScreenForNewBattle()
+        {
             if (loadingUIPrefab == null)
             {
                 if (debugMode)
                     Debug.LogWarning("[BattleUIManager] loadingUIPrefab이 설정되지 않았습니다. Inspector에서 설정해주세요.");
                 return;
+            }
+
+            // 기존 블랙스크린이 있으면 제거
+            if (initialBlackScreen != null)
+            {
+                Destroy(initialBlackScreen);
+                initialBlackScreen = null;
+                initialBlackScreenCanvasGroup = null;
             }
 
             // 로딩 UI 프리팹 인스턴스화

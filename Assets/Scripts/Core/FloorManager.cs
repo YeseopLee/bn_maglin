@@ -159,7 +159,9 @@ namespace Maglin.Core
             FloorInfo currentFloorInfo = CurrentFloorInfo;
 
             Debug.Log($"Starting floor {currentFloor}: {currentFloorInfo.floorName}");
+            Debug.Log($"[FloorManager] OnFloorStarted 이벤트 구독자 수: {OnFloorStarted?.GetInvocationList()?.Length ?? 0}");
             OnFloorStarted?.Invoke(currentFloorInfo);
+            Debug.Log($"[FloorManager] OnFloorStarted 이벤트 발생 완료");
 
             // 층 타입에 따른 처리
             switch (CurrentFloorType)
@@ -446,7 +448,7 @@ namespace Maglin.Core
         }
 
         /// <summary>
-        /// 특정 층과 타입에 맞는 배틀 스테이지 가져오기 (BattleController에서 호출)
+        /// 특정 층과 타입에 맞는 배틀 스테이지 가져오기 (BattleTestController에서 호출)
         /// </summary>
         public BattleStageSO GetBattleStageForFloor(int floor, FloorType floorType)
         {
@@ -503,7 +505,7 @@ namespace Maglin.Core
         {
             Debug.Log($"[FloorManager] Loading battle scene: {battleSceneName}");
 
-            // 전투 스테이지 정보를 전역으로 저장 (BattleController가 접근할 수 있도록)
+            // 전투 스테이지 정보를 전역으로 저장 (BattleTestController가 접근할 수 있도록)
             SetCurrentBattleStage(battleStage);
 
             var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(battleSceneName);
@@ -603,7 +605,7 @@ namespace Maglin.Core
         }
 
         /// <summary>
-        /// 현재 배틀 스테이지 가져오기 (BattleController에서 사용)
+        /// 현재 배틀 스테이지 가져오기 (BattleTestController에서 사용)
         /// </summary>
         public BattleStageSO GetCurrentBattleStage()
         {

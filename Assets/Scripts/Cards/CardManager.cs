@@ -105,6 +105,7 @@ namespace Maglin.Cards
 
         // 초기화 관련
         private bool isInitialized = false;
+        private bool hasPerformedInitialDraw = false; // 초기 카드 드로우 완료 여부
         #endregion
 
         #region Properties
@@ -281,12 +282,62 @@ namespace Maglin.Cards
         /// </summary>
         private void SetupStarterDeck()
         {
-            // TODO: 실제 시작 덱 카드들을 Resources에서 로드하거나 설정
-            // 현재는 빈 덱으로 시작
-            starterDeck.Clear();
+            if (debugMode)
+                Debug.Log($"[CardManager] 시작 덱 확인: 인스펙터에서 설정된 카드 {starterDeck.Count}장");
+
+            // 인스펙터에서 설정된 스타터 덱이 있으면 그대로 사용
+            if (starterDeck.Count > 0)
+            {
+                if (debugMode)
+                {
+                    Debug.Log("[CardManager] 인스펙터에서 설정된 스타터 덱 사용:");
+                    for (int i = 0; i < starterDeck.Count; i++)
+                    {
+                        Debug.Log($"  - {i}: {starterDeck[i]?.CardName ?? "null"}");
+                    }
+                }
+            }
+            else
+            {
+                // 인스펙터에 설정된 카드가 없으면 Resources에서 기본 카드 로드
+                LoadDefaultStarterCards();
+            }
 
             if (debugMode)
                 Debug.Log($"[CardManager] 시작 덱 설정 완료: {starterDeck.Count}장");
+        }
+
+        /// <summary>
+        /// 기본 스타터 카드 로드 (인스펙터에 설정된 카드가 없을 때)
+        /// </summary>
+        private void LoadDefaultStarterCards()
+        {
+            if (debugMode)
+                Debug.Log("[CardManager] 기본 스타터 카드 로드 시작");
+
+            starterDeck.Clear();
+
+            // Resources에서 기본 카드들을 찾아 추가
+            var defaultCards = Resources.LoadAll<CardSO>("Cards");
+            
+            if (defaultCards.Length > 0)
+            {
+                // 기본적으로 각 카드를 몇 장씩 추가
+                foreach (var card in defaultCards.Take(3)) // 처음 3종류만
+                {
+                    for (int i = 0; i < 2; i++) // 각각 2장씩
+                    {
+                        starterDeck.Add(card);
+                    }
+                }
+
+                if (debugMode)
+                    Debug.Log($"[CardManager] Resources에서 기본 카드 로드: {starterDeck.Count}장");
+            }
+            else
+            {
+                Debug.LogWarning("[CardManager] Resources/Cards에 카드가 없습니다!");
+            }
         }
 
         /// <summary>
@@ -295,11 +346,17 @@ namespace Maglin.Cards
         public void InitializeDeckForNewGame()
         {
             if (debugMode)
+            {
                 Debug.Log("[CardManager] 새 게임용 덱 초기화");
+                Debug.Log($"[CardManager] 시작 덱 카드 수: {starterDeck.Count}");
+            }
 
             // 시작 덱을 현재 덱으로 복사
             currentDeck.Clear();
             currentDeck.AddRange(starterDeck);
+
+            if (debugMode)
+                Debug.Log($"[CardManager] 현재 덱으로 복사 완료: {currentDeck.Count}장");
 
             // 다른 영역 초기화
             hand.Clear();
@@ -311,6 +368,9 @@ namespace Maglin.Cards
 
             // 드로우 비용 초기화
             ResetDrawCosts();
+            
+            // 초기 드로우 플래그 초기화
+            hasPerformedInitialDraw = false;
 
             // Card 인스턴스 시스템 초기화
             InitializeCardInstanceSystem();
@@ -318,6 +378,9 @@ namespace Maglin.Cards
             // 이벤트 발생
             OnHandChanged?.Invoke(hand);
             OnDrawCostChanged?.Invoke(currentDrawCost);
+
+            if (debugMode)
+                Debug.Log("[CardManager] 새 게임용 덱 초기화 완료");
         }
         #endregion
 
@@ -344,7 +407,7 @@ namespace Maglin.Cards
         private void OnBattleStarted(BattleSO battleData)
         {
             if (debugMode)
-                Debug.Log("[CardManager] 전투 시작 - 초기 드로우 준비");
+                Debug.Log("[CardManager] 전투 시작 - 덱 준비 (드로우는 몬스터 스폰 완료 후 진행)");
 
             // 전투 시작 시 손패와 임시무덤 모두 덱으로 되돌리고 셔플 (Card 인스턴스)
             ReturnAllCardInstancesToDeck();
@@ -352,8 +415,8 @@ namespace Maglin.Cards
             // 기존 CardSO 시스템도 동기화
             ReturnAllCardsToDeck();
 
-            // 초기 드로우 (Card 인스턴스 기반)
-            DrawCards(MaxHandSize, true);
+            // 초기 드로우는 몬스터 스폰 애니메이션 완료 후에 진행하도록 변경
+            // DrawCards(MaxHandSize, true); // 제거됨
         }
 
         /// <summary>
@@ -366,6 +429,21 @@ namespace Maglin.Cards
 
             // 모든 카드를 덱으로 되돌림
             ReturnAllCardsToDeck();
+        }
+
+        /// <summary>
+        /// 초기 카드 드로우 실행 (몬스터 스폰 애니메이션 완료 후 호출)
+        /// </summary>
+        public void PerformInitialCardDraw()
+        {
+            if (debugMode)
+                Debug.Log("[CardManager] 초기 카드 드로우 시작");
+
+            // 초기 드로우 (Card 인스턴스 기반)
+            DrawCards(MaxHandSize, true);
+            
+            // 초기 드로우 완료 플래그 설정
+            hasPerformedInitialDraw = true;
         }
         #endregion
 
@@ -381,14 +459,22 @@ namespace Maglin.Cards
             // 드로우 비용 초기화
             ResetDrawCosts();
 
-            // 턴 종료 시 버린 카드들과 손에 있던 카드들을 덱으로 되돌리고 셔플 (Card 인스턴스)
-            ReturnAllCardInstancesToDeck();
+            // 초기 카드 드로우가 완료된 후에만 카드 회수 및 드로우 진행
+            if (hasPerformedInitialDraw)
+            {
+                // 턴 종료 시 버린 카드들과 손에 있던 카드들을 덱으로 되돌리고 셔플 (Card 인스턴스)
+                ReturnAllCardInstancesToDeck();
 
-            // 기존 CardSO 시스템도 동기화
-            ReturnAllCardsToDeck();
+                // 기존 CardSO 시스템도 동기화
+                ReturnAllCardsToDeck();
 
-            // 새 손패 드로우 (Card 인스턴스 기반)
-            DrawCards(MaxHandSize, true);
+                // 새 손패 드로우 (Card 인스턴스 기반)
+                DrawCards(MaxHandSize, true);
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[CardManager] 초기 드로우가 아직 완료되지 않아 카드 회수 및 드로우 생략");
+            }
         }
 
         /// <summary>

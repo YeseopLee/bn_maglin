@@ -154,8 +154,11 @@ namespace Maglin.Battle
         /// <summary>
         /// UI 참조 자동 탐지
         /// </summary>
-        private void AutoDetectUIReferences()
+        public void AutoDetectUIReferences()
         {
+            if (debugMode)
+                Debug.Log("[CardDrawAnimationManager] UI 참조 자동 탐지 시작");
+
             // DeckArea 자동 탐지
             if (deckArea == null)
             {
@@ -165,6 +168,21 @@ namespace Maglin.Battle
                     autoDeckArea = deckAreaObj.transform;
                     if (debugMode)
                         Debug.Log("[CardDrawAnimationManager] DeckArea 자동 탐지됨");
+                }
+                else
+                {
+                    // 대안: CardArea 하위에서 찾기
+                    var cardArea = GameObject.Find("CardArea");
+                    if (cardArea != null)
+                    {
+                        var deck = cardArea.transform.Find("DeckArea");
+                        if (deck != null)
+                        {
+                            autoDeckArea = deck;
+                            if (debugMode)
+                                Debug.Log("[CardDrawAnimationManager] CardArea/DeckArea 자동 탐지됨");
+                        }
+                    }
                 }
             }
 
@@ -177,6 +195,21 @@ namespace Maglin.Battle
                     autoHandContent = handContentObj.transform;
                     if (debugMode)
                         Debug.Log("[CardDrawAnimationManager] HandContent 자동 탐지됨");
+                }
+                else
+                {
+                    // 대안: CardArea 하위에서 찾기
+                    var cardArea = GameObject.Find("CardArea");
+                    if (cardArea != null)
+                    {
+                        var hand = cardArea.transform.Find("HandContent");
+                        if (hand != null)
+                        {
+                            autoHandContent = hand;
+                            if (debugMode)
+                                Debug.Log("[CardDrawAnimationManager] CardArea/HandContent 자동 탐지됨");
+                        }
+                    }
                 }
             }
 
@@ -193,6 +226,42 @@ namespace Maglin.Battle
                         Debug.Log("[CardDrawAnimationManager] CardUIPrefab 자동 탐지됨");
                 }
             }
+
+            // GraveArea 자동 탐지
+            if (graveArea == null)
+            {
+                var graveObject = GameObject.Find("Grave");
+                if (graveObject != null)
+                {
+                    graveArea = graveObject.transform;
+                    if (debugMode)
+                        Debug.Log("[CardDrawAnimationManager] Grave 자동 탐지됨");
+                }
+                else
+                {
+                    // 대안: CardArea 하위에서 찾기
+                    var cardArea = GameObject.Find("CardArea");
+                    if (cardArea != null)
+                    {
+                        var grave = cardArea.transform.Find("Grave");
+                        if (grave != null)
+                        {
+                            graveArea = grave;
+                            if (debugMode)
+                                Debug.Log("[CardDrawAnimationManager] CardArea/Grave 자동 탐지됨");
+                        }
+                    }
+                }
+            }
+
+            if (debugMode)
+            {
+                Debug.Log($"[CardDrawAnimationManager] UI 참조 탐지 결과:");
+                Debug.Log($"  - DeckArea: {GetDeckArea()?.name ?? "없음"}");
+                Debug.Log($"  - HandContent: {GetHandContent()?.name ?? "없음"}");
+                Debug.Log($"  - CardUIPrefab: {GetCardUIPrefab()?.name ?? "없음"}");
+                Debug.Log($"  - GraveArea: {GetGraveArea()?.name ?? "없음"}");
+            }
         }
         #endregion
 
@@ -200,10 +269,11 @@ namespace Maglin.Battle
         /// <summary>
         /// UI 참조 설정 (수동)
         /// </summary>
-        public void SetUIReferences(Transform deckArea, Transform handContent, GameObject cardUIPrefab)
+        public void SetUIReferences(Transform deckArea, Transform handContent, Transform graveArea, GameObject cardUIPrefab)
         {
             this.deckArea = deckArea;
             this.handContent = handContent;
+            this.graveArea = graveArea;
             this.cardUIPrefab = cardUIPrefab;
 
             if (debugMode)

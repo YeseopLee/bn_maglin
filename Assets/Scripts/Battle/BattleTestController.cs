@@ -15,13 +15,18 @@ using UnityEngine.EventSystems;
 namespace Maglin.Battle
 {
     /// <summary>
-    /// 턴제 전투 테스트를 위한 메인 컨트롤러 (리팩토링 버전)
+    /// 통합 전투 컨트롤러 (프로덕션 + 테스트)
+    /// FloorManager와 연동하여 실제 게임 플로우에서 동작하며, 테스트 모드도 지원
     /// </summary>
     public class BattleTestController : MonoBehaviour
     {
-        [Header("Test Data")]
+        [Header("Battle Data")]
+        [SerializeField] private BattleStageSO currentBattleStage;
+        
+        [Header("Test Data (테스트 모드용)")]
         [SerializeField] private List<CardSO> testCards = new List<CardSO>();
         [SerializeField] private BattleStageSO testBattleStage;
+        [SerializeField] private bool useTestMode = false; // 테스트 모드 활성화 여부
 
         [Header("Debug")]
         [SerializeField] private bool debugMode = true;
@@ -30,11 +35,40 @@ namespace Maglin.Battle
         private bool isBattleActive = false;
         private bool isPlayerTurn = true;
         private int currentTurn = 1;
+        private bool isInputBlocked = false;
+        
+        // 현재 층 정보
+        private int currentFloor = 1;
+        private FloorType currentFloorType = FloorType.Normal;
 
         #region Unity Events
         private void Start()
         {
-            InitializeBattleTest();
+            if (useTestMode)
+            {
+                // 테스트 모드: 기존 테스트 초기화
+                InitializeBattleTest();
+            }
+            else
+            {
+                // 프로덕션 모드: FloorManager 이벤트 구독 후 대기
+                SubscribeToFloorManagerEvents();
+                
+                if (debugMode)
+                {
+                    Debug.Log("[BattleTestController] 프로덕션 모드 - FloorManager 신호 대기 중");
+                    Debug.Log($"[BattleTestController] FloorManager 상태: {(FloorManager.Instance != null ? "존재함" : "null")}");
+                    if (FloorManager.Instance != null)
+                    {
+                        Debug.Log($"[BattleTestController] 현재 층: {FloorManager.Instance.CurrentFloor}");
+                        Debug.Log($"[BattleTestController] 현재 층 타입: {FloorManager.Instance.CurrentFloorType}");
+                        Debug.Log($"[BattleTestController] 현재 배틀스테이지: {FloorManager.Instance.GetCurrentBattleStage()?.name ?? "null"}");
+                    }
+                }
+                
+                // 프로덕션 모드에서 FloorManager가 이미 층을 시작했는지 확인
+                StartCoroutine(CheckFloorManagerState());
+            }
         }
 
         private void Update()
@@ -56,14 +90,52 @@ namespace Maglin.Battle
 
         private void OnDestroy()
         {
+            // FloorManager 이벤트 구독 해제
+            UnsubscribeFromFloorManagerEvents();
+            
             // FieldManager 이벤트 구독 해제
-            FieldManager.OnFieldChanged -= OnFieldChanged;
-            FieldManager.OnFieldEffectApplied -= OnFieldEffectApplied;
-            FieldManager.OnFieldEffectRemoved -= OnFieldEffectRemoved;
+            if (FieldManager.Instance != null)
+            {
+                FieldManager.OnFieldChanged -= OnFieldChanged;
+                FieldManager.OnFieldEffectApplied -= OnFieldEffectApplied;
+                FieldManager.OnFieldEffectRemoved -= OnFieldEffectRemoved;
+            }
         }
         #endregion
 
         #region Event Subscriptions
+        /// <summary>
+        /// FloorManager 이벤트 구독
+        /// </summary>
+        private void SubscribeToFloorManagerEvents()
+        {
+            if (FloorManager.Instance != null)
+            {
+                FloorManager.Instance.OnFloorStarted += OnFloorStarted;
+                FloorManager.Instance.OnFloorCompleted += OnFloorCompleted;
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] FloorManager 이벤트 구독 완료");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleTestController] FloorManager가 아직 없습니다. 나중에 구독 시도");
+            }
+        }
+
+        /// <summary>
+        /// FloorManager 이벤트 구독 해제
+        /// </summary>
+        private void UnsubscribeFromFloorManagerEvents()
+        {
+            if (FloorManager.Instance != null)
+            {
+                FloorManager.Instance.OnFloorStarted -= OnFloorStarted;
+                FloorManager.Instance.OnFloorCompleted -= OnFloorCompleted;
+            }
+        }
+
         /// <summary>
         /// 매니저 이벤트 구독
         /// </summary>
@@ -158,14 +230,14 @@ namespace Maglin.Battle
             // 매니저들 초기화
             InitializeManagers();
 
-            // 테스트 데이터 설정
-            SetupTestData();
+            // 테스트 모드에서만 테스트 데이터 설정
+            if (useTestMode)
+            {
+                SetupTestData();
+            }
 
             // ComboManager 강제 초기화
             InitializeComboManager();
-
-            // FieldManager 초기화
-            InitializeFieldManager();
 
             // 전투 시작
             StartBattle();
@@ -178,6 +250,14 @@ namespace Maglin.Battle
         {
             if (debugMode)
                 Debug.Log("[BattleTestController] 매니저 초기화 시작");
+
+            // 새로운 전투를 위한 블랙스크린 생성 (씬 전환 시)
+            if (BattleUIManager.Instance != null)
+            {
+                BattleUIManager.Instance.CreateBlackScreenForNewBattle();
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 새로운 전투용 블랙스크린 생성 완료");
+            }
 
             // GridFieldManager 초기화 (가장 먼저)
             if (GridFieldManager.Instance != null)
@@ -282,8 +362,15 @@ namespace Maglin.Battle
                 Debug.LogError("[BattleTestController] PlayerBattleManager.Instance가 null입니다!");
             }
 
+            // FieldManager 초기화 (프로덕션/테스트 모드 공통)
+            InitializeFieldManager();
+
             // 모든 매니저 초기화 완료 후 이벤트 구독
             SubscribeToManagerEvents();
+
+            // 씬 전환 후 UI 참조 재설정 (DontDestroyOnLoad로 인한 참조 무효화 방지)
+            RefreshUIManagerReferences();
+            RefreshCardDrawAnimationManagerReferences();
 
             if (debugMode)
                 Debug.Log("[BattleTestController] 모든 매니저 초기화 완료");
@@ -514,6 +601,9 @@ namespace Maglin.Battle
                 return;
             }
 
+            if (debugMode)
+                Debug.Log($"[BattleTestController] FieldManager 초기화 시작 - 모드: {(useTestMode ? "테스트" : "프로덕션")}");
+
             // 필드 초기화 (전투 시작 시)
             FieldManager.Instance.ResetField();
 
@@ -521,6 +611,12 @@ namespace Maglin.Battle
             FieldManager.OnFieldChanged += OnFieldChanged;
             FieldManager.OnFieldEffectApplied += OnFieldEffectApplied;
             FieldManager.OnFieldEffectRemoved += OnFieldEffectRemoved;
+
+            if (debugMode)
+            {
+                Debug.Log("[BattleTestController] FieldManager 이벤트 구독 완료");
+                Debug.Log($"  - 현재 필드 상태: {FieldManager.Instance.CurrentFieldElement}");
+            }
 
             if (debugMode)
                 Debug.Log("[BattleTestController] FieldManager 초기화 완료");
@@ -550,7 +646,7 @@ namespace Maglin.Battle
             }
 
             // 몬스터 스폰 후 타겟 설정
-            StartCoroutine(SpawnTestMonstersAndSetTarget());
+            StartCoroutine(SpawnMonstersAndSetTarget());
 
             // 플레이어 턴 시작
             StartPlayerTurn();
@@ -562,27 +658,80 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터 스폰 후 타겟 설정 코루틴
         /// </summary>
-        private IEnumerator SpawnTestMonstersAndSetTarget()
+        private IEnumerator SpawnMonstersAndSetTarget()
         {
-            // MonsterSpawnManager를 통해 몬스터 스폰 (테스트 배틀 스테이지 전달)
-            MonsterSpawnManager.Instance?.SpawnTestMonsters(testBattleStage);
+            if (debugMode)
+                Debug.Log("[BattleTestController] 몬스터 스폰 시작");
 
-            // 모든 몬스터 스폰이 완료될 때까지 대기
-            yield return new WaitForSeconds(1f);
+            // MonsterSpawnAnimationManager의 모든 스폰 완료 이벤트 구독
+            bool spawnCompleted = false;
+            System.Action onSpawnCompleted = () => { spawnCompleted = true; };
 
-            // 모든 스폰이 완료된 후 타겟 설정
+            if (MonsterSpawnAnimationManager.Instance != null)
+            {
+                MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted += onSpawnCompleted;
+            }
+
+            // 사용할 배틀 스테이지 결정 (프로덕션 vs 테스트 모드)
+            BattleStageSO battleStageToUse = useTestMode ? testBattleStage : currentBattleStage;
+
+            if (debugMode)
+            {
+                Debug.Log($"[BattleTestController] 사용할 배틀스테이지: {battleStageToUse?.name ?? "null"}");
+                Debug.Log($"[BattleTestController] 모드: {(useTestMode ? "테스트" : "프로덕션")}");
+                Debug.Log($"[BattleTestController] MonsterSpawnManager 상태: {(MonsterSpawnManager.Instance != null ? "존재함" : "null")}");
+            }
+
+            // MonsterSpawnManager를 통해 몬스터 스폰
+            if (MonsterSpawnManager.Instance != null && battleStageToUse != null)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 몬스터 스폰 실행 중...");
+
+                // BattleStage에 SpawnMonstersFromBattleStage 메서드가 있다면 사용
+                var spawnMethod = typeof(MonsterSpawnManager).GetMethod("SpawnMonstersFromBattleStage");
+                if (spawnMethod != null && !useTestMode)
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 프로덕션 몬스터 스폰 메서드 사용");
+                    spawnMethod.Invoke(MonsterSpawnManager.Instance, new object[] { battleStageToUse });
+                }
+                else
+                {
+                    // 폴백: 테스트 몬스터 스폰 메서드 사용
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 테스트 몬스터 스폰 메서드 사용");
+                    MonsterSpawnManager.Instance.SpawnTestMonsters(battleStageToUse);
+                }
+            }
+            else
+            {
+                Debug.LogError($"[BattleTestController] 몬스터 스폰 실패! MonsterSpawnManager: {(MonsterSpawnManager.Instance != null ? "OK" : "NULL")}, BattleStage: {(battleStageToUse != null ? "OK" : "NULL")}");
+            }
+
+            // 몬스터 스폰 애니메이션 완료 대기
+            if (MonsterSpawnAnimationManager.Instance != null)
+            {
+                yield return new WaitUntil(() => spawnCompleted);
+                MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted -= onSpawnCompleted;
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 몬스터 스폰 애니메이션 완료");
+            }
+            else
+            {
+                // 애니메이션 매니저가 없으면 기본 대기
+                yield return new WaitForSeconds(1f);
+            }
+
+            // 타겟 설정
             if (TargetManager.Instance != null)
             {
                 if (TargetManager.Instance.CurrentTarget == null)
                 {
                     TargetManager.Instance.SetTargetToClosest();
                     if (debugMode)
-                        Debug.Log("[BattleTestController] 모든 몬스터 스폰 완료 후 초기 타겟 설정");
-                }
-                else
-                {
-                    if (debugMode)
-                        Debug.Log("[BattleTestController] 이미 타겟이 설정되어 있음");
+                        Debug.Log("[BattleTestController] 초기 타겟 설정 완료");
                 }
             }
         }
@@ -600,14 +749,18 @@ namespace Maglin.Battle
             // 매니저들에 턴 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
-            // 카드 드로우
-            if (CardManager.Instance != null)
+            // 첫 번째 턴이 아닐 때만 카드 드로우 (초기 카드 드로우는 BattleInitializationSequence에서 처리)
+            if (currentTurn > 1 && CardManager.Instance != null)
             {
                 // 손패 초기화 후 최대 손패까지 드로우
                 var drawnCards = CardManager.Instance.DrawCardsToMax();
 
                 if (debugMode)
                     Debug.Log($"[BattleTestController] {drawnCards.Count}장 드로우 완료");
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[BattleTestController] 첫 번째 턴이므로 카드 드로우 생략 (초기화 시퀀스에서 처리됨)");
             }
 
             // 조합 슬롯 초기화
@@ -1099,36 +1252,8 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[BattleTestController] RewardManager 확인됨, 보상 생성 시작");
 
-            // 현재 층과 층 타입 결정 (테스트용으로 기본값 사용)
-            int currentFloor = 1;
-            FloorType floorType = FloorType.Normal;
-
-            // testBattleStage에서 층 정보를 가져올 수 있다면 사용
-            if (testBattleStage != null)
-            {
-                // BattleStageSO에 층 정보가 있다면 여기서 설정
-                // 현재는 테스트용으로 기본값 사용
-                if (debugMode)
-                    Debug.Log($"[BattleTestController] BattleStage: {testBattleStage.name}");
-            }
-
-            if (debugMode)
-                Debug.Log($"[BattleTestController] {currentFloor}층 {floorType} 보상 생성 요청");
-
-            // BattleUIManager의 보상 UI 상태 확인
-            if (BattleUIManager.Instance != null)
-            {
-                if (debugMode)
-                    Debug.Log("[BattleTestController] BattleUIManager 확인됨");
-            }
-            else
-            {
-                Debug.LogError("[BattleTestController] BattleUIManager가 없습니다!");
-                return;
-            }
-
             // RewardManager를 통해 보상 생성 및 표시
-            RewardManager.Instance.ShowBattleRewards(currentFloor, floorType);
+            RewardManager.Instance.ShowBattleRewards(currentFloor, currentFloorType);
         }
 
         #region Reward Event Handlers
@@ -1235,10 +1360,50 @@ namespace Maglin.Battle
                 BattleUIManager.Instance.HideRewardUI();
             }
 
-            // 여기서 다음 단계로 진행 (예: 다음 층으로 이동, 메인 메뉴 복귀 등)
-            // 현재는 테스트 환경이므로 간단히 로그만 출력
+            if (useTestMode)
+            {
+                // 테스트 모드: 간단히 로그만 출력
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 테스트 모드 - 전투 완전 종료");
+            }
+            else
+            {
+                // 프로덕션 모드: 전투 완료 후 다음 층으로 진행
+                StartCoroutine(CompleteBattleAndProceed());
+            }
+        }
+
+        /// <summary>
+        /// 전투 완료 후 다음 층 진행 처리 (프로덕션 모드)
+        /// </summary>
+        private System.Collections.IEnumerator CompleteBattleAndProceed()
+        {
             if (debugMode)
-                Debug.Log("[BattleTestController] 전투 완전 종료. 다음 단계로 진행 가능.");
+                Debug.Log("[BattleTestController] 전투 완료, 다음 층으로 진행 시작");
+
+            // 잠시 대기
+            yield return new WaitForSeconds(0.5f);
+
+            // FloorManager에 현재 층 완료 알림
+            if (FloorManager.Instance != null)
+            {
+                FloorManager.Instance.CompleteCurrentFloor();
+
+                // 잠시 대기 후 다음 층으로 진행
+                yield return new WaitForSeconds(0.5f);
+
+                FloorManager.Instance.ProceedToNextFloor();
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] FloorManager가 없습니다!");
+
+                // 폴백: GameManager로 직접 메인 메뉴 복귀
+                if (GameManager.Instance != null)
+                {
+                    GameManager.Instance.ReturnToMainMenu();
+                }
+            }
         }
 
         /// <summary>
@@ -1288,18 +1453,422 @@ namespace Maglin.Battle
             CheckBattleEnd();
         }
 
+        #region Floor Manager Events
+        /// <summary>
+        /// 층 시작 이벤트 처리
+        /// </summary>
+        private void OnFloorStarted(FloorInfo floorInfo)
+        {
+            // 전투 관련 층만 처리
+            if (floorInfo.floorType == FloorType.Normal ||
+                floorInfo.floorType == FloorType.Elite ||
+                floorInfo.floorType == FloorType.Boss ||
+                floorInfo.floorType == FloorType.Start)
+            {
+                currentFloor = floorInfo.floorNumber;
+                currentFloorType = floorInfo.floorType;
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] {currentFloor}층 전투 시작: {floorInfo.floorType}");
+
+                // 층에 맞는 배틀 스테이지 로드 및 전투 초기화
+                LoadBattleStageForFloor(currentFloor, currentFloorType);
+            }
+        }
+
+        /// <summary>
+        /// 층 완료 이벤트 처리
+        /// </summary>
+        private void OnFloorCompleted(FloorInfo floorInfo)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleTestController] {floorInfo.floorNumber}층 완료: {floorInfo.floorType}");
+        }
+        #endregion
+
+        #region Battle Stage Loading
+        /// <summary>
+        /// 층에 맞는 배틀 스테이지 로드
+        /// </summary>
+        private void LoadBattleStageForFloor(int floor, FloorType floorType)
+        {
+            BattleStageSO battleStage = null;
+
+            // 먼저 FloorManager에서 현재 배틀 스테이지를 가져옴
+            if (FloorManager.Instance != null)
+            {
+                battleStage = FloorManager.Instance.GetCurrentBattleStage();
+
+                if (battleStage == null)
+                {
+                    // FloorManager의 GetBattleStageForFloor 메서드 사용
+                    battleStage = FloorManager.Instance.GetBattleStageForFloor(floor, floorType);
+                }
+            }
+
+            // FloorManager에서 못 가져왔으면 직접 리소스에서 로드
+            if (battleStage == null)
+            {
+                string stageResourcePath = $"BattleStage/F{floor:D2}";
+                battleStage = Resources.Load<BattleStageSO>(stageResourcePath);
+
+                if (battleStage == null)
+                {
+                    stageResourcePath = $"F{floor:D2}";
+                    battleStage = Resources.Load<BattleStageSO>(stageResourcePath);
+                }
+            }
+
+            if (battleStage != null)
+            {
+                currentBattleStage = battleStage;
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] {floor}층 배틀 스테이지 로드 성공: {battleStage.name}");
+            }
+            else
+            {
+                Debug.LogWarning($"[BattleTestController] {floor}층용 배틀 스테이지를 찾을 수 없습니다. 테스트 스테이지 사용");
+
+                // 테스트 스테이지 사용 (폴백)
+                if (testBattleStage != null)
+                {
+                    currentBattleStage = testBattleStage;
+                    if (debugMode)
+                        Debug.Log($"[BattleTestController] 테스트 배틀 스테이지 사용: {testBattleStage.name}");
+                }
+                else
+                {
+                    // 기본 배틀 스테이지 생성 (임시)
+                    CreateDefaultBattleStage(floor, floorType);
+                }
+            }
+
+            // 배틀 스테이지가 설정되었으면 전투 초기화
+            if (currentBattleStage != null && !useTestMode)
+            {
+                InitializeBattle();
+            }
+        }
+
+        /// <summary>
+        /// 기본 배틀 스테이지 생성 (배틀 스테이지가 없을 때 임시용)
+        /// </summary>
+        private void CreateDefaultBattleStage(int floor, FloorType floorType)
+        {
+            // 런타임에서 임시 배틀 스테이지 생성
+            var tempStage = ScriptableObject.CreateInstance<BattleStageSO>();
+            tempStage.name = $"DefaultStage_F{floor}_{floorType}";
+
+            // 기본 전투 데이터 생성 (층 타입에 따라 다르게)
+            if (floorType == FloorType.Boss)
+            {
+                // 보스층 설정
+            }
+            else if (floorType == FloorType.Elite)
+            {
+                // 엘리트층 설정
+            }
+            else
+            {
+                // 일반층 설정
+            }
+
+            currentBattleStage = tempStage;
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 기본 배틀 스테이지 생성: {floor}층 {floorType}");
+        }
+
+        /// <summary>
+        /// 프로덕션 모드용 전투 초기화
+        /// </summary>
+        private void InitializeBattle()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 프로덕션 전투 초기화 시작");
+
+            // 매니저들이 이미 초기화되어 있는지 확인
+            if (!VerifyManagersReady())
+            {
+                Debug.LogError("[BattleTestController] 필수 매니저들이 초기화되지 않았습니다!");
+                return;
+            }
+
+            // 기존 InitializeManagers와 동일한 초기화 수행
+            InitializeManagers();
+
+            // 프로덕션 모드 전용 초기화
+            InitializeProductionMode();
+
+            // 전투 시작
+            StartBattle();
+        }
+
+        /// <summary>
+        /// FloorManager 상태 확인 (프로덕션 모드용)
+        /// </summary>
+        private System.Collections.IEnumerator CheckFloorManagerState()
+        {
+            // 잠시 대기 후 FloorManager 상태 확인
+            yield return new WaitForSeconds(1f);
+            
+            if (FloorManager.Instance != null)
+            {
+                if (debugMode)
+                {
+                    Debug.Log("[BattleTestController] FloorManager 상태 재확인:");
+                    Debug.Log($"  - 현재 층: {FloorManager.Instance.CurrentFloor}");
+                    Debug.Log($"  - 현재 층 타입: {FloorManager.Instance.CurrentFloorType}");
+                    Debug.Log($"  - 현재 배틀스테이지: {FloorManager.Instance.GetCurrentBattleStage()?.name ?? "null"}");
+                }
+                
+                // FloorManager가 이미 층을 시작했다면 강제로 전투 시작
+                if (FloorManager.Instance.CurrentFloor > 0)
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] FloorManager가 이미 층을 시작함 - 강제 전투 시작");
+                    
+                    // 현재 층 정보로 전투 시작
+                    OnFloorStarted(new FloorInfo(
+                        FloorManager.Instance.CurrentFloor,
+                        FloorManager.Instance.CurrentFloorType
+                    ));
+                }
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] FloorManager가 없습니다! 테스트 모드로 폴백");
+                useTestMode = true;
+                InitializeBattleTest();
+            }
+        }
+
+        /// <summary>
+        /// 프로덕션 모드 전용 초기화
+        /// </summary>
+        private void InitializeProductionMode()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 프로덕션 모드 전용 초기화 시작");
+
+            // 카드 시스템 확실히 초기화
+            if (CardManager.Instance != null)
+            {
+                // 새 게임용 덱 초기화 (기본 스타터 카드로)
+                CardManager.Instance.InitializeDeckForNewGame();
+                
+                // 카드 인스턴스 시스템 초기화
+                CardManager.Instance.InitializeCardInstanceSystem();
+
+                if (debugMode)
+                {
+                    Debug.Log("[BattleTestController] 프로덕션 모드: CardManager 재초기화 완료");
+                    // CardManager의 덱/손패 상태 확인 (public 메서드 사용)
+                    var deckField = typeof(CardManager).GetField("currentDeck", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var handField = typeof(CardManager).GetField("hand", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    
+                    if (deckField != null && handField != null)
+                    {
+                        var deck = deckField.GetValue(CardManager.Instance) as System.Collections.Generic.List<CardSO>;
+                        var hand = handField.GetValue(CardManager.Instance) as System.Collections.Generic.List<CardSO>;
+                        Debug.Log($"[BattleTestController] 현재 덱 카드 수: {deck?.Count ?? 0}");
+                        Debug.Log($"[BattleTestController] 현재 손패 카드 수: {hand?.Count ?? 0}");
+                    }
+                }
+            }
+
+            // 플레이어 상태 초기화
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.OnBattleStart();
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 프로덕션 모드: PlayerManager 전투 시작 처리 완료");
+            }
+
+            // 추가 프로덕션 초기화 로직이 필요하면 여기에 추가
+            
+            if (debugMode)
+                Debug.Log("[BattleTestController] 프로덕션 모드 전용 초기화 완료");
+        }
+
+        /// <summary>
+        /// 필수 매니저들이 준비되었는지 확인
+        /// </summary>
+        private bool VerifyManagersReady()
+        {
+            var missingManagers = new List<string>();
+
+            if (GameManager.Instance == null) missingManagers.Add("GameManager");
+            if (FloorManager.Instance == null) missingManagers.Add("FloorManager");
+            if (PlayerManager.Instance == null) missingManagers.Add("PlayerManager");
+            if (CardManager.Instance == null) missingManagers.Add("CardManager");
+
+            if (missingManagers.Count > 0)
+            {
+                Debug.LogError($"[BattleTestController] 누락된 매니저들: {string.Join(", ", missingManagers)}");
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 씬 전환 후 BattleUIManager의 UI 참조 재설정
+        /// </summary>
+        private void RefreshUIManagerReferences()
+        {
+            if (BattleUIManager.Instance == null)
+            {
+                Debug.LogError("[BattleTestController] BattleUIManager가 null입니다!");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] BattleUIManager UI 참조 재설정 시작");
+
+            // 현재 씬에서 UI 요소들을 찾아서 BattleUIManager에 전달
+            var healthText = FindUIComponent<TextMeshProUGUI>("HealthText");
+            var manaText = FindUIComponent<TextMeshProUGUI>("ManaText");
+            var goldText = FindUIComponent<TextMeshProUGUI>("GoldText");
+            var deckCountText = FindUIComponent<TextMeshProUGUI>("DeckCountText");
+            var handContent = FindUIComponent<Transform>("HandContent");
+            var endTurnButton = FindUIComponent<Button>("EndTurnButton");
+            var drawButton = FindUIComponent<Button>("DrawButton");
+            var turnIndicator = FindUIComponent<TextMeshProUGUI>("TurnIndicator");
+            var elementSlot = FindUIComponent<Transform>("ElementSlot");
+            var active1Slot = FindUIComponent<Transform>("Active1Slot");
+            var active2Slot = FindUIComponent<Transform>("Active2Slot");
+            var executeComboButton = FindUIComponent<Button>("ExecuteComboButton");
+            var clearComboButton = FindUIComponent<Button>("ClearComboButton");
+            var fieldAreaImage = FindUIComponent<UnityEngine.UI.Image>("FieldArea");
+            var fieldEffectTurnsText = FindUIComponent<TextMeshProUGUI>("FieldEffectTurnsText");
+            var cardUIPrefab = Resources.Load<GameObject>("Prefabs/CardUIPrefab");
+            var monsterPrefab = Resources.Load<GameObject>("Prefabs/MonsterPrefab");
+            var loadingUIPrefab = Resources.Load<GameObject>("Prefabs/UI/LoadingUIPrefab");
+
+            // BattleUIManager에 참조 전달
+            BattleUIManager.Instance.SetUIReferences(
+                healthText, manaText, goldText, deckCountText,
+                handContent, endTurnButton, drawButton, turnIndicator,
+                elementSlot, active1Slot, active2Slot,
+                executeComboButton, clearComboButton,
+                fieldAreaImage, fieldEffectTurnsText,
+                cardUIPrefab, monsterPrefab, loadingUIPrefab
+            );
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] BattleUIManager UI 참조 재설정 완료");
+        }
+
+        /// <summary>
+        /// UI 컴포넌트를 이름으로 찾는 헬퍼 메서드
+        /// </summary>
+        private T FindUIComponent<T>(string componentName) where T : Component
+        {
+            // 전체 씬에서 해당 이름의 GameObject를 찾기
+            var allObjects = FindObjectsOfType<GameObject>();
+            
+            foreach (var obj in allObjects)
+            {
+                if (obj.name == componentName)
+                {
+                    var component = obj.GetComponent<T>();
+                    if (component != null)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[BattleTestController] UI 컴포넌트 찾음: {componentName} ({typeof(T).Name})");
+                        return component;
+                    }
+                }
+            }
+
+            if (debugMode)
+                Debug.LogWarning($"[BattleTestController] UI 컴포넌트를 찾을 수 없음: {componentName} ({typeof(T).Name})");
+            
+            return null;
+        }
+
+        /// <summary>
+        /// 씬 전환 후 CardDrawAnimationManager의 UI 참조 재설정
+        /// </summary>
+        private void RefreshCardDrawAnimationManagerReferences()
+        {
+            if (CardDrawAnimationManager.Instance == null)
+            {
+                Debug.LogError("[BattleTestController] CardDrawAnimationManager가 null입니다!");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] CardDrawAnimationManager UI 참조 재설정 시작");
+
+            // 현재 씬에서 UI 요소들을 찾아서 CardDrawAnimationManager에 전달
+            var deckArea = FindUIComponent<Transform>("DeckArea");
+            var handContent = FindUIComponent<Transform>("HandContent");
+            var graveArea = FindUIComponent<Transform>("Grave");
+            var cardUIPrefab = Resources.Load<GameObject>("Prefabs/CardUIPrefab");
+
+            // CardArea 하위에서 찾기 (대안)
+            if (deckArea == null)
+            {
+                var cardArea = GameObject.Find("CardArea");
+                if (cardArea != null)
+                {
+                    deckArea = cardArea.transform.Find("DeckArea");
+                }
+            }
+
+            if (handContent == null)
+            {
+                var cardArea = GameObject.Find("CardArea");
+                if (cardArea != null)
+                {
+                    handContent = cardArea.transform.Find("HandContent");
+                }
+            }
+
+            if (graveArea == null)
+            {
+                var cardArea = GameObject.Find("CardArea");
+                if (cardArea != null)
+                {
+                    graveArea = cardArea.transform.Find("Grave");
+                }
+            }
+
+            // CardDrawAnimationManager에 참조 전달
+            CardDrawAnimationManager.Instance.SetUIReferences(deckArea, handContent, graveArea, cardUIPrefab);
+
+            // UI 참조 자동 탐지 강제 실행
+            CardDrawAnimationManager.Instance.AutoDetectUIReferences();
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] CardDrawAnimationManager UI 참조 재설정 완료");
+        }
+        #endregion
+
         /// <summary>
         /// 필드 변경 이벤트 핸들러
         /// </summary>
         private void OnFieldChanged(ElementType newField, ElementType previousField)
         {
             if (debugMode)
-                Debug.Log($"[BattleTestController] 필드 변경: {previousField} -> {newField}");
+            {
+                Debug.Log($"[BattleTestController] 필드 변경 이벤트 수신: {previousField} -> {newField}");
+                Debug.Log($"[BattleTestController] BattleUIManager 상태: {(BattleUIManager.Instance != null ? "존재함" : "null")}");
+            }
 
             // BattleUIManager에 필드 변경 이벤트 전달
             if (BattleUIManager.Instance != null)
             {
                 BattleUIManager.Instance.OnFieldChanged(newField, previousField);
+                
+                if (debugMode)
+                    Debug.Log("[BattleTestController] BattleUIManager에 필드 변경 이벤트 전달 완료");
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] BattleUIManager가 null입니다! 필드 변경 이벤트를 전달할 수 없습니다.");
             }
         }
 
@@ -1309,12 +1878,22 @@ namespace Maglin.Battle
         private void OnFieldEffectApplied(FieldEffectSO fieldEffect)
         {
             if (debugMode)
-                Debug.Log($"[BattleTestController] 필드 효과 활성화: {fieldEffect.EffectName}");
+            {
+                Debug.Log($"[BattleTestController] 필드 효과 적용 이벤트 수신: {fieldEffect.EffectName} ({fieldEffect.FieldElement})");
+                Debug.Log($"[BattleTestController] BattleUIManager 상태: {(BattleUIManager.Instance != null ? "존재함" : "null")}");
+            }
 
             // BattleUIManager에 필드 효과 적용 이벤트 전달
             if (BattleUIManager.Instance != null)
             {
                 BattleUIManager.Instance.OnFieldEffectApplied(fieldEffect);
+                
+                if (debugMode)
+                    Debug.Log("[BattleTestController] BattleUIManager에 필드 효과 적용 이벤트 전달 완료");
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] BattleUIManager가 null입니다! 필드 효과 적용 이벤트를 전달할 수 없습니다.");
             }
         }
 
@@ -1336,6 +1915,85 @@ namespace Maglin.Battle
 
         // 필드 UI 관련 메서드들은 BattleUIManager로 이전됨
 
+        #region Input Management
+        /// <summary>
+        /// 플레이어 입력 차단/허용 설정
+        /// </summary>
+        /// <param name="blocked">true면 입력 차단, false면 허용</param>
+        public void SetInputBlocked(bool blocked)
+        {
+            isInputBlocked = blocked;
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 플레이어 입력 {(blocked ? "차단" : "허용")}");
+
+            // UI 요소들의 상호작용 차단/허용
+            SetUIInteractable(!blocked);
+        }
+
+        /// <summary>
+        /// 현재 입력이 차단되어 있는지 확인
+        /// </summary>
+        public bool IsInputBlocked => isInputBlocked;
+
+        /// <summary>
+        /// UI 요소들의 상호작용 설정
+        /// </summary>
+        private void SetUIInteractable(bool interactable)
+        {
+            if (debugMode)
+            {
+                Debug.Log($"[BattleTestController] SetUIInteractable: {interactable}");
+                Debug.Log($"[BattleTestController] EventSystem.current 상태: {(EventSystem.current != null ? $"존재함 (enabled: {EventSystem.current.enabled})" : "null")}");
+            }
+
+            // EventSystem 차단/허용 (가장 중요)
+            if (EventSystem.current != null)
+            {
+                EventSystem.current.enabled = interactable;
+                
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] EventSystem.enabled = {interactable} 설정 완료");
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] EventSystem.current가 null입니다!");
+                
+                // EventSystem을 찾아서 활성화 시도
+                var eventSystem = FindObjectOfType<EventSystem>();
+                if (eventSystem != null)
+                {
+                    eventSystem.enabled = interactable;
+                    if (debugMode)
+                        Debug.Log($"[BattleTestController] 찾은 EventSystem에 enabled = {interactable} 설정");
+                }
+            }
+
+            // 카드 영역 차단/허용
+            var cardAreas = FindObjectsOfType<GraphicRaycaster>();
+            if (debugMode)
+                Debug.Log($"[BattleTestController] GraphicRaycaster 개수: {cardAreas.Length}");
+            
+            foreach (var area in cardAreas)
+            {
+                area.enabled = interactable;
+            }
+
+            // 추가적인 UI 요소들 (버튼 등) 차단/허용
+            var buttons = FindObjectsOfType<Button>();
+            if (debugMode)
+                Debug.Log($"[BattleTestController] Button 개수: {buttons.Length}");
+                
+            foreach (var button in buttons)
+            {
+                button.interactable = interactable;
+            }
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] SetUIInteractable 완료");
+        }
+        #endregion
+
         #region Debug
         /// <summary>
         /// 디버그 정보 출력
@@ -1344,9 +2002,13 @@ namespace Maglin.Battle
         public void DebugBattleInfo()
         {
             Debug.Log($"=== BattleTestController Debug Info ===");
+            Debug.Log($"모드: {(useTestMode ? "테스트" : "프로덕션")}");
             Debug.Log($"전투 활성: {isBattleActive}");
             Debug.Log($"플레이어 턴: {isPlayerTurn}");
             Debug.Log($"현재 턴: {currentTurn}");
+            Debug.Log($"현재 층: {currentFloor} ({currentFloorType})");
+            Debug.Log($"현재 배틀스테이지: {currentBattleStage?.name ?? "없음"}");
+            Debug.Log($"테스트 배틀스테이지: {testBattleStage?.name ?? "없음"}");
             Debug.Log($"플레이어 위치: {PlayerBattleManager.Instance?.GetPlayerGridPosition() ?? Vector2Int.zero}");
             Debug.Log($"현재 타겟: {TargetManager.Instance?.CurrentTarget?.EnemyName ?? "없음"}");
             Debug.Log($"살아있는 몬스터: {TargetManager.Instance?.GetAliveEnemies().Count ?? 0}마리");
