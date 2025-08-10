@@ -915,11 +915,8 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log($"[BattleTestController] 단독 카드 사용: {comboCards[0].CardName}");
 
-                // CardManager를 통해 카드 사용
-                if (CardManager.Instance != null)
-                {
-                    CardManager.Instance.UseCardInstances(comboCards.ToArray());
-                }
+                // 조합창의 카드들은 나중에 CardManager.EndTurn()에서 자동으로 임시무덤으로 이동됩니다.
+                // 여기서는 효과만 실행합니다.
 
                 // 단독 카드 효과 실행
                 ExecuteCardEffect(comboCards[0].CardData);
@@ -948,9 +945,9 @@ namespace Maglin.Battle
                         }
                     }
 
-                    // ComboExecutionContext 생성 (카드 소모 활성화)
+                    // ComboExecutionContext 생성 (카드 소모 비활성화 - CardManager.EndTurn()에서 처리)
                     var context = new ComboExecutionContext(comboCards.ToArray(), currentField);
-                    context.consumeCards = true;
+                    context.consumeCards = false;
 
                     result = ComboManager.Instance.ExecuteCombination(context);
 
@@ -984,6 +981,9 @@ namespace Maglin.Battle
                     Debug.Log("[BattleTestController] 조합 불가능한 카드입니다.");
                 return;
             }
+
+            // 조합 완료 후 즉시 조합창 정리 (중요: 다음 조합에 영향 방지)
+            BattleUIManager.Instance?.ClearComboSlotsUIOnly();
 
             // 조합 완료 후 카드 무덤 애니메이션 및 슬롯 정리
             StartCoroutine(ProcessCardToGraveAnimation(comboCards, result));

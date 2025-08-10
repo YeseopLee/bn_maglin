@@ -778,14 +778,11 @@ namespace Maglin.Cards
         {
             if (inputCards == null) return;
 
-            // CardManager를 통해 카드들을 임시무덤으로 이동
-            if (CardManager.Instance != null)
-            {
-                CardManager.Instance.UseCards(inputCards);
+            // 조합창의 카드들은 조합 실행 후 자동으로 임시무덤으로 이동됩니다.
+            // CardManager에서 처리하므로 여기서는 이벤트만 발생시킵니다.
 
-                if (debugMode)
-                    Debug.Log($"[ComboManager] {inputCards.Length}장의 카드를 임시무덤으로 이동: {string.Join(", ", inputCards.Select(c => c.CardName))}");
-            }
+            if (debugMode)
+                Debug.Log($"[ComboManager] 카드 소모 처리: {inputCards.Length}장 - {string.Join(", ", inputCards.Select(c => c.CardName))}");
 
             // 카드 소모 이벤트 발생
             OnCardsConsumed?.Invoke(inputCards);
