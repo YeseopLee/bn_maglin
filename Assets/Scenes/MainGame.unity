@@ -822,8 +822,8 @@ MonoBehaviour:
   starterDeck:
   - {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
   - {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
-  - {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
-  - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+  - {fileID: 11400000, guid: 50e9b4572b6934c77818a1769136c9fa, type: 2}
+  - {fileID: 11400000, guid: 50e9b4572b6934c77818a1769136c9fa, type: 2}
   - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
   - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
   currentDeck: []
@@ -997,6 +997,53 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 281.66098, y: 252.9118, z: 85251.64}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &672295408
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 672295410}
+  - component: {fileID: 672295409}
+  m_Layer: 0
+  m_Name: MonsterSpawnManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &672295409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 672295408}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 53088569d052245a4961e6d07d4d9eeb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugMode: 0
+  enableSpawnAnimations: 1
+  useSequentialSpawn: 1
+--- !u!4 &672295410
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 672295408}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2199,3 +2246,4 @@ SceneRoots:
   - {fileID: 1109504193}
   - {fileID: 839472938}
   - {fileID: 478698860}
+  - {fileID: 672295410}

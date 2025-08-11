@@ -100,6 +100,9 @@ namespace Maglin.Battle
                 FieldManager.OnFieldEffectApplied -= OnFieldEffectApplied;
                 FieldManager.OnFieldEffectRemoved -= OnFieldEffectRemoved;
             }
+
+            // VFX 이벤트 구독 해제
+            VFXEffectManager.OnVFXHit -= OnVFXHit;
         }
         #endregion
 
@@ -612,6 +615,9 @@ namespace Maglin.Battle
             FieldManager.OnFieldEffectApplied += OnFieldEffectApplied;
             FieldManager.OnFieldEffectRemoved += OnFieldEffectRemoved;
 
+            // VFX 이벤트 구독
+            VFXEffectManager.OnVFXHit += OnVFXHit;
+
             if (debugMode)
             {
                 Debug.Log("[BattleTestController] FieldManager 이벤트 구독 완료");
@@ -937,7 +943,7 @@ namespace Maglin.Battle
                 // 여기서는 효과만 실행합니다.
 
                 // 단독 카드 효과 실행
-                ExecuteCardEffect(comboCards[0].CardData);
+                ExecuteCardEffect(comboCards[0]);
 
                 if (debugMode)
                     Debug.Log($"[BattleTestController] {comboCards[0].CardName} 단독 사용 효과 실행 완료");
@@ -1116,7 +1122,7 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 카드 효과 실행 (간단한 데미지/힐 처리)
+        /// 카드 효과 실행 (간단한 데미지/힐 처리) - CardSO 버전
         /// </summary>
         private void ExecuteCardEffect(CardSO cardData)
         {
@@ -1125,6 +1131,54 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[BattleTestController] {cardData.CardName} 효과 실행: 데미지={cardData.BaseDamage}, 힐={cardData.BaseHeal}, 대상={cardData.Target}");
 
+            // VFX 이펙트 실행 (CardSO만 있는 경우 임시 Card 인스턴스 생성)
+            if (cardData.Effect != null && VFXEffectManager.Instance != null)
+            {
+                var tempCard = new Card(cardData);
+                VFXEffectManager.Instance.PlayCardVFX(tempCard);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] VFX 실행: {cardData.Effect.EffectName}");
+            }
+            else
+            {
+                // VFX가 없는 경우 즉시 효과 적용
+                ApplyCardEffectWithoutVFX(cardData);
+            }
+        }
+
+        /// <summary>
+        /// 카드 효과 실행 (Card 인스턴스 버전) - VFX 지원
+        /// </summary>
+        private void ExecuteCardEffect(Card card)
+        {
+            if (card?.CardData == null) return;
+
+            var cardData = card.CardData;
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] {cardData.CardName} 효과 실행: 데미지={cardData.BaseDamage}, 힐={cardData.BaseHeal}, 대상={cardData.Target}");
+
+            // VFX 이펙트 실행
+            if (cardData.Effect != null && VFXEffectManager.Instance != null)
+            {
+                VFXEffectManager.Instance.PlayCardVFX(card);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] VFX 실행: {cardData.Effect.EffectName}");
+            }
+            else
+            {
+                // VFX가 없는 경우 즉시 효과 적용
+                ApplyCardEffectWithoutVFX(cardData);
+            }
+        }
+
+        /// <summary>
+        /// VFX 없이 카드 효과 즉시 적용
+        /// </summary>
+        private void ApplyCardEffectWithoutVFX(CardSO cardData)
+        {
             // 데미지 처리 (필드 보너스 포함)
             if (cardData.BaseDamage > 0)
             {
@@ -1154,6 +1208,9 @@ namespace Maglin.Battle
             {
                 ApplyFieldEffect(cardData.FieldEffect);
             }
+
+            // VFX 없는 카드 효과 적용 후 전투 종료 조건 확인
+            CheckBattleEnd();
         }
 
         /// <summary>
@@ -1185,6 +1242,134 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log($"[BattleTestController] 필드 효과 적용: {fieldEffect.EffectName} ({fieldEffect.FieldElement}), 지속시간: {fieldEffect.Duration}턴");
+        }
+
+        /// <summary>
+        /// VFX 히트 이벤트 처리 (데미지 적용)
+        /// </summary>
+        private void OnVFXHit(VFXHitEventArgs hitArgs)
+        {
+            if (hitArgs == null || hitArgs.sourceCard?.CardData == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleTestController] VFX 히트 이벤트에 유효하지 않은 데이터");
+                return;
+            }
+
+            var cardData = hitArgs.sourceCard.CardData;
+            var hitTiming = hitArgs.hitTiming;
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] VFX 히트: {cardData.CardName} - 타이밍: {hitTiming.Delay}초, 데미지 배율: {hitTiming.DamageMultiplier}");
+
+            // 히트 타이밍이 데미지를 주는 히트인지 확인
+            if (!hitTiming.IsDamageHit)
+            {
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 데미지가 없는 히트 타이밍");
+                return;
+            }
+
+            // 기본 데미지 계산
+            int baseDamage = cardData.BaseDamage;
+            if (baseDamage <= 0 && cardData.BaseHeal <= 0) return;
+
+            // 데미지 처리
+            if (baseDamage > 0)
+            {
+                // 필드 보너스 적용
+                int finalDamage = CalculateFinalDamage(baseDamage, cardData.Element);
+
+                // 히트 타이밍 배율 적용
+                finalDamage = Mathf.RoundToInt(finalDamage * hitTiming.DamageMultiplier);
+
+                // 타겟별 데미지 적용
+                ApplyVFXDamageToTargets(cardData, hitArgs.targets, finalDamage);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] VFX 데미지 적용: {finalDamage} (기본: {baseDamage}, 배율: {hitTiming.DamageMultiplier})");
+            }
+
+            // 힐 처리 (플레이어 대상인 경우)
+            if (cardData.BaseHeal > 0 && cardData.Target == TargetType.Self && PlayerManager.Instance != null)
+            {
+                int finalHeal = Mathf.RoundToInt(cardData.BaseHeal * hitTiming.DamageMultiplier);
+                PlayerManager.Instance.Heal(finalHeal);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] VFX 힐 적용: {finalHeal}");
+            }
+
+            // VFX 히트 후 전투 종료 조건 확인
+            CheckBattleEnd();
+        }
+
+        /// <summary>
+        /// VFX 타겟들에게 데미지 적용
+        /// </summary>
+        private void ApplyVFXDamageToTargets(CardSO cardData, Transform[] targets, int finalDamage)
+        {
+            if (targets == null || targets.Length == 0) return;
+
+            switch (cardData.Target)
+            {
+                case TargetType.SingleEnemy:
+                case TargetType.AllEnemies:
+                case TargetType.FrontN:
+                case TargetType.BackN:
+                    // 적 대상 데미지
+                    foreach (var target in targets)
+                    {
+                        if (target != null)
+                        {
+                            var enemy = target.GetComponent<Maglin.Enemy.Enemy>();
+                            if (enemy != null && enemy.CurrentState != EnemyState.Dead)
+                            {
+                                enemy.TakeDamage(finalDamage);
+
+                                if (debugMode)
+                                    Debug.Log($"[BattleTestController] {enemy.EnemyData.EnemyName}에게 VFX 데미지: {finalDamage}");
+                            }
+                        }
+                    }
+                    break;
+
+                case TargetType.Self:
+                    // 플레이어에게 데미지 (공격 카드가 자기 자신을 타겟하는 경우)
+                    if (PlayerManager.Instance != null)
+                    {
+                        PlayerManager.Instance.TakeDamage(finalDamage);
+
+                        if (debugMode)
+                            Debug.Log($"[BattleTestController] 플레이어에게 VFX 데미지: {finalDamage}");
+                    }
+                    break;
+
+                case TargetType.AllIncludingSelf:
+                    // 모든 적과 플레이어에게 데미지
+                    foreach (var target in targets)
+                    {
+                        if (target != null)
+                        {
+                            var enemy = target.GetComponent<Maglin.Enemy.Enemy>();
+                            if (enemy != null && enemy.CurrentState != EnemyState.Dead)
+                            {
+                                enemy.TakeDamage(finalDamage);
+
+                                if (debugMode)
+                                    Debug.Log($"[BattleTestController] {enemy.EnemyData.EnemyName}에게 VFX 데미지: {finalDamage}");
+                            }
+                            else if (target.GetComponent<Maglin.Player.PlayerManager>() != null)
+                            {
+                                PlayerManager.Instance?.TakeDamage(finalDamage);
+
+                                if (debugMode)
+                                    Debug.Log($"[BattleTestController] 플레이어에게 VFX 데미지: {finalDamage}");
+                            }
+                        }
+                    }
+                    break;
+            }
         }
         #endregion
 

@@ -155,7 +155,7 @@ namespace Maglin.Cards
         public AnimationCurve alphaCurve = AnimationCurve.EaseInOut(0, 0, 1, 1);
 
         [Header("이펙트 설정")]
-        public GameObject comboEffect;
+        public VFXEffectSO comboEffect;
         public AudioClip comboSound;
         public Color glowColor = Color.yellow;
         public float glowIntensity = 2.0f;
@@ -194,7 +194,7 @@ namespace Maglin.Cards
         /// </summary>
         public string GetDebugInfo()
         {
-            return $"Animation[Enabled: {enableAnimation}, Duration: {animationDuration}s, Effect: {(comboEffect != null ? comboEffect.name : "null")}]";
+            return $"Animation[Enabled: {enableAnimation}, Duration: {animationDuration}s, Effect: {(comboEffect != null ? comboEffect.EffectName : "null")}]";
         }
     }
 

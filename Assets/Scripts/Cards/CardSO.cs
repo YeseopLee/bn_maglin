@@ -72,7 +72,7 @@ namespace Maglin.Cards
         [SerializeField] private Sprite cardImage;
 
         [Header("효과 및 사운드")]
-        [SerializeField] private GameObject cardEffect;
+        [SerializeField] private VFXEffectSO cardEffect;
         [SerializeField] private AudioClip cardSound;
 
         [Header("조합 및 특수 효과")]
@@ -94,7 +94,7 @@ namespace Maglin.Cards
         public int TargetCount => targetCount;
         public string Description => cardDescription;
         public Sprite Image => cardImage;
-        public GameObject Effect => cardEffect;
+        public VFXEffectSO Effect => cardEffect;
         public AudioClip Sound => cardSound;
         public ComboFailureType FailureType => comboFailureType;
         public int Price => cardPrice;

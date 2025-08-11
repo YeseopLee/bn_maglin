@@ -1,6 +1,7 @@
 using UnityEngine;
 using System;
 using Maglin.Cards;
+using Maglin.Battle;
 
 namespace Maglin.Enemy
 {
@@ -69,6 +70,7 @@ namespace Maglin.Enemy
         // 참조
         private SpriteRenderer spriteRenderer;
         private Animator animator;
+        private MonsterHitEffect hitEffect;
 
         // 초기화 관련
         private bool isInitialized = false;
@@ -158,6 +160,13 @@ namespace Maglin.Enemy
         {
             spriteRenderer = GetComponent<SpriteRenderer>();
             animator = GetComponent<Animator>();
+            hitEffect = GetComponent<MonsterHitEffect>();
+
+            // MonsterHitEffect가 없으면 자동으로 추가
+            if (hitEffect == null)
+            {
+                hitEffect = gameObject.AddComponent<MonsterHitEffect>();
+            }
         }
 
         private void Start()
@@ -234,6 +243,12 @@ namespace Maglin.Enemy
 
             OnDamageTaken?.Invoke(actualDamage, attackerElement);
             OnHealthChanged?.Invoke(currentHealth, MaxHealth);
+
+            // 히트 효과 재생
+            if (hitEffect != null && actualDamage > 0)
+            {
+                hitEffect.PlayHitEffect(actualDamage);
+            }
 
             // 사망 처리
             if (currentHealth <= 0)

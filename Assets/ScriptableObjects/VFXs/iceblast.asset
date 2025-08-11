@@ -10,21 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6bde35d2da019477ba276d94a9d2554d, type: 3}
-  m_Name: New VFX Effect
+  m_Name: iceblast
   m_EditorClassIdentifier: 
-  effectName: FireBall
-  description: 
-  effectPrefab: {fileID: 8378648546881499446, guid: 867c572a5be680d42a042d2349f10143, type: 3}
-  effectDuration: 2
+  effectName: iceblast
+  description: iceblast
+  effectPrefab: {fileID: 3156866507962234106, guid: 645ebd7cef59b7b40b27c29bf3e99cf2, type: 3}
+  effectDuration: 1.5
   autoDestroy: 1
   hitTimings:
-  - delay: 1
+  - delay: 0.1
     isDamageHit: 1
     damageMultiplier: 1
   overrideTargeting: 0
-  customTargetType: 0
-  customTargetCount: 1
+  customTargetType: 4
+  customTargetCount: 2
   positionOffset: {x: 0, y: 0, z: 0}
   rotationOffset: {x: 0, y: 0, z: 0}
-  scale: {x: 1, y: 1, z: 1}
+  scale: {x: 0.2, y: 1, z: 1}
   soundEffect: {fileID: 0}
