@@ -44,7 +44,7 @@ namespace Maglin.Battle
         [SerializeField] private bool useRotationEffect = true;
 
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
         #endregion
 
         #region Events
@@ -213,7 +213,7 @@ namespace Maglin.Battle
         {
             // 나중에 정리할 수 있도록 저장
             fragmentSpritesToCleanup.Add(new List<Sprite>(fragmentSprites));
-            
+
             // 너무 많이 쌓이지 않도록 오래된 것들 정리
             if (fragmentSpritesToCleanup.Count > 10)
             {
@@ -240,7 +240,7 @@ namespace Maglin.Battle
             // 조각 크기 계산 (가로, 세로로 나누기)
             int cols = Mathf.CeilToInt(Mathf.Sqrt(fragmentCount));
             int rows = Mathf.CeilToInt((float)fragmentCount / cols);
-            
+
             float fragmentWidth = spriteWidth / cols;
             float fragmentHeight = spriteHeight / rows;
 
@@ -292,7 +292,7 @@ namespace Maglin.Battle
 
             // UV 오프셋 적용 (조각 위치에 맞게 스프라이트 일부만 보이도록)
             // 주의: 이것은 간단한 구현이며, 실제로는 Material Property Block을 사용하는 것이 좋습니다.
-            
+
             return fragment;
         }
 
@@ -320,15 +320,15 @@ namespace Maglin.Battle
                 // 거리 기반 폭발력 조정 (중심에서 가까운 조각은 덜 날아가도록)
                 float distanceFromCenter = Vector3.Distance(fragment.transform.position, centerPosition);
                 float adjustedForce = explosionForce * (0.1f + distanceFromCenter * 0.5f);
-                
+
                 // 랜덤성 추가로 더 자연스러운 효과
                 float randomFactor = Random.Range(0.2f, 0.4f);
                 adjustedForce *= randomFactor;
 
                 // 목표 위치 계산 (위아래로도 약간 움직이도록)
                 Vector3 randomOffset = new Vector3(
-                    Random.Range(-0.1f, 0.1f), 
-                    Random.Range(-0.1f, 0.1f), 
+                    Random.Range(-0.1f, 0.1f),
+                    Random.Range(-0.1f, 0.1f),
                     0
                 );
                 Vector3 targetPosition = fragment.transform.position + explosionDirection * adjustedForce + randomOffset;
@@ -339,11 +339,11 @@ namespace Maglin.Battle
                 // 1. 이동 애니메이션 - 포물선 궤적으로 자연스러운 움직임
                 // 중력 효과를 포함한 최종 목표 위치
                 Vector3 finalTarget = new Vector3(
-                    targetPosition.x, 
+                    targetPosition.x,
                     targetPosition.y - Random.Range(0.2f, 0.5f), // 아래로 살짝 떨어지도록
                     targetPosition.z
                 );
-                
+
                 // 한 번에 자연스럽게 이동 (멈춤 없이)
                 fragmentTween.Join(fragment.transform.DOMove(finalTarget, fragmentationDuration).SetEase(Ease.OutQuart));
 
@@ -395,7 +395,7 @@ namespace Maglin.Battle
         private IEnumerator CleanupFragmentSpritesDelayed()
         {
             yield return new WaitForSeconds(6.0f); // 애니메이션 완료 후 6초 대기 (충분히 볼 수 있도록)
-            
+
             // 저장된 조각 스프라이트들 정리
             foreach (var spriteList in fragmentSpritesToCleanup)
             {
@@ -445,4 +445,4 @@ namespace Maglin.Battle
 
         #endregion
     }
-} 
+}

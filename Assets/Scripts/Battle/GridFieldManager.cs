@@ -55,7 +55,7 @@ namespace Maglin.Battle
         [SerializeField] private RuntimeGameMapInfo runtimeGameMapInfo;
 
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
         [SerializeField] private bool drawGizmos = true;
 
         // 그리드 위 오브젝트 관리

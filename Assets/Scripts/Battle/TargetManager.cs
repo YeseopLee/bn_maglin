@@ -51,8 +51,8 @@ namespace Maglin.Battle
         [SerializeField] private Vector2Int playerGridPosition = new Vector2Int(0, 0);
 
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
-        
+        [SerializeField] private bool debugMode = false;
+
         [Header("전투 상태")]
         [SerializeField] private bool isBattleReady = false; // 전투 준비 완료 여부
 
@@ -78,7 +78,7 @@ namespace Maglin.Battle
         /// 플레이어 그리드 위치
         /// </summary>
         public Vector2Int PlayerGridPosition => playerGridPosition;
-        
+
         /// <summary>
         /// 전투 준비 완료 여부
         /// </summary>
@@ -117,7 +117,7 @@ namespace Maglin.Battle
             {
                 return;
             }
-            
+
             // 타겟이 없거나 죽었으면 캐시 초기화
             if (currentTarget == null || !currentTarget.IsAlive)
             {
@@ -465,10 +465,10 @@ namespace Maglin.Battle
         public void SetTargetToClosest()
         {
             var aliveEnemies = GetAliveEnemies();
-            
+
             if (debugMode)
                 Debug.Log($"[TargetManager] SetTargetToClosest 호출 - 살아있는 적 수: {aliveEnemies.Count}");
-            
+
             if (aliveEnemies.Count == 0)
             {
                 currentTarget = null;
@@ -528,7 +528,7 @@ namespace Maglin.Battle
                 if (enemy != null)
                 {
                     enemy.OnDeath += OnMonsterDeath;
-                    
+
                     // 현재 타겟이 없으면 이 몬스터를 타겟으로 설정
                     if (currentTarget == null)
                     {
@@ -697,14 +697,14 @@ namespace Maglin.Battle
             }
             currentTarget = null;
         }
-        
+
         /// <summary>
         /// 전투 준비 시작 (모든 마커 비활성화)
         /// </summary>
         public void StartBattleInitialization()
         {
             isBattleReady = false;
-            
+
             // 모든 몬스터의 타겟 마커 비활성화
             foreach (var monsterObj in spawnedMonsters)
             {
@@ -717,26 +717,26 @@ namespace Maglin.Battle
                     }
                 }
             }
-            
+
             if (debugMode)
                 Debug.Log("[TargetManager] 전투 초기화 시작 - 모든 타겟 마커 비활성화");
         }
-        
+
         /// <summary>
         /// 전투 준비 완료 (타겟 시스템 활성화)
         /// </summary>
         public void CompleteBattleInitialization()
         {
             isBattleReady = true;
-            
+
             if (debugMode)
                 Debug.Log($"[TargetManager] 전투 준비 완료 시작 - 스폰된 몬스터 수: {spawnedMonsters.Count}, 현재 타겟: {currentTarget?.EnemyName ?? "없음"}");
-            
+
             // 현재 타겟이 있으면 마커 활성화
             if (currentTarget != null && currentTarget.IsAlive)
             {
                 SetTargetMarkerActive(currentTarget, true);
-                
+
                 // 마커 캐시 및 위치 설정
                 cachedTargetMarker = currentTarget.transform.Find("TargetMarker");
                 if (cachedTargetMarker != null && cachedTargetMarker.gameObject.activeInHierarchy)
@@ -744,7 +744,7 @@ namespace Maglin.Battle
                     UpdateTargetMarkerPosition(cachedTargetMarker, currentTarget);
                     lastTargetPosition = currentTarget.transform.position;
                     markerPositionSet = true;
-                    
+
                     if (debugMode)
                         Debug.Log($"[TargetManager] 기존 타겟 마커 활성화: {currentTarget.EnemyName}");
                 }
@@ -759,9 +759,9 @@ namespace Maglin.Battle
                 // 타겟이 없거나 죽어있으면 가장 가까운 몬스터로 설정
                 if (debugMode)
                     Debug.Log("[TargetManager] 현재 타겟이 없거나 죽어있음, 가장 가까운 몬스터로 설정");
-                    
+
                 SetTargetToClosest();
-                
+
                 if (currentTarget != null)
                 {
                     if (debugMode)
@@ -773,7 +773,7 @@ namespace Maglin.Battle
                         Debug.LogWarning("[TargetManager] 설정할 수 있는 타겟이 없습니다.");
                 }
             }
-            
+
             if (debugMode)
                 Debug.Log($"[TargetManager] 전투 준비 완료 - 타겟 시스템 활성화 (최종 타겟: {currentTarget?.EnemyName ?? "없음"})");
         }

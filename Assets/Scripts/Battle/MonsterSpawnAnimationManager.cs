@@ -43,7 +43,7 @@ namespace Maglin.Battle
         [SerializeField] private bool preserveOriginalColor = true; // 원본 색상 보존
 
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
         #endregion
 
         #region Events
@@ -164,12 +164,12 @@ namespace Maglin.Battle
             while (spawnQueue.Count > 0)
             {
                 GameObject monster = spawnQueue.Dequeue();
-                
+
                 if (monster != null)
                 {
                     // 스폰 애니메이션 실행
                     yield return StartCoroutine(ExecuteSpawnAnimation(monster));
-                    
+
                     spawnedMonstersCount++;
 
                     // 다음 몬스터 스폰까지 대기
@@ -236,7 +236,7 @@ namespace Maglin.Battle
                         // 흰색으로 페이드
                         targetColor = new Color(1f, 1f, 1f, 1f);
                     }
-                    
+
                     spawnSequence.Join(spriteRenderer.DOColor(targetColor, spawnDuration).SetEase(Ease.OutQuad));
                 }
             }
@@ -354,4 +354,4 @@ namespace Maglin.Battle
         }
         #endregion
     }
-} 
+}

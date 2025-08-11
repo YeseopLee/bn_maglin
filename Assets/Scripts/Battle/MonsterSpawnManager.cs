@@ -57,7 +57,7 @@ namespace Maglin.Battle
 
         #region Fields
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
 
         // 스폰된 몬스터들
         private List<GameObject> spawnedMonsters = new List<GameObject>();
@@ -371,7 +371,7 @@ namespace Maglin.Battle
                 {
                     monsterObj.SetActive(false);
                     pendingAnimationMonsters.Add(monsterObj);
-                    
+
                     if (debugMode)
                         Debug.Log($"[MonsterSpawnManager] 더미 테스트 몬스터 애니메이션 대기 리스트에 추가: {position}");
                 }
@@ -381,7 +381,7 @@ namespace Maglin.Battle
                     if (TargetManager.Instance != null)
                     {
                         TargetManager.Instance.AddMonster(monsterObj);
-                        
+
                         // 첫 번째 몬스터라면 타겟으로 설정
                         var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
                         if (enemy != null && TargetManager.Instance.CurrentTarget == null)
@@ -463,7 +463,7 @@ namespace Maglin.Battle
                     // 몬스터를 초기에 비활성화하고 애니메이션 리스트에 추가
                     monsterObj.SetActive(false);
                     pendingAnimationMonsters.Add(monsterObj);
-                    
+
                     if (debugMode)
                         Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 애니메이션 대기 리스트에 추가: {gridPosition}");
                 }
@@ -474,7 +474,7 @@ namespace Maglin.Battle
                     if (TargetManager.Instance != null)
                     {
                         TargetManager.Instance.AddMonster(monsterObj);
-                        
+
                         // 첫 번째 몬스터라면 타겟으로 설정
                         if (TargetManager.Instance.CurrentTarget == null)
                         {
@@ -790,17 +790,18 @@ namespace Maglin.Battle
             if (MonsterDeathAnimationManager.Instance != null)
             {
                 bool animationCompleted = false;
-                
+
                 // 사망 애니메이션 완료 이벤트 구독
-                System.Action<GameObject> onAnimationCompleted = (obj) => {
+                System.Action<GameObject> onAnimationCompleted = (obj) =>
+                {
                     if (obj == monsterObj)
                     {
                         animationCompleted = true;
                     }
                 };
-                
+
                 MonsterDeathAnimationManager.OnDeathAnimationCompleted += onAnimationCompleted;
-                
+
                 // 애니메이션 완료까지 대기 (최대 3초)
                 float waitTime = 0f;
                 while (!animationCompleted && waitTime < 3f)
@@ -808,10 +809,10 @@ namespace Maglin.Battle
                     yield return new WaitForSeconds(0.1f);
                     waitTime += 0.1f;
                 }
-                
+
                 // 이벤트 구독 해제
                 MonsterDeathAnimationManager.OnDeathAnimationCompleted -= onAnimationCompleted;
-                
+
                 if (debugMode)
                     Debug.Log($"[MonsterSpawnManager] {enemy.EnemyName} 사망 애니메이션 대기 완료 (대기시간: {waitTime:F1}초)");
             }
@@ -1144,7 +1145,7 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.LogWarning("[MonsterSpawnManager] MonsterSpawnAnimationManager가 없어 애니메이션 없이 진행");
-                
+
                 // 애니메이션 없이 모든 몬스터 활성화
                 FallbackActivateAllMonsters();
                 return;
@@ -1191,7 +1192,7 @@ namespace Maglin.Battle
                 if (TargetManager.Instance != null)
                 {
                     TargetManager.Instance.AddMonster(monster);
-                    
+
                     // 첫 번째 몬스터라면 타겟으로 설정
                     if (TargetManager.Instance.CurrentTarget == null)
                     {
@@ -1224,7 +1225,7 @@ namespace Maglin.Battle
             if (TargetManager.Instance != null)
             {
                 TargetManager.Instance.ValidateTarget();
-                
+
                 // 타겟이 설정되지 않았다면 가장 가까운 몬스터를 타겟으로 설정
                 if (TargetManager.Instance.CurrentTarget == null)
                 {
@@ -1274,7 +1275,7 @@ namespace Maglin.Battle
             if (TargetManager.Instance != null)
             {
                 TargetManager.Instance.ValidateTarget();
-                
+
                 if (TargetManager.Instance.CurrentTarget == null)
                 {
                     TargetManager.Instance.SetTargetToClosest();

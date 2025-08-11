@@ -106,7 +106,7 @@ namespace Maglin.Battle
 
         #region Private Fields
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
 
         // 생성된 UI 오브젝트들
         private List<GameObject> handCardUIs = new List<GameObject>();
@@ -950,6 +950,24 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log("[BattleUIManager] 조합 슬롯 UI만 정리 완료");
+        }
+
+        /// <summary>
+        /// 조합 슬롯 참조만 정리 (UI는 유지, 애니메이션용)
+        /// </summary>
+        public void ClearComboSlotReferences()
+        {
+            elementSlotCard = null;
+            elementSlotUI = null;
+            active1SlotCard = null;
+            active1SlotUI = null;
+            active2SlotCard = null;
+            active2SlotUI = null;
+
+            UpdateComboUI();
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 조합 슬롯 참조만 정리 완료 (UI 유지)");
         }
 
         /// <summary>

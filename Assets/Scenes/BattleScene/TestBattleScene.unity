@@ -3668,6 +3668,55 @@ Transform:
   - {fileID: 1091663370}
   m_Father: {fileID: 606484262}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &986430281
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 986430283}
+  - component: {fileID: 986430282}
+  m_Layer: 0
+  m_Name: RewardManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &986430282
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 986430281}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cef2c9f23ef8146548491a88bd150a1a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  floorTypeRewards: []
+  cardRewardPool: {fileID: 0}
+  relicRewardPool: {fileID: 0}
+  rewardConfig: {fileID: 11400000, guid: da4fcb9f4762948ad92e4d0c7ac1a1ca, type: 2}
+  debugMode: 1
+--- !u!4 &986430283
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 986430281}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 175.13712, y: 138.24022, z: -2.8380508}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &999280608
 GameObject:
   m_ObjectHideFlags: 0
@@ -3755,6 +3804,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1010060844}
+  - component: {fileID: 1010060845}
   m_Layer: 0
   m_Name: TargetManager
   m_TagString: Untagged
@@ -3777,6 +3827,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1010060845
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1010060843}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b60195a267944985a094003500a5929, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerGridPosition: {x: 0, y: 0}
+  debugMode: 1
+  isBattleReady: 0
 --- !u!1 &1014133939
 GameObject:
   m_ObjectHideFlags: 0
@@ -5420,7 +5485,7 @@ MonoBehaviour:
   testCards: []
   testBattleStage: {fileID: 0}
   useTestMode: 0
-  debugMode: 1
+  debugMode: 0
 --- !u!4 &1098374817
 Transform:
   m_ObjectHideFlags: 0
@@ -10483,6 +10548,58 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2109312635
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2109312637}
+  - component: {fileID: 2109312638}
+  m_Layer: 0
+  m_Name: VFXManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2109312637
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2109312635}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 203.41574, y: 161.91797, z: -3.8603444}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2109312638
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2109312635}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7905005b3ac9d437eabbdcc956d2decd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  vfxParent: {fileID: 323187696}
+  poolSize: 20
+  defaultCleanupDelay: 5
+  battleFieldCenter: {fileID: 323187696}
+  playerPosition: {fileID: 839491110}
+  aboveTargetHeight: 2
+  debugMode: 0
+  showEffectGizmos: 0
 --- !u!1 &2133113873
 GameObject:
   m_ObjectHideFlags: 0
@@ -10841,3 +10958,5 @@ SceneRoots:
   - {fileID: 340597818}
   - {fileID: 1098374817}
   - {fileID: 1010060844}
+  - {fileID: 986430283}
+  - {fileID: 2109312637}

@@ -22,7 +22,7 @@ MonoBehaviour:
   targetCount: 1
   cardDescription: EnergyBall
   cardImage: {fileID: 0}
-  cardEffect: {fileID: 0}
+  cardVFXEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
   cardSound: {fileID: 0}
   comboFailureType: 0
   cardPrice: 0

@@ -319,7 +319,7 @@ namespace Maglin.Cards
 
             // Resources에서 기본 카드들을 찾아 추가
             var defaultCards = Resources.LoadAll<CardSO>("Cards");
-            
+
             if (defaultCards.Length > 0)
             {
                 // 기본적으로 각 카드를 몇 장씩 추가
@@ -368,7 +368,7 @@ namespace Maglin.Cards
 
             // 드로우 비용 초기화
             ResetDrawCosts();
-            
+
             // 초기 드로우 플래그 초기화
             hasPerformedInitialDraw = false;
 
@@ -441,7 +441,7 @@ namespace Maglin.Cards
 
             // 초기 드로우 (Card 인스턴스 기반)
             DrawCards(MaxHandSize, true);
-            
+
             // 초기 드로우 완료 플래그 설정
             hasPerformedInitialDraw = true;
         }
@@ -1243,11 +1243,21 @@ namespace Maglin.Cards
             if (debugMode)
                 Debug.Log($"[CardManager] 턴 시작 - 조합창 카드 {comboSlotCards.Count}장을 임시무덤으로 이동");
 
-            // 조합창 카드들을 임시무덤으로 이동 (Card 인스턴스만 처리)
+            // 조합창 카드들을 손패에서 제거하고 임시무덤으로 이동 (Card 인스턴스만 처리)
             foreach (var card in comboSlotCards)
             {
                 if (card != null)
                 {
+                    // 손패에서 해당 카드 제거 (중복 방지)
+                    if (handCards.Contains(card))
+                    {
+                        handCards.Remove(card);
+
+                        if (debugMode)
+                            Debug.Log($"[CardManager] 조합창 카드 손패에서 제거: {card.CardName}");
+                    }
+
+                    // 임시무덤에 추가
                     tempGraveyard.Add(card);
 
                     if (debugMode)
@@ -1257,6 +1267,9 @@ namespace Maglin.Cards
 
             // 조합창 UI 정리
             BattleUIManager.Instance.ClearComboSlotsUIOnly();
+
+            // 손패 변경 이벤트 발생
+            OnHandCardsChanged?.Invoke(handCards);
         }
 
         /// <summary>
@@ -1272,11 +1285,21 @@ namespace Maglin.Cards
             if (debugMode)
                 Debug.Log($"[CardManager] 턴 종료 - 조합창 카드 {comboSlotCards.Count}장을 임시무덤으로 이동");
 
-            // 조합창 카드들을 임시무덤으로 이동 (Card 인스턴스만 처리)
+            // 조합창 카드들을 손패에서 제거하고 임시무덤으로 이동 (Card 인스턴스만 처리)
             foreach (var card in comboSlotCards)
             {
                 if (card != null)
                 {
+                    // 손패에서 해당 카드 제거 (중복 방지)
+                    if (handCards.Contains(card))
+                    {
+                        handCards.Remove(card);
+
+                        if (debugMode)
+                            Debug.Log($"[CardManager] 조합창 카드 손패에서 제거: {card.CardName}");
+                    }
+
+                    // 임시무덤에 추가
                     tempGraveyard.Add(card);
 
                     if (debugMode)
@@ -1286,6 +1309,9 @@ namespace Maglin.Cards
 
             // 조합창 UI 정리
             BattleUIManager.Instance.ClearComboSlotsUIOnly();
+
+            // 손패 변경 이벤트 발생
+            OnHandCardsChanged?.Invoke(handCards);
         }
 
         /// <summary>
@@ -1358,7 +1384,7 @@ namespace Maglin.Cards
             {
                 int beforeTotal = currentDeck.Count + hand.Count + discardPile.Count;
                 int afterTotal = mainDeck.Count + handCards.Count + tempGraveyard.Count;
-                
+
                 Debug.Log($"[CardManager] 역동기화 전 CardSO 총 카드 수: {beforeTotal} (덱:{currentDeck.Count}, 손패:{hand.Count}, 임시무덤:{discardPile.Count})");
                 Debug.Log($"[CardManager] 역동기화 후 예상 총 카드 수: {afterTotal} (메인덱:{mainDeck.Count}, 손패:{handCards.Count}, 임시무덤:{tempGraveyard.Count})");
             }
@@ -1379,7 +1405,7 @@ namespace Maglin.Cards
             {
                 int finalTotal = currentDeck.Count + hand.Count + discardPile.Count;
                 Debug.Log($"[CardManager] CardSO 시스템 역동기화 완료 - 최종 총 카드 수: {finalTotal} (덱:{currentDeck.Count}, 손패:{hand.Count}, 임시무덤:{discardPile.Count})");
-                
+
                 if (finalTotal != mainDeck.Count + handCards.Count + tempGraveyard.Count)
                 {
                     Debug.LogWarning($"[CardManager] 카드 수 불일치! Card인스턴스: {mainDeck.Count + handCards.Count + tempGraveyard.Count}, CardSO: {finalTotal}");

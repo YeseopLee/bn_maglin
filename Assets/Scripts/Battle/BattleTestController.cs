@@ -22,21 +22,21 @@ namespace Maglin.Battle
     {
         [Header("Battle Data")]
         [SerializeField] private BattleStageSO currentBattleStage;
-        
+
         [Header("Test Data (테스트 모드용)")]
         [SerializeField] private List<CardSO> testCards = new List<CardSO>();
         [SerializeField] private BattleStageSO testBattleStage;
         [SerializeField] private bool useTestMode = false; // 테스트 모드 활성화 여부
 
         [Header("Debug")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
 
         // 전투 상태
         private bool isBattleActive = false;
         private bool isPlayerTurn = true;
         private int currentTurn = 1;
         private bool isInputBlocked = false;
-        
+
         // 현재 층 정보
         private int currentFloor = 1;
         private FloorType currentFloorType = FloorType.Normal;
@@ -53,7 +53,7 @@ namespace Maglin.Battle
             {
                 // 프로덕션 모드: FloorManager 이벤트 구독 후 대기
                 SubscribeToFloorManagerEvents();
-                
+
                 if (debugMode)
                 {
                     Debug.Log("[BattleTestController] 프로덕션 모드 - FloorManager 신호 대기 중");
@@ -65,7 +65,7 @@ namespace Maglin.Battle
                         Debug.Log($"[BattleTestController] 현재 배틀스테이지: {FloorManager.Instance.GetCurrentBattleStage()?.name ?? "null"}");
                     }
                 }
-                
+
                 // 프로덕션 모드에서 FloorManager가 이미 층을 시작했는지 확인
                 StartCoroutine(CheckFloorManagerState());
             }
@@ -92,7 +92,7 @@ namespace Maglin.Battle
         {
             // FloorManager 이벤트 구독 해제
             UnsubscribeFromFloorManagerEvents();
-            
+
             // FieldManager 이벤트 구독 해제
             if (FieldManager.Instance != null)
             {
@@ -897,8 +897,26 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[BattleTestController] 플레이어 턴 종료 (중복 실행 방지)");
 
-            // BattleUIManager에서 조합 슬롯 카드들 가져오기
+            // BattleUIManager에서 조합 슬롯 카드들과 UI들을 미리 가져오기 (애니메이션용)
             var comboCards = BattleUIManager.Instance?.GetComboSlotCards() ?? new List<Card>();
+            var comboSlotCardUIs = new List<GameObject>();
+
+            if (BattleUIManager.Instance != null)
+            {
+                var elementSlotUI = BattleUIManager.Instance.GetElementSlotUI();
+                var active1SlotUI = BattleUIManager.Instance.GetActive1SlotUI();
+                var active2SlotUI = BattleUIManager.Instance.GetActive2SlotUI();
+
+                if (elementSlotUI != null) comboSlotCardUIs.Add(elementSlotUI);
+                if (active1SlotUI != null) comboSlotCardUIs.Add(active1SlotUI);
+                if (active2SlotUI != null) comboSlotCardUIs.Add(active2SlotUI);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 애니메이션용 UI 미리 수집: {comboSlotCardUIs.Count}개");
+
+                // 즉시 슬롯 변수들을 null로 만들어서 턴 종료 시 중복 처리 방지
+                BattleUIManager.Instance.ClearComboSlotReferences();
+            }
 
             if (comboCards.Count == 0)
             {
@@ -982,11 +1000,8 @@ namespace Maglin.Battle
                 return;
             }
 
-            // 조합 완료 후 즉시 조합창 정리 (중요: 다음 조합에 영향 방지)
-            BattleUIManager.Instance?.ClearComboSlotsUIOnly();
-
-            // 조합 완료 후 카드 무덤 애니메이션 및 슬롯 정리
-            StartCoroutine(ProcessCardToGraveAnimation(comboCards, result));
+            // 조합 완료 후 카드 무덤 애니메이션 먼저 실행 (애니메이션 후 슬롯 정리)
+            StartCoroutine(ProcessCardToGraveAnimation(comboCards, comboSlotCardUIs, result));
 
             if (debugMode)
                 Debug.Log("[BattleTestController] ========== ExecuteCombo 완료 ==========");
@@ -1006,7 +1021,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 사용된 카드들을 무덤으로 보내는 애니메이션 처리
         /// </summary>
-        private IEnumerator ProcessCardToGraveAnimation(List<Card> usedCards, ComboExecutionResult result)
+        private IEnumerator ProcessCardToGraveAnimation(List<Card> usedCards, List<GameObject> comboSlotCardUIs, ComboExecutionResult result)
         {
             if (debugMode)
                 Debug.Log($"[BattleTestController] ProcessCardToGraveAnimation 시작: {usedCards?.Count ?? 0}장");
@@ -1015,33 +1030,26 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.Log("[BattleTestController] 사용된 카드가 없어 무덤 애니메이션 건너뜀");
+
+                // 애니메이션이 없어도 슬롯 정리는 해야 함
+                BattleUIManager.Instance?.ClearComboSlotsUIOnly();
+
+                // 플레이어 턴 재시작
+                if (!CheckBattleEnd())
+                {
+                    isPlayerTurn = true;
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 플레이어 턴 재시작 (사용된 카드 없음)");
+                }
                 yield break;
             }
 
-            // 조합창에서 카드 UI들 가져오기
-            var comboSlotCardUIs = new List<GameObject>();
-            if (BattleUIManager.Instance != null)
-            {
-                // 조합창의 카드 UI들 수집
-                var elementSlotUI = BattleUIManager.Instance.GetElementSlotUI();
-                var active1SlotUI = BattleUIManager.Instance.GetActive1SlotUI();
-                var active2SlotUI = BattleUIManager.Instance.GetActive2SlotUI();
-
-                if (debugMode)
-                {
-                    Debug.Log($"[BattleTestController] 슬롯 UI 확인 - Element: {(elementSlotUI != null ? "있음" : "없음")}, Active1: {(active1SlotUI != null ? "있음" : "없음")}, Active2: {(active2SlotUI != null ? "있음" : "없음")}");
-                }
-
-                if (elementSlotUI != null) comboSlotCardUIs.Add(elementSlotUI);
-                if (active1SlotUI != null) comboSlotCardUIs.Add(active1SlotUI);
-                if (active2SlotUI != null) comboSlotCardUIs.Add(active2SlotUI);
-
-                if (debugMode)
-                    Debug.Log($"[BattleTestController] 수집된 조합창 UI: {comboSlotCardUIs.Count}개");
-            }
+            // 미리 수집된 조합창 카드 UI들 사용
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 전달받은 조합창 UI: {comboSlotCardUIs?.Count ?? 0}개");
 
             // 무덤 애니메이션 실행
-            if (CardDrawAnimationManager.Instance != null && comboSlotCardUIs.Count > 0)
+            if (CardDrawAnimationManager.Instance != null && comboSlotCardUIs != null && comboSlotCardUIs.Count > 0)
             {
                 if (debugMode)
                     Debug.Log($"[BattleTestController] 카드 무덤 애니메이션 시작: {usedCards.Count}장");
@@ -1611,7 +1619,7 @@ namespace Maglin.Battle
         {
             // 잠시 대기 후 FloorManager 상태 확인
             yield return new WaitForSeconds(1f);
-            
+
             if (FloorManager.Instance != null)
             {
                 if (debugMode)
@@ -1621,13 +1629,13 @@ namespace Maglin.Battle
                     Debug.Log($"  - 현재 층 타입: {FloorManager.Instance.CurrentFloorType}");
                     Debug.Log($"  - 현재 배틀스테이지: {FloorManager.Instance.GetCurrentBattleStage()?.name ?? "null"}");
                 }
-                
+
                 // FloorManager가 이미 층을 시작했다면 강제로 전투 시작
                 if (FloorManager.Instance.CurrentFloor > 0)
                 {
                     if (debugMode)
                         Debug.Log("[BattleTestController] FloorManager가 이미 층을 시작함 - 강제 전투 시작");
-                    
+
                     // 현재 층 정보로 전투 시작
                     OnFloorStarted(new FloorInfo(
                         FloorManager.Instance.CurrentFloor,
@@ -1656,7 +1664,7 @@ namespace Maglin.Battle
             {
                 // 새 게임용 덱 초기화 (기본 스타터 카드로)
                 CardManager.Instance.InitializeDeckForNewGame();
-                
+
                 // 카드 인스턴스 시스템 초기화
                 CardManager.Instance.InitializeCardInstanceSystem();
 
@@ -1666,7 +1674,7 @@ namespace Maglin.Battle
                     // CardManager의 덱/손패 상태 확인 (public 메서드 사용)
                     var deckField = typeof(CardManager).GetField("currentDeck", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     var handField = typeof(CardManager).GetField("hand", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    
+
                     if (deckField != null && handField != null)
                     {
                         var deck = deckField.GetValue(CardManager.Instance) as System.Collections.Generic.List<CardSO>;
@@ -1686,7 +1694,7 @@ namespace Maglin.Battle
             }
 
             // 추가 프로덕션 초기화 로직이 필요하면 여기에 추가
-            
+
             if (debugMode)
                 Debug.Log("[BattleTestController] 프로덕션 모드 전용 초기화 완료");
         }
@@ -1767,7 +1775,7 @@ namespace Maglin.Battle
         {
             // 전체 씬에서 해당 이름의 GameObject를 찾기
             var allObjects = FindObjectsOfType<GameObject>();
-            
+
             foreach (var obj in allObjects)
             {
                 if (obj.name == componentName)
@@ -1784,7 +1792,7 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.LogWarning($"[BattleTestController] UI 컴포넌트를 찾을 수 없음: {componentName} ({typeof(T).Name})");
-            
+
             return null;
         }
 
@@ -1862,7 +1870,7 @@ namespace Maglin.Battle
             if (BattleUIManager.Instance != null)
             {
                 BattleUIManager.Instance.OnFieldChanged(newField, previousField);
-                
+
                 if (debugMode)
                     Debug.Log("[BattleTestController] BattleUIManager에 필드 변경 이벤트 전달 완료");
             }
@@ -1887,7 +1895,7 @@ namespace Maglin.Battle
             if (BattleUIManager.Instance != null)
             {
                 BattleUIManager.Instance.OnFieldEffectApplied(fieldEffect);
-                
+
                 if (debugMode)
                     Debug.Log("[BattleTestController] BattleUIManager에 필드 효과 적용 이벤트 전달 완료");
             }
@@ -1951,14 +1959,14 @@ namespace Maglin.Battle
             if (EventSystem.current != null)
             {
                 EventSystem.current.enabled = interactable;
-                
+
                 if (debugMode)
                     Debug.Log($"[BattleTestController] EventSystem.enabled = {interactable} 설정 완료");
             }
             else
             {
                 Debug.LogError("[BattleTestController] EventSystem.current가 null입니다!");
-                
+
                 // EventSystem을 찾아서 활성화 시도
                 var eventSystem = FindObjectOfType<EventSystem>();
                 if (eventSystem != null)
@@ -1973,7 +1981,7 @@ namespace Maglin.Battle
             var cardAreas = FindObjectsOfType<GraphicRaycaster>();
             if (debugMode)
                 Debug.Log($"[BattleTestController] GraphicRaycaster 개수: {cardAreas.Length}");
-            
+
             foreach (var area in cardAreas)
             {
                 area.enabled = interactable;
@@ -1983,7 +1991,7 @@ namespace Maglin.Battle
             var buttons = FindObjectsOfType<Button>();
             if (debugMode)
                 Debug.Log($"[BattleTestController] Button 개수: {buttons.Length}");
-                
+
             foreach (var button in buttons)
             {
                 button.interactable = interactable;
