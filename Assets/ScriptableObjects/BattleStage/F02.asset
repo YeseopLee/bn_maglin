@@ -16,13 +16,8 @@ MonoBehaviour:
   stageType: 0
   stageDescription: 2floor
   availableBattles:
-  - battleData: {fileID: 11400000, guid: a04d41da3094d4652979a72820083345, type: 2}
-    spawnWeight: 0.01
-    minFloor: 2
-    maxFloor: 2
-    isUnique: 0
   - battleData: {fileID: 11400000, guid: ed744df8910e2467787590218d47100c, type: 2}
-    spawnWeight: 0.99
+    spawnWeight: 1
     minFloor: 2
     maxFloor: 2
     isUnique: 0

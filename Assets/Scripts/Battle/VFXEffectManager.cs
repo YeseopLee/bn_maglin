@@ -2,8 +2,10 @@ using UnityEngine;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using Maglin.Cards;
 using Maglin.Enemy;
+using Maglin.Player;
 
 namespace Maglin.Battle
 {
@@ -98,7 +100,7 @@ namespace Maglin.Battle
 
         #region Fields
         [Header("설정")]
-        [SerializeField] private bool debugMode = false;
+        [SerializeField] private bool debugMode = true;
         [SerializeField] private Transform vfxParent; // VFX 오브젝트들의 부모 Transform
 
         [Header("레이어 설정")]
@@ -183,6 +185,15 @@ namespace Maglin.Battle
             // 타겟 결정
             Transform[] targets = DetermineTargets(card, vfxData, specificTargets);
 
+            // PlayerFrontLine: ShowVFXPerTarget이 꺼진 경우에만 앞칸 고정 위치 1회 재생
+            var targetTypeForVfx = vfxData.GetTargetType(card.CardData.Target);
+            if (targetTypeForVfx == TargetType.PlayerFrontLine && !card.CardData.ShowVFXPerTarget)
+            {
+                Vector3 anchor = GetPlayerFrontAnchorWorldPosition();
+                PlayVFXAtPosition(vfxData, anchor, card);
+                return;
+            }
+
             if (targets == null || targets.Length == 0)
             {
                 if (debugMode)
@@ -190,8 +201,43 @@ namespace Maglin.Battle
                 return;
             }
 
-            // VFX 인스턴스 생성 및 실행
-            CreateAndPlayVFX(vfxData, targets, card);
+            // ChainFrontHits는 히트마다 현재 앞 적 위치에 임팩트 스폰 방식으로 처리
+            var ttype = vfxData.GetTargetType(card.CardData.Target);
+            if (ttype == TargetType.ChainFrontHits)
+            {
+                // 독립 히트 스케줄: 각 히트 타이밍마다 현재 앞 적 위치에서 별도의 VFX를 스폰하고, 그 시점에 데미지를 1회 적용
+                var timings = vfxData.HasValidHitTimings ? vfxData.HitTimings : null;
+                int plannedHits = Mathf.Min(card.CardData.TargetCount, timings != null ? timings.Length : 0);
+                for (int i = 0; i < plannedHits; i++)
+                {
+                    StartCoroutine(ExecuteChainFrontHitAfterDelay(timings[i].Delay, timings[i], card, vfxData));
+                }
+                return;
+            }
+
+            // VFX 인스턴스 생성 및 실행 (일반)
+            // 카드 옵션에 따라 타겟마다 하나씩 vs 대표 위치 하나만
+            if (card.CardData.ShowVFXPerTarget)
+            {
+                CreateAndPlayVFX(vfxData, targets, card);
+            }
+            else
+            {
+                Transform rep = null;
+                if (targets != null && targets.Length > 0)
+                {
+                    rep = targets[0];
+                }
+                else if (targetManager != null && targetManager.IsTargetValid())
+                {
+                    rep = targetManager.CurrentTarget.transform;
+                }
+
+                if (rep != null)
+                {
+                    CreateAndPlayVFX(vfxData, new Transform[] { rep }, card);
+                }
+            }
         }
 
         /// <summary>
@@ -292,6 +338,17 @@ namespace Maglin.Battle
                     }
                     break;
 
+                case TargetType.AllIncludingSelf:
+                    // 모든 적 + 플레이어
+                    foreach (var enemy in FindObjectsOfType<Enemy.Enemy>())
+                    {
+                        if (enemy.CurrentState != EnemyState.Dead)
+                            targets.Add(enemy.transform);
+                    }
+                    var playerInc = FindObjectOfType<Maglin.Player.PlayerManager>();
+                    if (playerInc != null) targets.Add(playerInc.transform);
+                    break;
+
                 case TargetType.Self:
                     var player = FindObjectOfType<Maglin.Player.PlayerManager>();
                     if (player != null)
@@ -303,6 +360,31 @@ namespace Maglin.Battle
                 case TargetType.FrontN:
                 case TargetType.BackN:
                     targets.AddRange(GetPositionalTargets(targetType, targetCount));
+                    break;
+
+                case TargetType.ChainFrontHits:
+                    // 가장 앞의 적 1명만 타겟으로 VFX 생성 (히트마다 데미지는 별도 처리)
+                    targets.AddRange(GetPositionalTargets(TargetType.FrontN, 1));
+                    break;
+
+                case TargetType.PlayerFrontLine:
+                    // 플레이어 앞 range칸 내 모든 적
+                    targets.AddRange(GetLineTargetsFromPlayer(targetCount));
+                    break;
+
+                case TargetType.TargetFrontStrip:
+                    // 타겟 포함 왼쪽으로 range칸
+                    targets.AddRange(GetStripFromTarget(includeFront: true, range: targetCount));
+                    break;
+
+                case TargetType.TargetBackStrip:
+                    // 타겟 포함 오른쪽으로 range칸
+                    targets.AddRange(GetStripFromTarget(includeFront: false, range: targetCount));
+                    break;
+
+                case TargetType.PullFrontmostForward:
+                    // 가장 앞의 적 1명 기준 VFX (이동 연출용)
+                    targets.AddRange(GetPositionalTargets(TargetType.FrontN, 1));
                     break;
             }
 
@@ -347,38 +429,94 @@ namespace Maglin.Battle
         private Transform[] GetPositionalTargets(TargetType targetType, int targetCount)
         {
             var targets = new List<Transform>();
-            var allEnemies = FindObjectsOfType<Enemy.Enemy>();
+            var allEnemies = FindObjectsOfType<Enemy.Enemy>()
+                .Where(e => e.CurrentState != EnemyState.Dead)
+                .ToList();
 
-            // 위치 순으로 정렬 (X 좌표 기준)
-            var sortedEnemies = new List<Enemy.Enemy>(allEnemies);
-            sortedEnemies.Sort((a, b) => a.transform.position.x.CompareTo(b.transform.position.x));
+            // 1D 그리드 기준: 플레이어 X보다 큰 적만 고려
+            int px = targetManager != null ? targetManager.PlayerGridPosition.x : 0;
+            var frontList = allEnemies
+                .Where(e => e.GridPosition.x > px)
+                .OrderBy(e => e.GridPosition.x - px)
+                .ToList();
 
             switch (targetType)
             {
                 case TargetType.FrontN:
-                    // 앞의 N명 (왼쪽부터)
-                    for (int i = 0; i < Mathf.Min(targetCount, sortedEnemies.Count); i++)
+                    for (int i = 0; i < Mathf.Min(targetCount, frontList.Count); i++)
                     {
-                        if (sortedEnemies[i].CurrentState != EnemyState.Dead)
-                        {
-                            targets.Add(sortedEnemies[i].transform);
-                        }
+                        targets.Add(frontList[i].transform);
                     }
                     break;
 
                 case TargetType.BackN:
-                    // 뒤의 N명 (오른쪽부터)
-                    for (int i = sortedEnemies.Count - 1; i >= Mathf.Max(0, sortedEnemies.Count - targetCount); i--)
-                    {
-                        if (sortedEnemies[i].CurrentState != EnemyState.Dead)
-                        {
-                            targets.Add(sortedEnemies[i].transform);
-                        }
-                    }
+                    // 뒤의 N명 (멀리 있는 순서)
+                    var backList = frontList.OrderByDescending(e => e.GridPosition.x - px).ToList();
+                    for (int i = 0; i < Mathf.Min(targetCount, backList.Count); i++)
+                        targets.Add(backList[i].transform);
                     break;
             }
 
             return targets.ToArray();
+        }
+
+        private Vector3 GetPlayerFrontAnchorWorldPosition()
+        {
+            // 기준: 플레이어 Transform + (1, 0) 오프셋 (셀 크기 1 가정)
+            var player = FindObjectOfType<PlayerManager>();
+            if (player != null)
+            {
+                var pos = player.transform.position;
+                return new Vector3(pos.x + 1f, pos.y, pos.z);
+            }
+
+            // 폴백: (0,0) 기준 앞칸
+            return new Vector3(1f, 0f, 0f);
+        }
+
+        // 플레이어 앞 라인 범위 내 적 타겟
+        private IEnumerable<Transform> GetLineTargetsFromPlayer(int range)
+        {
+            var result = new List<Transform>();
+            int px = targetManager != null ? targetManager.PlayerGridPosition.x : 0;
+            foreach (var enemy in FindObjectsOfType<Enemy.Enemy>())
+            {
+                if (enemy.CurrentState == EnemyState.Dead) continue;
+                if (enemy.GridPosition.x > px && enemy.GridPosition.x <= px + range)
+                    result.Add(enemy.transform);
+            }
+            return result;
+        }
+
+        // 타겟 기준 스트립 (왼쪽/오른쪽 포함)
+        private IEnumerable<Transform> GetStripFromTarget(bool includeFront, int range)
+        {
+            var result = new List<Transform>();
+            if (targetManager == null || !targetManager.IsTargetValid()) return result;
+
+            int tx = targetManager.CurrentTarget.GridPosition.x;
+            int px = targetManager.PlayerGridPosition.x;
+
+            int minX, maxX;
+            if (includeFront)
+            {
+                minX = Mathf.Max(px + 1, tx - (range - 1));
+                maxX = tx;
+            }
+            else
+            {
+                minX = tx;
+                maxX = tx + (range - 1);
+            }
+
+            foreach (var enemy in FindObjectsOfType<Enemy.Enemy>())
+            {
+                if (enemy.CurrentState == EnemyState.Dead) continue;
+                if (enemy.GridPosition.x >= minX && enemy.GridPosition.x <= maxX)
+                    result.Add(enemy.transform);
+            }
+
+            return result;
         }
 
         /// <summary>
@@ -442,6 +580,8 @@ namespace Maglin.Battle
                     continue;
                 }
 
+                // 체인형은 독립 스폰 방식으로 처리하므로 여기서 리타겟하지 않음
+
                 // 히트 타이밍 처리
                 ProcessHitTimings(vfxInstance);
             }
@@ -483,6 +623,14 @@ namespace Maglin.Battle
         /// </summary>
         private void ExecuteHit(VFXInstance vfxInstance, HitTiming hitTiming)
         {
+            // 체인형: 독립 스케줄 방식으로 처리하므로 여기서는 스킵
+            var cardData = vfxInstance.sourceCard?.CardData;
+            if (cardData != null && vfxInstance.effectData != null)
+            {
+                var tType = vfxInstance.effectData.GetTargetType(cardData.Target);
+                if (tType == TargetType.ChainFrontHits) return;
+            }
+
             var hitEventArgs = new VFXHitEventArgs(
                 vfxInstance.sourceCard,
                 vfxInstance.targets,
@@ -491,6 +639,53 @@ namespace Maglin.Battle
             );
 
             OnVFXHit?.Invoke(hitEventArgs);
+        }
+
+        private Transform GetFrontEnemyTransform()
+        {
+            if (targetManager == null) return null;
+            int px = targetManager.PlayerGridPosition.x;
+            Enemy.Enemy front = FindObjectsOfType<Enemy.Enemy>()
+                .Where(e => e.CurrentState != EnemyState.Dead && e.GridPosition.x > px)
+                .OrderBy(e => e.GridPosition.x - px)
+                .FirstOrDefault();
+            return front != null ? front.transform : null;
+        }
+
+        private IEnumerator ExecuteChainFrontHitAfterDelay(float delay, HitTiming timing, Card sourceCard, VFXEffectSO vfxData)
+        {
+            if (delay > 0f) yield return new WaitForSeconds(delay);
+
+            // 현재 가장 앞 적 취득
+            Transform front = GetFrontEnemyTransform();
+            if (front == null) yield break;
+
+            // 즉시 임팩트 VFX 스폰 (독립 오브젝트)
+            Vector3 pos = front.position + vfxData.PositionOffset;
+            Quaternion rot = Quaternion.Euler(vfxData.RotationOffset);
+            GameObject vfxObject = Instantiate(vfxData.EffectPrefab, pos, rot, vfxParent);
+            vfxObject.transform.localScale = vfxData.Scale;
+            SetVFXLayer(vfxObject);
+            if (vfxData.SoundEffect != null)
+            {
+                PlayVFXSound(vfxData.SoundEffect, pos);
+            }
+            if (vfxData.AutoDestroy)
+            {
+                Destroy(vfxObject, vfxData.EffectDuration);
+            }
+
+            // VFX 자체의 첫 히트 타이밍에 맞춰 데미지 발생
+            float innerDelay = 0f;
+            if (vfxData.HasValidHitTimings && vfxData.HitTimings.Length > 0)
+            {
+                innerDelay = vfxData.HitTimings[0].Delay;
+            }
+            if (innerDelay > 0f) yield return new WaitForSeconds(innerDelay);
+
+            // 데미지 이벤트(컨트롤러에서 처리)
+            var hitArgs = new VFXHitEventArgs(sourceCard, new Transform[] { front }, timing, vfxData);
+            OnVFXHit?.Invoke(hitArgs);
         }
 
         /// <summary>
@@ -578,3 +773,5 @@ namespace Maglin.Battle
         #endregion
     }
 }
+
+

@@ -29,7 +29,7 @@ namespace Maglin.Battle
         [SerializeField] private bool useTestMode = false; // 테스트 모드 활성화 여부
 
         [Header("Debug")]
-        [SerializeField] private bool debugMode = false;
+        [SerializeField] private bool debugMode = true;
 
         // 전투 상태
         private bool isBattleActive = false;
@@ -1179,20 +1179,57 @@ namespace Maglin.Battle
         /// </summary>
         private void ApplyCardEffectWithoutVFX(CardSO cardData)
         {
-            // 데미지 처리 (필드 보너스 포함)
-            if (cardData.BaseDamage > 0)
-            {
-                int finalDamage = CalculateFinalDamage(cardData.BaseDamage, cardData.Element);
+            // 데미지/이동 처리 (필드 보너스 포함)
+            int finalDamage = CalculateFinalDamage(cardData.BaseDamage, cardData.Element);
 
-                switch (cardData.Target)
-                {
-                    case TargetType.SingleEnemy:
+            switch (cardData.Target)
+            {
+                case TargetType.SingleEnemy:
+                    if (cardData.BaseDamage > 0)
                         TargetManager.Instance?.DamageTarget(finalDamage);
-                        break;
-                    case TargetType.AllEnemies:
+                    break;
+                case TargetType.AllEnemies:
+                    if (cardData.BaseDamage > 0)
                         TargetManager.Instance?.DamageAllEnemies(finalDamage);
-                        break;
-                }
+                    break;
+                case TargetType.AllIncludingSelf:
+                    if (cardData.BaseDamage > 0)
+                    {
+                        TargetManager.Instance?.DamageAllEnemies(finalDamage);
+                        PlayerManager.Instance?.TakeDamage(finalDamage);
+                    }
+                    break;
+                case TargetType.FrontN:
+                    if (cardData.BaseDamage > 0)
+                        TargetManager.Instance?.DamageFrontN(cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.BackN:
+                    if (cardData.BaseDamage > 0)
+                        TargetManager.Instance?.DamageBackN(cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.ChainFrontHits:
+                    if (cardData.BaseDamage > 0)
+                        TargetManager.Instance?.ChainHitsFromFront(cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.PullFrontmostForward:
+                    TargetManager.Instance?.PullFrontmostForward(cardData.TargetCount);
+                    break;
+                case TargetType.PlayerFrontLine:
+                    if (cardData.BaseDamage > 0)
+                        TargetManager.Instance?.DamagePlayerFrontLine(cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.TargetFrontStrip:
+                    if (cardData.BaseDamage > 0 && TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                        TargetManager.Instance.DamageTargetFrontStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.TargetBackStrip:
+                    if (cardData.BaseDamage > 0 && TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                        TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.Self:
+                    if (cardData.BaseDamage > 0)
+                        PlayerManager.Instance?.TakeDamage(finalDamage);
+                    break;
             }
 
             // 힐 처리
@@ -1283,8 +1320,44 @@ namespace Maglin.Battle
                 // 히트 타이밍 배율 적용
                 finalDamage = Mathf.RoundToInt(finalDamage * hitTiming.DamageMultiplier);
 
-                // 타겟별 데미지 적용
-                ApplyVFXDamageToTargets(cardData, hitArgs.targets, finalDamage);
+                // 타겟별 데미지 적용 (타입별로 TargetManager 직접 호출)
+                switch (cardData.Target)
+                {
+                    case TargetType.SingleEnemy:
+                        TargetManager.Instance?.DamageTarget(finalDamage);
+                        break;
+                    case TargetType.AllEnemies:
+                        TargetManager.Instance?.DamageAllEnemies(finalDamage);
+                        break;
+                    case TargetType.AllIncludingSelf:
+                        TargetManager.Instance?.DamageAllEnemies(finalDamage);
+                        PlayerManager.Instance?.TakeDamage(finalDamage);
+                        break;
+                    case TargetType.FrontN:
+                        TargetManager.Instance?.DamageFrontN(cardData.TargetCount, finalDamage);
+                        break;
+                    case TargetType.BackN:
+                        TargetManager.Instance?.DamageBackN(cardData.TargetCount, finalDamage);
+                        break;
+                    case TargetType.ChainFrontHits:
+                        // 독립 스케줄 방식: VFXEffectManager 측에서 OnVFXHit를 각 히트 타이밍에 발생시키므로
+                        // 여기서는 별도 처리하지 않음 (중복 데미지 방지)
+                        break;
+                    case TargetType.PlayerFrontLine:
+                        TargetManager.Instance?.DamagePlayerFrontLine(cardData.TargetCount, finalDamage);
+                        break;
+                    case TargetType.TargetFrontStrip:
+                        if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                            TargetManager.Instance.DamageTargetFrontStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                        break;
+                    case TargetType.TargetBackStrip:
+                        if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                            TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                        break;
+                    case TargetType.Self:
+                        PlayerManager.Instance?.TakeDamage(finalDamage);
+                        break;
+                }
 
                 if (debugMode)
                     Debug.Log($"[BattleTestController] VFX 데미지 적용: {finalDamage} (기본: {baseDamage}, 배율: {hitTiming.DamageMultiplier})");
@@ -1314,24 +1387,17 @@ namespace Maglin.Battle
             switch (cardData.Target)
             {
                 case TargetType.SingleEnemy:
+                    // VFX 타겟 배열 대신 현재 타겟 기준으로 처리
+                    TargetManager.Instance?.DamageTarget(finalDamage);
+                    break;
                 case TargetType.AllEnemies:
+                    TargetManager.Instance?.DamageAllEnemies(finalDamage);
+                    break;
                 case TargetType.FrontN:
+                    TargetManager.Instance?.DamageFrontN(cardData.TargetCount, finalDamage);
+                    break;
                 case TargetType.BackN:
-                    // 적 대상 데미지
-                    foreach (var target in targets)
-                    {
-                        if (target != null)
-                        {
-                            var enemy = target.GetComponent<Maglin.Enemy.Enemy>();
-                            if (enemy != null && enemy.CurrentState != EnemyState.Dead)
-                            {
-                                enemy.TakeDamage(finalDamage);
-
-                                if (debugMode)
-                                    Debug.Log($"[BattleTestController] {enemy.EnemyData.EnemyName}에게 VFX 데미지: {finalDamage}");
-                            }
-                        }
-                    }
+                    TargetManager.Instance?.DamageBackN(cardData.TargetCount, finalDamage);
                     break;
 
                 case TargetType.Self:
@@ -1346,28 +1412,27 @@ namespace Maglin.Battle
                     break;
 
                 case TargetType.AllIncludingSelf:
-                    // 모든 적과 플레이어에게 데미지
-                    foreach (var target in targets)
-                    {
-                        if (target != null)
-                        {
-                            var enemy = target.GetComponent<Maglin.Enemy.Enemy>();
-                            if (enemy != null && enemy.CurrentState != EnemyState.Dead)
-                            {
-                                enemy.TakeDamage(finalDamage);
+                    TargetManager.Instance?.DamageAllEnemies(finalDamage);
+                    PlayerManager.Instance?.TakeDamage(finalDamage);
+                    break;
 
-                                if (debugMode)
-                                    Debug.Log($"[BattleTestController] {enemy.EnemyData.EnemyName}에게 VFX 데미지: {finalDamage}");
-                            }
-                            else if (target.GetComponent<Maglin.Player.PlayerManager>() != null)
-                            {
-                                PlayerManager.Instance?.TakeDamage(finalDamage);
-
-                                if (debugMode)
-                                    Debug.Log($"[BattleTestController] 플레이어에게 VFX 데미지: {finalDamage}");
-                            }
-                        }
-                    }
+                case TargetType.ChainFrontHits:
+                    TargetManager.Instance?.ChainHitsFromFront(cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.PullFrontmostForward:
+                    // 위치만 이동, 데미지 없음
+                    TargetManager.Instance?.PullFrontmostForward(cardData.TargetCount);
+                    break;
+                case TargetType.PlayerFrontLine:
+                    TargetManager.Instance?.DamagePlayerFrontLine(cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.TargetFrontStrip:
+                    if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                        TargetManager.Instance.DamageTargetFrontStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.TargetBackStrip:
+                    if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                        TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
                     break;
             }
         }

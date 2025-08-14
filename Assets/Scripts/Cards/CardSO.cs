@@ -34,12 +34,19 @@ namespace Maglin.Cards
     /// </summary>
     public enum TargetType
     {
-        SingleEnemy,        // 적 1인
-        Self,              // 본인(플레이어)
-        AllEnemies,        // 적 전체
-        AllIncludingSelf,  // 나 포함 적 전체
-        FrontN,            // 앞의 N명
-        BackN              // 뒤의 N명
+        SingleEnemy,        // 적 1인 (타겟 마커 기반)
+        Self,               // 본인(플레이어)
+        AllEnemies,         // 적 전체 (타겟 마커 무관)
+        AllIncludingSelf,   // 나 포함 적 전체 (타겟 마커 무관)
+        FrontN,             // 앞의 N명 (플레이어로부터 가까운 순 N명, 타겟 마커 무관)
+        BackN,              // 뒤의 N명 (플레이어로부터 먼 순 N명, 타겟 마커 무관)
+
+        // === 추가 타입 (기존 값 뒤에만 추가: Unity 직렬화 호환) ===
+        ChainFrontHits,     // 가장 앞 몬스터부터 뒤로 targetCount회 연속 타격 (남는 횟수는 다음 몬스터로)
+        PullFrontmostForward, // 가장 앞 몬스터를 플레이어 쪽으로 targetCount칸 강제 전진
+        PlayerFrontLine,    // 플레이어 앞 targetCount칸 라인(세로) 범위 공격 (같은 X, +Y 방향)
+        TargetFrontStrip,   // 타겟 포함 플레이어쪽으로 targetCount칸 세로 스트립 공격 (타겟 마커 기반)
+        TargetBackStrip     // 타겟 포함 플레이어 반대쪽으로 targetCount칸 세로 스트립 공격 (타겟 마커 기반)
     }
 
     /// <summary>
@@ -74,6 +81,7 @@ namespace Maglin.Cards
         [Header("효과 및 사운드")]
         [SerializeField] private VFXEffectSO cardEffect;
         [SerializeField] private AudioClip cardSound;
+        [SerializeField] private bool showVFXPerTarget = true; // 여러 타겟일 때 VFX를 각 타겟마다 보여줄지 여부
 
         [Header("조합 및 특수 효과")]
         [SerializeField] private ComboFailureType comboFailureType;
@@ -96,6 +104,7 @@ namespace Maglin.Cards
         public Sprite Image => cardImage;
         public VFXEffectSO Effect => cardEffect;
         public AudioClip Sound => cardSound;
+        public bool ShowVFXPerTarget => showVFXPerTarget;
         public ComboFailureType FailureType => comboFailureType;
         public int Price => cardPrice;
         public FieldEffectSO FieldEffect => fieldEffectToApply;

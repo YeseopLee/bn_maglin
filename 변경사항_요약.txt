@@ -1,0 +1,23 @@
+[변경 파일]
+- Assets/Scripts/Cards/CardSO.cs
+- Assets/Scripts/Battle/TargetManager.cs
+- Assets/Scripts/Battle/BattleTestController.cs
+
+[주요 변경]
+- TargetType 확장:
+  ChainFrontHits, PullFrontmostForward, PlayerFrontLine,
+  TargetFrontStrip, TargetBackStrip 추가
+- TargetManager에 처리 API 추가:
+  DamageFrontN, DamageBackN, ChainHitsFromFront,
+  PullFrontmostForward, DamagePlayerFrontLine,
+  DamageTargetFrontStrip, DamageTargetBackStrip
+- BattleTestController에서 VFX/비VFX 경로 모두 새 타입 처리 스위치 추가
+
+[사용]
+- CardSO에서 Target과 TargetCount 설정
+- AllIncludingSelf는 적 전체 + 플레이어 동시 피해 적용
+
+[주의]
+- 기존 enum 순서 보존, 새 항목은 뒤에만 추가 (Unity 직렬화 호환)
+- 강제 전진은 충돌 검증 없음 (추후 필요 시 보강)
+

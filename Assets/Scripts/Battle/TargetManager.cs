@@ -314,10 +314,10 @@ namespace Maglin.Battle
             }
 
             // 디버그 로그는 위치가 실제로 변경될 때만 출력
-            if (debugMode && targetMarker.localPosition == newPosition)
-            {
-                Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커 위치 업데이트: 로컬={targetMarker.localPosition}");
-            }
+            // if (debugMode && targetMarker.localPosition == newPosition)
+            // {
+            //     Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커 위치 업데이트: 로컬={targetMarker.localPosition}");
+            // }
         }
 
         /// <summary>
@@ -509,6 +509,215 @@ namespace Maglin.Battle
             if (aliveEnemies.Count == 0 && debugMode)
             {
                 Debug.Log("[TargetManager] 공격할 적이 없습니다.");
+            }
+        }
+
+        /// <summary>
+        /// 앞에서부터 N명의 적에게 데미지
+        /// </summary>
+        public void DamageFrontN(int count, int damage)
+        {
+            if (count <= 0 || damage <= 0) return;
+
+            int px = playerGridPosition.x;
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px)
+                .OrderBy(e => e.GridPosition.x - px) // 플레이어 기준 앞쪽(가까운 x)부터
+                .ToList();
+
+            int targetCount = Mathf.Min(count, enemies.Count);
+            for (int i = 0; i < targetCount; i++)
+            {
+                enemies[i].TakeDamage(damage);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 앞에서 {i + 1}번째 {enemies[i].EnemyName}에게 {damage} 데미지");
+            }
+        }
+
+        /// <summary>
+        /// 뒤에서부터 N명의 적에게 데미지
+        /// </summary>
+        public void DamageBackN(int count, int damage)
+        {
+            if (count <= 0 || damage <= 0) return;
+
+            int px = playerGridPosition.x;
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px)
+                .OrderByDescending(e => e.GridPosition.x - px) // 플레이어에서 먼 쪽(뒤)부터
+                .ToList();
+
+            int targetCount = Mathf.Min(count, enemies.Count);
+            for (int i = 0; i < targetCount; i++)
+            {
+                var enemy = enemies[i];
+                enemy.TakeDamage(damage);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 뒤에서 {i + 1}번째 {enemy.EnemyName}에게 {damage} 데미지");
+            }
+        }
+
+        /// <summary>
+        /// 앞에서부터 뒤로 hits회 연속 공격 (앞이 죽으면 남은 횟수는 뒤에 몹으로)
+        /// </summary>
+        public void ChainHitsFromFront(int hits, int damage)
+        {
+            if (hits <= 0 || damage <= 0) return;
+
+            int px = playerGridPosition.x;
+            // 항상 가장 앞의 적부터 시작
+            var frontList = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px)
+                .OrderBy(e => e.GridPosition.x - px)
+                .ToList();
+            if (frontList.Count == 0) return;
+
+            var current = frontList[0];
+
+            for (int h = 0; h < hits; h++)
+            {
+                if (current == null || !current.IsAlive)
+                {
+                    // 앞의 다음 적으로 이동
+                    current = GetAliveEnemies()
+                        .Where(e => e.GridPosition.x > px)
+                        .OrderBy(e => e.GridPosition.x - px)
+                        .FirstOrDefault();
+                    if (current == null) break;
+                }
+
+                string name = "";
+                try { name = current.EnemyName; } catch { name = "Unknown"; }
+
+                current.TakeDamage(damage);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 체인 히트 {h + 1}/{hits} -> {name}에게 {damage} 데미지");
+
+                // 살아있으면 같은 대상 계속 타격, 죽으면 다음 앞 적으로 넘어감 (다음 루프에서 갱신)
+                if (!current.IsAlive)
+                {
+                    current = GetAliveEnemies()
+                        .Where(e => e.GridPosition.x > px)
+                        .OrderBy(e => e.GridPosition.x - px)
+                        .FirstOrDefault();
+                    if (current == null) break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 앞의 적에게 한 번만 타격 (VFX 히트 타이밍용)
+        /// </summary>
+        public void ChainHitOnceFromFront(int damage)
+        {
+            if (damage <= 0) return;
+            int px = playerGridPosition.x;
+            var target = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px)
+                .OrderBy(e => e.GridPosition.x - px)
+                .FirstOrDefault();
+            if (target == null) return;
+
+            string name = "";
+            try { name = target.EnemyName; } catch { name = "Unknown"; }
+
+            target.TakeDamage(damage);
+            if (debugMode)
+                Debug.Log($"[TargetManager] 체인 단일 히트 -> {name}에게 {damage} 데미지");
+        }
+
+        /// <summary>
+        /// 가장 앞의 몬스터를 플레이어쪽으로 tiles칸 강제 전진
+        /// </summary>
+        public void PullFrontmostForward(int tiles)
+        {
+            if (tiles <= 0) return;
+
+            int px = playerGridPosition.x;
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px)
+                .OrderBy(e => e.GridPosition.x - px)
+                .ToList();
+            if (enemies.Count == 0) return;
+
+            var front = enemies[0];
+            var pos = front.GridPosition;
+            int targetX = Mathf.Max(px + 1, pos.x - tiles);
+            var newPos = new Vector2Int(targetX, pos.y);
+            if (newPos != pos)
+            {
+                front.SetPosition(newPos);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] {front.EnemyName} 강제 전진: {pos} -> {newPos}");
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 앞 range칸 라인(세로) 범위의 적 모두에게 데미지
+        /// </summary>
+        public void DamagePlayerFrontLine(int range, int damage)
+        {
+            if (range <= 0 || damage <= 0) return;
+            int px = playerGridPosition.x;
+
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px && e.GridPosition.x <= px + range)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                enemy.TakeDamage(damage);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 플레이어 앞 라인 {range}칸 내 {enemy.EnemyName}에게 {damage} 데미지");
+            }
+        }
+
+        /// <summary>
+        /// 타겟 포함, 플레이어쪽으로 range칸 세로 스트립 공격
+        /// </summary>
+        public void DamageTargetFrontStrip(Maglin.Enemy.Enemy target, int range, int damage)
+        {
+            if (target == null || range <= 0 || damage <= 0) return;
+
+            int tx = target.GridPosition.x;
+            int px = playerGridPosition.x;
+
+            int minX = Mathf.Max(px + 1, tx - (range - 1));
+            int maxX = tx;
+
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x >= minX && e.GridPosition.x <= maxX)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                enemy.TakeDamage(damage);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 타겟 포함 앞 스트립 {range}칸: {enemy.EnemyName}에게 {damage} 데미지");
+            }
+        }
+
+        /// <summary>
+        /// 타겟 포함, 플레이어 반대쪽으로 range칸 세로 스트립 공격
+        /// </summary>
+        public void DamageTargetBackStrip(Maglin.Enemy.Enemy target, int range, int damage)
+        {
+            if (target == null || range <= 0 || damage <= 0) return;
+
+            int tx = target.GridPosition.x;
+
+            int minX = tx;
+            int maxX = tx + (range - 1);
+
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x >= minX && e.GridPosition.x <= maxX)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                enemy.TakeDamage(damage);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 타겟 포함 뒤 스트립 {range}칸: {enemy.EnemyName}에게 {damage} 데미지");
             }
         }
         #endregion

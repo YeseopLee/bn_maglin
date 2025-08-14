@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7bfb1082e971745309873119d5242bcf, type: 3}
   m_Name: F01_battle_02
   m_EditorClassIdentifier: 
-  battleName: F01_battle_01
+  battleName: F01_battle_02
   battleDescription: f01
   enemyPlacements:
   - enemyData: {fileID: 11400000, guid: a7963180f13f245f0817a3d7ca67c00b, type: 2}
