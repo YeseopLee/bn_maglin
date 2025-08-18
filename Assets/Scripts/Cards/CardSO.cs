@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Audio;
 using Maglin.Cards;
 using Maglin.Battle;
+using Maglin.Enemy;
 
 namespace Maglin.Cards
 {
@@ -38,12 +39,9 @@ namespace Maglin.Cards
         Self,               // 본인(플레이어)
         AllEnemies,         // 적 전체 (타겟 마커 무관)
         AllIncludingSelf,   // 나 포함 적 전체 (타겟 마커 무관)
-        FrontN,             // 앞의 N명 (플레이어로부터 가까운 순 N명, 타겟 마커 무관)
-        BackN,              // 뒤의 N명 (플레이어로부터 먼 순 N명, 타겟 마커 무관)
 
-        // === 추가 타입 (기존 값 뒤에만 추가: Unity 직렬화 호환) ===
+        // === 추가 타입 ===
         ChainFrontHits,     // 가장 앞 몬스터부터 뒤로 targetCount회 연속 타격 (남는 횟수는 다음 몬스터로)
-        PullFrontmostForward, // 가장 앞 몬스터를 플레이어 쪽으로 targetCount칸 강제 전진
         PlayerFrontLine,    // 플레이어 앞 targetCount칸 라인(세로) 범위 공격 (같은 X, +Y 방향)
         TargetFrontStrip,   // 타겟 포함 플레이어쪽으로 targetCount칸 세로 스트립 공격 (타겟 마커 기반)
         TargetBackStrip     // 타겟 포함 플레이어 반대쪽으로 targetCount칸 세로 스트립 공격 (타겟 마커 기반)
@@ -57,6 +55,28 @@ namespace Maglin.Cards
         UseDefault,        // 기본 페널티 적용
         ForceThisCardOnly, // 반드시 이 카드의 효과만 발생
         PreventUse         // 사용 방지
+    }
+
+    /// <summary>
+    /// 몬스터 이동 효과 종류
+    /// </summary>
+    public enum MonsterMovementType
+    {
+        None,               // 이동 효과 없음
+        TowardsPlayer,      // 플레이어쪽으로 이동
+        AwayFromPlayer,     // 플레이어 반대쪽으로 이동
+        Random              // 무작위 위치로 이동
+    }
+
+    /// <summary>
+    /// 몬스터 소환 위치 종류
+    /// </summary>
+    public enum MonsterSummonPosition
+    {
+        None,               // 소환 없음
+        InFrontOfPlayer,    // 플레이어 바로 앞 (1번 슬롯)
+        AtTargetPosition,   // 현재 타겟 마커 위치
+        RandomEmpty         // 빈 슬롯 중 랜덤
     }
 
     [CreateAssetMenu(fileName = "New Card", menuName = "Maglin/Cards/CardSO")]
@@ -88,6 +108,16 @@ namespace Maglin.Cards
         [SerializeField] private int cardPrice;
         [SerializeField] private FieldEffectSO fieldEffectToApply;
 
+        [Header("몬스터 이동 효과")]
+        [SerializeField] private MonsterMovementType movementType = MonsterMovementType.None;
+        [SerializeField] private int movementDistance = 1; // n칸 이동 거리
+
+        [Header("몬스터 소환 효과")]
+        [SerializeField] private bool enableMonsterSummon = false; // 몬스터 소환 효과 활성화 여부
+        [SerializeField] private EnemySO monsterToSummon; // 소환할 몬스터 데이터
+        [SerializeField] private MonsterSummonPosition summonPosition = MonsterSummonPosition.None; // 소환 위치
+        [SerializeField] private bool pushExistingMonster = true; // 기존 몬스터를 밀어낼지 여부
+
         [Header("조합식 (조합 카드인 경우)")]
         [SerializeField] private CardCombinationData[] requiredCombinations;
 
@@ -109,6 +139,16 @@ namespace Maglin.Cards
         public int Price => cardPrice;
         public FieldEffectSO FieldEffect => fieldEffectToApply;
         public CardCombinationData[] RequiredCombinations => requiredCombinations;
+
+        // 몬스터 이동 관련 Properties
+        public MonsterMovementType MovementType => movementType;
+        public int MovementDistance => movementDistance;
+
+        // 몬스터 소환 관련 Properties
+        public bool EnableMonsterSummon => enableMonsterSummon;
+        public EnemySO MonsterToSummon => monsterToSummon;
+        public MonsterSummonPosition SummonPosition => summonPosition;
+        public bool PushExistingMonster => pushExistingMonster;
 
         /// <summary>
         /// 단독 사용이 가능한 카드인지 확인

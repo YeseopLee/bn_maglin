@@ -18,8 +18,8 @@ MonoBehaviour:
   baseDamage: 1
   baseHeal: 0
   manaCost: 0
-  targetType: 9
-  targetCount: 2
+  targetType: 6
+  targetCount: 4
   cardDescription: TargetBackStrip
   cardImage: {fileID: 0}
   cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
@@ -28,4 +28,9 @@ MonoBehaviour:
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
+  objectToSpawn: {fileID: 0}
+  spawnTargetPosition: -1
+  spawnAtTarget: 1
+  movementType: 2
+  movementDistance: 1
   requiredCombinations: []

@@ -29,8 +29,8 @@ namespace Maglin.Battle
 
         #region Animation Settings
         [Header("스폰 애니메이션 설정")]
-        [SerializeField] private float spawnDelay = 0.3f;
-        [SerializeField] private float spawnDuration = 0.8f;
+        [SerializeField] private float spawnDelay = 0.15f;
+        [SerializeField] private float spawnDuration = 0.5f;
         [SerializeField] private float scaleStartSize = 0.1f;
         [SerializeField] private Ease spawnEase = Ease.OutBack;
 

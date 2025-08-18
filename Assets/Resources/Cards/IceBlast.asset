@@ -18,12 +18,13 @@ MonoBehaviour:
   baseDamage: 1
   baseHeal: 0
   manaCost: 0
-  targetType: 4
+  targetType: 6
   targetCount: 2
   cardDescription: iceblast
   cardImage: {fileID: 0}
   cardEffect: {fileID: 11400000, guid: b7f58eae985884cbc94b88a63f342266, type: 2}
   cardSound: {fileID: 0}
+  showVFXPerTarget: 1
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}

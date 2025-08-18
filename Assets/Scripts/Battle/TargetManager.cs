@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Maglin.Enemy;
 using Maglin.Core;
+using Maglin.Cards;
 
 namespace Maglin.Battle
 {
@@ -512,50 +513,7 @@ namespace Maglin.Battle
             }
         }
 
-        /// <summary>
-        /// 앞에서부터 N명의 적에게 데미지
-        /// </summary>
-        public void DamageFrontN(int count, int damage)
-        {
-            if (count <= 0 || damage <= 0) return;
 
-            int px = playerGridPosition.x;
-            var enemies = GetAliveEnemies()
-                .Where(e => e.GridPosition.x > px)
-                .OrderBy(e => e.GridPosition.x - px) // 플레이어 기준 앞쪽(가까운 x)부터
-                .ToList();
-
-            int targetCount = Mathf.Min(count, enemies.Count);
-            for (int i = 0; i < targetCount; i++)
-            {
-                enemies[i].TakeDamage(damage);
-                if (debugMode)
-                    Debug.Log($"[TargetManager] 앞에서 {i + 1}번째 {enemies[i].EnemyName}에게 {damage} 데미지");
-            }
-        }
-
-        /// <summary>
-        /// 뒤에서부터 N명의 적에게 데미지
-        /// </summary>
-        public void DamageBackN(int count, int damage)
-        {
-            if (count <= 0 || damage <= 0) return;
-
-            int px = playerGridPosition.x;
-            var enemies = GetAliveEnemies()
-                .Where(e => e.GridPosition.x > px)
-                .OrderByDescending(e => e.GridPosition.x - px) // 플레이어에서 먼 쪽(뒤)부터
-                .ToList();
-
-            int targetCount = Mathf.Min(count, enemies.Count);
-            for (int i = 0; i < targetCount; i++)
-            {
-                var enemy = enemies[i];
-                enemy.TakeDamage(damage);
-                if (debugMode)
-                    Debug.Log($"[TargetManager] 뒤에서 {i + 1}번째 {enemy.EnemyName}에게 {damage} 데미지");
-            }
-        }
 
         /// <summary>
         /// 앞에서부터 뒤로 hits회 연속 공격 (앞이 죽으면 남은 횟수는 뒤에 몹으로)
@@ -626,31 +584,7 @@ namespace Maglin.Battle
                 Debug.Log($"[TargetManager] 체인 단일 히트 -> {name}에게 {damage} 데미지");
         }
 
-        /// <summary>
-        /// 가장 앞의 몬스터를 플레이어쪽으로 tiles칸 강제 전진
-        /// </summary>
-        public void PullFrontmostForward(int tiles)
-        {
-            if (tiles <= 0) return;
 
-            int px = playerGridPosition.x;
-            var enemies = GetAliveEnemies()
-                .Where(e => e.GridPosition.x > px)
-                .OrderBy(e => e.GridPosition.x - px)
-                .ToList();
-            if (enemies.Count == 0) return;
-
-            var front = enemies[0];
-            var pos = front.GridPosition;
-            int targetX = Mathf.Max(px + 1, pos.x - tiles);
-            var newPos = new Vector2Int(targetX, pos.y);
-            if (newPos != pos)
-            {
-                front.SetPosition(newPos);
-                if (debugMode)
-                    Debug.Log($"[TargetManager] {front.EnemyName} 강제 전진: {pos} -> {newPos}");
-            }
-        }
 
         /// <summary>
         /// 플레이어 앞 range칸 라인(세로) 범위의 적 모두에게 데미지
@@ -718,6 +652,375 @@ namespace Maglin.Battle
                 enemy.TakeDamage(damage);
                 if (debugMode)
                     Debug.Log($"[TargetManager] 타겟 포함 뒤 스트립 {range}칸: {enemy.EnemyName}에게 {damage} 데미지");
+            }
+        }
+        #endregion
+
+        #region Monster Movement System
+        /// <summary>
+        /// 타겟 타입에 따라 몬스터 이동 효과 적용
+        /// </summary>
+        public void ApplyMovementEffect(TargetType targetType, MonsterMovementType movementType, int distance)
+        {
+            if (movementType == MonsterMovementType.None || distance <= 0) return;
+
+            switch (targetType)
+            {
+                case TargetType.SingleEnemy:
+                    if (currentTarget != null && currentTarget.IsAlive)
+                    {
+                        ApplyMovementToMonster(currentTarget, movementType, distance);
+                    }
+                    break;
+
+                case TargetType.AllEnemies:
+                case TargetType.AllIncludingSelf:
+                    ApplyMovementToAllMonsters(movementType, distance);
+                    break;
+
+                case TargetType.ChainFrontHits:
+                    ApplyMovementToFrontMonsters(1, movementType, distance); // ChainFrontHits는 한 번에 하나씩
+                    break;
+
+                case TargetType.PlayerFrontLine:
+                    ApplyMovementToPlayerFrontLine(distance, movementType, distance);
+                    break;
+
+                case TargetType.TargetFrontStrip:
+                    if (currentTarget != null && currentTarget.IsAlive)
+                    {
+                        ApplyMovementToTargetFrontStrip(currentTarget, distance, movementType, distance);
+                    }
+                    break;
+
+                case TargetType.TargetBackStrip:
+                    if (currentTarget != null && currentTarget.IsAlive)
+                    {
+                        ApplyMovementToTargetBackStrip(currentTarget, distance, movementType, distance);
+                    }
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 단일 몬스터에게 이동 효과 적용
+        /// </summary>
+        private void ApplyMovementToMonster(Maglin.Enemy.Enemy monster, MonsterMovementType movementType, int distance)
+        {
+            if (monster == null || !monster.IsAlive) return;
+
+            switch (movementType)
+            {
+                case MonsterMovementType.TowardsPlayer:
+                    MoveMonsterTowardsPlayer(monster, distance);
+                    break;
+                case MonsterMovementType.AwayFromPlayer:
+                    MoveMonsterAwayFromPlayer(monster, distance);
+                    break;
+                case MonsterMovementType.Random:
+                    MoveMonsterToRandomPosition(monster);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 모든 몬스터에게 이동 효과 적용
+        /// </summary>
+        private void ApplyMovementToAllMonsters(MonsterMovementType movementType, int distance)
+        {
+            var aliveEnemies = GetAliveEnemies();
+            foreach (var enemy in aliveEnemies)
+            {
+                ApplyMovementToMonster(enemy, movementType, distance);
+            }
+        }
+
+        /// <summary>
+        /// 앞쪽 몬스터들에게 이동 효과 적용 (ChainFrontHits에 대응)
+        /// </summary>
+        private void ApplyMovementToFrontMonsters(int targetCount, MonsterMovementType movementType, int distance)
+        {
+            int px = playerGridPosition.x;
+            var frontMonsters = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px)
+                .OrderBy(e => e.GridPosition.x - px)
+                .Take(targetCount)
+                .ToList();
+
+            foreach (var monster in frontMonsters)
+            {
+                ApplyMovementToMonster(monster, movementType, distance);
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 앞 라인의 몬스터들에게 이동 효과 적용
+        /// </summary>
+        private void ApplyMovementToPlayerFrontLine(int range, MonsterMovementType movementType, int distance)
+        {
+            int px = playerGridPosition.x;
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x > px && e.GridPosition.x <= px + range)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                ApplyMovementToMonster(enemy, movementType, distance);
+            }
+        }
+
+        /// <summary>
+        /// 타겟 포함 앞 스트립의 몬스터들에게 이동 효과 적용
+        /// </summary>
+        private void ApplyMovementToTargetFrontStrip(Maglin.Enemy.Enemy target, int range, MonsterMovementType movementType, int distance)
+        {
+            if (target == null) return;
+
+            int tx = target.GridPosition.x;
+            int px = playerGridPosition.x;
+            int minX = Mathf.Max(px + 1, tx - (range - 1));
+            int maxX = tx;
+
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x >= minX && e.GridPosition.x <= maxX)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                ApplyMovementToMonster(enemy, movementType, distance);
+            }
+        }
+
+        /// <summary>
+        /// 타겟 포함 뒤 스트립의 몬스터들에게 이동 효과 적용
+        /// </summary>
+        private void ApplyMovementToTargetBackStrip(Maglin.Enemy.Enemy target, int range, MonsterMovementType movementType, int distance)
+        {
+            if (target == null) return;
+
+            int tx = target.GridPosition.x;
+            int minX = tx;
+            int maxX = tx + (range - 1);
+
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x >= minX && e.GridPosition.x <= maxX)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                ApplyMovementToMonster(enemy, movementType, distance);
+            }
+        }
+
+        /// <summary>
+        /// 몬스터를 플레이어쪽으로 n칸 이동 (겹치기 불가, 점프 불가)
+        /// </summary>
+        private void MoveMonsterTowardsPlayer(Maglin.Enemy.Enemy monster, int distance)
+        {
+            if (monster == null || distance <= 0) return;
+
+            Vector2Int currentPos = monster.GridPosition;
+            Vector2Int targetPos = currentPos;
+
+            // 플레이어쪽으로 이동 (X축에서 감소 방향)
+            for (int i = 0; i < distance; i++)
+            {
+                Vector2Int nextPos = new Vector2Int(targetPos.x - 1, targetPos.y);
+
+                // 플레이어 위치까지는 이동하지 않음 (최소 1칸 떨어져 있어야 함)
+                if (nextPos.x <= playerGridPosition.x) break;
+
+                // 해당 위치가 유효하고 비어있는지 확인
+                if (IsPositionValidAndEmpty(nextPos))
+                {
+                    targetPos = nextPos;
+                }
+                else
+                {
+                    // 길이 막혔으면 이동 중단 (점프 불가)
+                    break;
+                }
+            }
+
+            // 실제로 이동할 위치가 있으면 이동
+            if (targetPos != currentPos)
+            {
+                MoveMonsterToPosition(monster, targetPos);
+
+                if (debugMode)
+                    Debug.Log($"[TargetManager] {monster.EnemyName} 플레이어쪽으로 이동: {currentPos} -> {targetPos}");
+            }
+        }
+
+        /// <summary>
+        /// 몬스터를 플레이어 반대쪽으로 n칸 이동 (겹치기 불가, 점프 불가)
+        /// </summary>
+        private void MoveMonsterAwayFromPlayer(Maglin.Enemy.Enemy monster, int distance)
+        {
+            if (monster == null || distance <= 0) return;
+
+            Vector2Int currentPos = monster.GridPosition;
+            Vector2Int targetPos = currentPos;
+
+            // 플레이어 반대쪽으로 이동 (X축에서 증가 방향)
+            for (int i = 0; i < distance; i++)
+            {
+                Vector2Int nextPos = new Vector2Int(targetPos.x + 1, targetPos.y);
+
+                // 해당 위치가 유효하고 비어있는지 확인
+                if (IsPositionValidAndEmpty(nextPos))
+                {
+                    targetPos = nextPos;
+                }
+                else
+                {
+                    // 길이 막혔으면 이동 중단 (점프 불가)
+                    break;
+                }
+            }
+
+            // 실제로 이동할 위치가 있으면 이동
+            if (targetPos != currentPos)
+            {
+                MoveMonsterToPosition(monster, targetPos);
+
+                if (debugMode)
+                    Debug.Log($"[TargetManager] {monster.EnemyName} 플레이어 반대쪽으로 이동: {currentPos} -> {targetPos}");
+            }
+        }
+
+        /// <summary>
+        /// 몬스터를 무작위 위치로 이동 (겹치기 불가)
+        /// </summary>
+        private void MoveMonsterToRandomPosition(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return;
+
+            Vector2Int currentPos = monster.GridPosition;
+            List<Vector2Int> availablePositions = GetAvailablePositions();
+
+            // 현재 위치는 제외
+            availablePositions.Remove(currentPos);
+
+            if (availablePositions.Count > 0)
+            {
+                int randomIndex = UnityEngine.Random.Range(0, availablePositions.Count);
+                Vector2Int targetPos = availablePositions[randomIndex];
+
+                MoveMonsterToPosition(monster, targetPos);
+
+                if (debugMode)
+                    Debug.Log($"[TargetManager] {monster.EnemyName} 무작위 위치로 이동: {currentPos} -> {targetPos}");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log($"[TargetManager] {monster.EnemyName} 이동할 빈 공간이 없습니다.");
+            }
+        }
+
+        /// <summary>
+        /// 위치가 유효하고 비어있는지 확인
+        /// </summary>
+        private bool IsPositionValidAndEmpty(Vector2Int position)
+        {
+            // GridFieldManager를 통해 유효한 위치인지 확인
+            if (GridFieldManager.Instance != null)
+            {
+                if (!GridFieldManager.Instance.IsValidGridPosition(position))
+                    return false;
+            }
+
+            // 플레이어 위치가 아닌지 확인
+            if (position == playerGridPosition)
+                return false;
+
+            // 다른 몬스터가 있는지 확인
+            var aliveEnemies = GetAliveEnemies();
+            foreach (var enemy in aliveEnemies)
+            {
+                if (enemy.GridPosition == position)
+                    return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 사용 가능한 모든 위치 목록 반환
+        /// </summary>
+        private List<Vector2Int> GetAvailablePositions()
+        {
+            var availablePositions = new List<Vector2Int>();
+
+            // GridFieldManager가 있으면 그리드 크기를 가져옴
+            if (GridFieldManager.Instance != null)
+            {
+                // 그리드의 모든 위치를 확인 (임시로 -10 ~ 10 범위 사용)
+                for (int x = -10; x <= 10; x++)
+                {
+                    for (int y = -5; y <= 5; y++)
+                    {
+                        Vector2Int pos = new Vector2Int(x, y);
+                        if (IsPositionValidAndEmpty(pos))
+                        {
+                            availablePositions.Add(pos);
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // GridFieldManager가 없으면 기본 범위 사용
+                for (int x = 1; x <= 10; x++) // 플레이어(0,0) 오른쪽만
+                {
+                    for (int y = -3; y <= 3; y++)
+                    {
+                        Vector2Int pos = new Vector2Int(x, y);
+                        if (IsPositionValidAndEmpty(pos))
+                        {
+                            availablePositions.Add(pos);
+                        }
+                    }
+                }
+            }
+
+            return availablePositions;
+        }
+
+        /// <summary>
+        /// 몬스터를 특정 위치로 실제 이동 (MonsterSpawnManager를 통해 통합 관리)
+        /// </summary>
+        private void MoveMonsterToPosition(Maglin.Enemy.Enemy monster, Vector2Int newGridPosition)
+        {
+            if (monster == null) return;
+
+            // MonsterSpawnManager를 통해 위치 이동 요청
+            if (MonsterSpawnManager.Instance != null)
+            {
+                MonsterSpawnManager.Instance.RequestMonsterMovement(monster, newGridPosition);
+
+                if (debugMode)
+                    Debug.Log($"[TargetManager] MonsterSpawnManager에게 이동 요청: {monster.EnemyName} -> {newGridPosition}");
+            }
+            else
+            {
+                // MonsterSpawnManager가 없는 경우 폴백 (직접 처리)
+                monster.SetPosition(newGridPosition);
+
+                if (GridFieldManager.Instance != null)
+                {
+                    Vector3 worldPosition = GridFieldManager.Instance.GridToWorldPosition(newGridPosition);
+                    monster.transform.position = worldPosition;
+                }
+                else
+                {
+                    Vector3 worldPosition = new Vector3(newGridPosition.x, newGridPosition.y, monster.transform.position.z);
+                    monster.transform.position = worldPosition;
+                }
+
+                if (debugMode)
+                    Debug.LogWarning($"[TargetManager] MonsterSpawnManager가 없어 직접 이동 처리: {monster.EnemyName} -> {newGridPosition}");
             }
         }
         #endregion

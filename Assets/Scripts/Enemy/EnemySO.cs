@@ -64,6 +64,13 @@ namespace Maglin.Enemy
         [TextArea(2, 4)]
         [SerializeField] private string specialAbilityDescription;
 
+        [Header("중립 오브젝트 설정")]
+        [SerializeField] private bool isNeutralObject = false;  // 중립 오브젝트 여부
+        [SerializeField] private bool blocksMonsterMovement = false;  // 몬스터 이동을 막는지 여부
+        [SerializeField] private bool monstersAttackThis = false;  // 몬스터가 이 오브젝트를 공격하는지 여부
+        [TextArea(2, 3)]
+        [SerializeField] private string objectDescription = "";  // 오브젝트 설명
+
 
 
         [Header("보상 정보")]
@@ -88,6 +95,12 @@ namespace Maglin.Enemy
         public string SpecialAbilityDescription => specialAbilityDescription;
         public int GoldReward => goldReward;
         public int ExperienceReward => experienceReward;
+
+        // 중립 오브젝트 관련 Properties
+        public bool IsNeutralObject => isNeutralObject;
+        public bool BlocksMonsterMovement => blocksMonsterMovement;
+        public bool MonstersAttackThis => monstersAttackThis;
+        public string ObjectDescription => objectDescription;
 
         /// <summary>
         /// 보스 몬스터인지 확인

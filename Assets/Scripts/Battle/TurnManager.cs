@@ -1,3 +1,5 @@
+// 레거시 코드
+
 using UnityEngine;
 using System;
 using System.Collections;

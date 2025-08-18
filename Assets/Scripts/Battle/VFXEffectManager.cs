@@ -21,8 +21,10 @@ namespace Maglin.Battle
         public float startTime;
         public bool isActive;
         public int currentHitIndex;
+        public int vfxIndex; // 동일 카드에서 몇 번째 VFX인지 (0부터 시작)
+        public int totalVFXCount; // 동일 카드의 전체 VFX 개수
 
-        public VFXInstance(GameObject effectObject, VFXEffectSO effectData, Transform[] targets, Card sourceCard)
+        public VFXInstance(GameObject effectObject, VFXEffectSO effectData, Transform[] targets, Card sourceCard, int vfxIndex = 0, int totalVFXCount = 1)
         {
             this.effectObject = effectObject;
             this.effectData = effectData;
@@ -31,6 +33,8 @@ namespace Maglin.Battle
             this.startTime = Time.time;
             this.isActive = true;
             this.currentHitIndex = 0;
+            this.vfxIndex = vfxIndex;
+            this.totalVFXCount = totalVFXCount;
         }
     }
 
@@ -43,13 +47,17 @@ namespace Maglin.Battle
         public Transform[] targets;
         public HitTiming hitTiming;
         public VFXEffectSO effectData;
+        public int vfxIndex; // 동일 카드에서 몇 번째 VFX인지
+        public int totalVFXCount; // 동일 카드의 전체 VFX 개수
 
-        public VFXHitEventArgs(Card sourceCard, Transform[] targets, HitTiming hitTiming, VFXEffectSO effectData)
+        public VFXHitEventArgs(Card sourceCard, Transform[] targets, HitTiming hitTiming, VFXEffectSO effectData, int vfxIndex = 0, int totalVFXCount = 1)
         {
             this.sourceCard = sourceCard;
             this.targets = targets;
             this.hitTiming = hitTiming;
             this.effectData = effectData;
+            this.vfxIndex = vfxIndex;
+            this.totalVFXCount = totalVFXCount;
         }
     }
 
@@ -100,7 +108,7 @@ namespace Maglin.Battle
 
         #region Fields
         [Header("설정")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
         [SerializeField] private Transform vfxParent; // VFX 오브젝트들의 부모 Transform
 
         [Header("레이어 설정")]
@@ -185,8 +193,16 @@ namespace Maglin.Battle
             // 타겟 결정
             Transform[] targets = DetermineTargets(card, vfxData, specificTargets);
 
-            // PlayerFrontLine: ShowVFXPerTarget이 꺼진 경우에만 앞칸 고정 위치 1회 재생
             var targetTypeForVfx = vfxData.GetTargetType(card.CardData.Target);
+
+            // ChainFrontHits 특별 처리: 단일 VFX를 순차적으로 반복 재생
+            if (targetTypeForVfx == TargetType.ChainFrontHits)
+            {
+                PlayChainFrontHitsVFX(card, vfxData);
+                return;
+            }
+
+            // PlayerFrontLine: ShowVFXPerTarget이 꺼진 경우에만 앞칸 고정 위치 1회 재생
             if (targetTypeForVfx == TargetType.PlayerFrontLine && !card.CardData.ShowVFXPerTarget)
             {
                 Vector3 anchor = GetPlayerFrontAnchorWorldPosition();
@@ -201,21 +217,7 @@ namespace Maglin.Battle
                 return;
             }
 
-            // ChainFrontHits는 히트마다 현재 앞 적 위치에 임팩트 스폰 방식으로 처리
-            var ttype = vfxData.GetTargetType(card.CardData.Target);
-            if (ttype == TargetType.ChainFrontHits)
-            {
-                // 독립 히트 스케줄: 각 히트 타이밍마다 현재 앞 적 위치에서 별도의 VFX를 스폰하고, 그 시점에 데미지를 1회 적용
-                var timings = vfxData.HasValidHitTimings ? vfxData.HitTimings : null;
-                int plannedHits = Mathf.Min(card.CardData.TargetCount, timings != null ? timings.Length : 0);
-                for (int i = 0; i < plannedHits; i++)
-                {
-                    StartCoroutine(ExecuteChainFrontHitAfterDelay(timings[i].Delay, timings[i], card, vfxData));
-                }
-                return;
-            }
-
-            // VFX 인스턴스 생성 및 실행 (일반)
+            // VFX 인스턴스 생성 및 실행
             // 카드 옵션에 따라 타겟마다 하나씩 vs 대표 위치 하나만
             if (card.CardData.ShowVFXPerTarget)
             {
@@ -223,6 +225,10 @@ namespace Maglin.Battle
             }
             else
             {
+                // 대표 위치: 
+                // - SingleEnemy: 첫 타겟
+                // - TargetFront/BackStrip: 현재 타겟 위치
+                // - PlayerFrontLine: 플레이어 앞 첫 칸 (또는 가장 앞 적 위치가 있으면 그곳)
                 Transform rep = null;
                 if (targets != null && targets.Length > 0)
                 {
@@ -357,14 +363,10 @@ namespace Maglin.Battle
                     }
                     break;
 
-                case TargetType.FrontN:
-                case TargetType.BackN:
-                    targets.AddRange(GetPositionalTargets(targetType, targetCount));
-                    break;
-
                 case TargetType.ChainFrontHits:
                     // 가장 앞의 적 1명만 타겟으로 VFX 생성 (히트마다 데미지는 별도 처리)
-                    targets.AddRange(GetPositionalTargets(TargetType.FrontN, 1));
+                    var frontmostEnemy = GetFrontmostEnemyTransform();
+                    if (frontmostEnemy != null) targets.Add(frontmostEnemy);
                     break;
 
                 case TargetType.PlayerFrontLine:
@@ -382,10 +384,7 @@ namespace Maglin.Battle
                     targets.AddRange(GetStripFromTarget(includeFront: false, range: targetCount));
                     break;
 
-                case TargetType.PullFrontmostForward:
-                    // 가장 앞의 적 1명 기준 VFX (이동 연출용)
-                    targets.AddRange(GetPositionalTargets(TargetType.FrontN, 1));
-                    break;
+
             }
 
             return targets.ToArray();
@@ -424,40 +423,17 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 위치 기반 타겟팅 (앞의 N칸, 뒤의 N칸)
+        /// 가장 앞 몬스터의 Transform 반환
         /// </summary>
-        private Transform[] GetPositionalTargets(TargetType targetType, int targetCount)
+        private Transform GetFrontmostEnemyTransform()
         {
-            var targets = new List<Transform>();
-            var allEnemies = FindObjectsOfType<Enemy.Enemy>()
-                .Where(e => e.CurrentState != EnemyState.Dead)
-                .ToList();
+            if (targetManager == null) return null;
 
-            // 1D 그리드 기준: 플레이어 X보다 큰 적만 고려
-            int px = targetManager != null ? targetManager.PlayerGridPosition.x : 0;
-            var frontList = allEnemies
-                .Where(e => e.GridPosition.x > px)
-                .OrderBy(e => e.GridPosition.x - px)
-                .ToList();
+            var aliveEnemies = targetManager.GetAliveEnemies();
+            if (aliveEnemies.Count == 0) return null;
 
-            switch (targetType)
-            {
-                case TargetType.FrontN:
-                    for (int i = 0; i < Mathf.Min(targetCount, frontList.Count); i++)
-                    {
-                        targets.Add(frontList[i].transform);
-                    }
-                    break;
-
-                case TargetType.BackN:
-                    // 뒤의 N명 (멀리 있는 순서)
-                    var backList = frontList.OrderByDescending(e => e.GridPosition.x - px).ToList();
-                    for (int i = 0; i < Mathf.Min(targetCount, backList.Count); i++)
-                        targets.Add(backList[i].transform);
-                    break;
-            }
-
-            return targets.ToArray();
+            // 가장 앞의 적 (X 좌표가 가장 작은 적)
+            return aliveEnemies[0].transform;
         }
 
         private Vector3 GetPlayerFrontAnchorWorldPosition()
@@ -526,9 +502,13 @@ namespace Maglin.Battle
         {
             if (targets.Length == 0) return null;
 
+            int totalVFXCount = targets.Length;
+
             // 각 타겟에 대해 VFX 생성
-            foreach (var target in targets)
+            for (int i = 0; i < targets.Length; i++)
             {
+                var target = targets[i];
+
                 // VFX 오브젝트 생성
                 Vector3 position = target.position + vfxData.PositionOffset;
                 Quaternion rotation = Quaternion.Euler(vfxData.RotationOffset);
@@ -539,8 +519,8 @@ namespace Maglin.Battle
                 // VFX 레이어 설정
                 SetVFXLayer(vfxObject);
 
-                // VFX 인스턴스 생성
-                var vfxInstance = new VFXInstance(vfxObject, vfxData, new Transform[] { target }, sourceCard);
+                // VFX 인스턴스 생성 (인덱스 정보 포함)
+                var vfxInstance = new VFXInstance(vfxObject, vfxData, new Transform[] { target }, sourceCard, i, totalVFXCount);
                 activeVFXInstances.Add(vfxInstance);
 
                 // 사운드 재생
@@ -559,7 +539,7 @@ namespace Maglin.Battle
                 OnVFXStarted?.Invoke(vfxInstance);
 
                 if (debugMode)
-                    Debug.Log($"[VFXEffectManager] VFX 시작: {vfxData.EffectName} at {target.name}");
+                    Debug.Log($"[VFXEffectManager] VFX 시작: {vfxData.EffectName} at {target.name} (인덱스: {i}/{totalVFXCount})");
             }
 
             return activeVFXInstances.Count > 0 ? activeVFXInstances[activeVFXInstances.Count - 1] : null;
@@ -579,8 +559,6 @@ namespace Maglin.Battle
                     activeVFXInstances.RemoveAt(i);
                     continue;
                 }
-
-                // 체인형은 독립 스폰 방식으로 처리하므로 여기서 리타겟하지 않음
 
                 // 히트 타이밍 처리
                 ProcessHitTimings(vfxInstance);
@@ -623,69 +601,78 @@ namespace Maglin.Battle
         /// </summary>
         private void ExecuteHit(VFXInstance vfxInstance, HitTiming hitTiming)
         {
-            // 체인형: 독립 스케줄 방식으로 처리하므로 여기서는 스킵
-            var cardData = vfxInstance.sourceCard?.CardData;
-            if (cardData != null && vfxInstance.effectData != null)
-            {
-                var tType = vfxInstance.effectData.GetTargetType(cardData.Target);
-                if (tType == TargetType.ChainFrontHits) return;
-            }
-
             var hitEventArgs = new VFXHitEventArgs(
                 vfxInstance.sourceCard,
                 vfxInstance.targets,
                 hitTiming,
-                vfxInstance.effectData
+                vfxInstance.effectData,
+                vfxInstance.vfxIndex,
+                vfxInstance.totalVFXCount
             );
 
             OnVFXHit?.Invoke(hitEventArgs);
         }
 
-        private Transform GetFrontEnemyTransform()
+
+
+        /// <summary>
+        /// ChainFrontHits 전용 VFX 재생: 단일 VFX를 순차적으로 반복
+        /// </summary>
+        private void PlayChainFrontHitsVFX(Card card, VFXEffectSO vfxData)
         {
-            if (targetManager == null) return null;
-            int px = targetManager.PlayerGridPosition.x;
-            Enemy.Enemy front = FindObjectsOfType<Enemy.Enemy>()
-                .Where(e => e.CurrentState != EnemyState.Dead && e.GridPosition.x > px)
-                .OrderBy(e => e.GridPosition.x - px)
-                .FirstOrDefault();
-            return front != null ? front.transform : null;
+            int chainCount = card.CardData.TargetCount;
+            if (chainCount <= 0) return;
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] ChainFrontHits VFX 시작: {chainCount}회 연속 재생");
+
+            // 코루틴으로 순차적 재생 시작
+            StartCoroutine(PlayChainVFXSequence(card, vfxData, chainCount));
         }
 
-        private IEnumerator ExecuteChainFrontHitAfterDelay(float delay, HitTiming timing, Card sourceCard, VFXEffectSO vfxData)
+        /// <summary>
+        /// ChainFrontHits VFX 순차 재생 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator PlayChainVFXSequence(Card card, VFXEffectSO vfxData, int chainCount)
         {
-            if (delay > 0f) yield return new WaitForSeconds(delay);
-
-            // 현재 가장 앞 적 취득
-            Transform front = GetFrontEnemyTransform();
-            if (front == null) yield break;
-
-            // 즉시 임팩트 VFX 스폰 (독립 오브젝트)
-            Vector3 pos = front.position + vfxData.PositionOffset;
-            Quaternion rot = Quaternion.Euler(vfxData.RotationOffset);
-            GameObject vfxObject = Instantiate(vfxData.EffectPrefab, pos, rot, vfxParent);
-            vfxObject.transform.localScale = vfxData.Scale;
-            SetVFXLayer(vfxObject);
-            if (vfxData.SoundEffect != null)
+            for (int i = 0; i < chainCount; i++)
             {
-                PlayVFXSound(vfxData.SoundEffect, pos);
-            }
-            if (vfxData.AutoDestroy)
-            {
-                Destroy(vfxObject, vfxData.EffectDuration);
+                // 현재 가장 앞 몬스터 찾기
+                Transform currentTarget = GetCurrentFrontmostTarget();
+
+                if (currentTarget == null)
+                {
+                    if (debugMode)
+                        Debug.Log($"[VFXEffectManager] ChainFrontHits {i + 1}/{chainCount}: 타겟 없음, 중단");
+                    break;
+                }
+
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] ChainFrontHits {i + 1}/{chainCount}: {currentTarget.name}에 VFX 재생");
+
+                // 해당 위치에 VFX 재생
+                PlayVFXAtPosition(vfxData, currentTarget.position, card);
+
+                // VFX 지속시간만큼 대기 (다음 VFX가 겹치지 않도록)
+                yield return new WaitForSeconds(vfxData.EffectDuration);
             }
 
-            // VFX 자체의 첫 히트 타이밍에 맞춰 데미지 발생
-            float innerDelay = 0f;
-            if (vfxData.HasValidHitTimings && vfxData.HitTimings.Length > 0)
-            {
-                innerDelay = vfxData.HitTimings[0].Delay;
-            }
-            if (innerDelay > 0f) yield return new WaitForSeconds(innerDelay);
+            if (debugMode)
+                Debug.Log("[VFXEffectManager] ChainFrontHits VFX 시퀀스 완료");
+        }
 
-            // 데미지 이벤트(컨트롤러에서 처리)
-            var hitArgs = new VFXHitEventArgs(sourceCard, new Transform[] { front }, timing, vfxData);
-            OnVFXHit?.Invoke(hitArgs);
+        /// <summary>
+        /// 현재 가장 앞 몬스터 타겟 반환
+        /// </summary>
+        private Transform GetCurrentFrontmostTarget()
+        {
+            if (targetManager == null) return null;
+
+            var aliveEnemies = targetManager.GetAliveEnemies();
+            if (aliveEnemies.Count == 0) return null;
+
+            // 가장 앞의 적 (X 좌표가 가장 작은 적)
+            return aliveEnemies[0].transform;
         }
 
         /// <summary>
@@ -773,5 +760,3 @@ namespace Maglin.Battle
         #endregion
     }
 }
-
-

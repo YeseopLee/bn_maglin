@@ -24,7 +24,10 @@ MonoBehaviour:
   cardImage: {fileID: 0}
   cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
   cardSound: {fileID: 0}
+  showVFXPerTarget: 1
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
+  movementType: 1
+  movementDistance: 3
   requiredCombinations: []

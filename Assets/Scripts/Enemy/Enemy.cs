@@ -153,6 +153,21 @@ namespace Maglin.Enemy
         /// 차지하는 칸 수
         /// </summary>
         public int SizeInTiles => enemyData?.SizeInTiles ?? 1;
+
+        /// <summary>
+        /// 중립 오브젝트인지 여부
+        /// </summary>
+        public bool IsNeutralObject => enemyData?.IsNeutralObject ?? false;
+
+        /// <summary>
+        /// 몬스터 이동을 막는지 여부
+        /// </summary>
+        public bool BlocksMonsterMovement => enemyData?.BlocksMonsterMovement ?? false;
+
+        /// <summary>
+        /// 몬스터가 이 오브젝트를 공격하는지 여부
+        /// </summary>
+        public bool MonstersAttackThis => enemyData?.MonstersAttackThis ?? false;
         #endregion
 
         #region Unity Events

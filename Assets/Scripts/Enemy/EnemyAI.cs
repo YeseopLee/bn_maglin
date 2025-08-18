@@ -184,14 +184,28 @@ namespace Maglin.Enemy
         /// </summary>
         private AIActionResult DecideAction(Vector2Int playerPosition, List<Enemy> allEnemies)
         {
-            // 1. 공격 가능한지 확인
+            // 중립 오브젝트는 AI 행동을 하지 않음
+            if (enemy.IsNeutralObject)
+            {
+                return new AIActionResult(false, enemy.GridPosition, AIActionType.None, "중립 오브젝트 대기");
+            }
+
+            // 1. 경로에 있는 공격 가능한 중립 오브젝트 확인
+            Enemy blockingObject = FindBlockingObject(allEnemies);
+            if (blockingObject != null && CanAttackObject(blockingObject))
+            {
+                return new AIActionResult(true, blockingObject.GridPosition, AIActionType.Attack,
+                    $"중립 오브젝트 공격: {blockingObject.EnemyName}");
+            }
+
+            // 2. 플레이어 공격 가능한지 확인
             if (CanAttackPlayer(playerPosition))
             {
                 return new AIActionResult(true, playerPosition, AIActionType.Attack,
                     $"플레이어 공격 (거리: {GetDistanceToPlayer(playerPosition)})");
             }
 
-            // 2. 이동 결정
+            // 3. 이동 결정
             Vector2Int moveTarget = DecideMovement(playerPosition, allEnemies);
             if (moveTarget != enemy.GridPosition)
             {
@@ -199,7 +213,7 @@ namespace Maglin.Enemy
                     $"이동: {enemy.GridPosition} -> {moveTarget}");
             }
 
-            // 3. 행동 없음
+            // 4. 행동 없음
             return new AIActionResult(false, enemy.GridPosition, AIActionType.None, "대기");
         }
 
@@ -264,8 +278,11 @@ namespace Maglin.Enemy
                 // 경계 확인
                 if (nextPos.x < 0) break;
 
-                // 충돌 확인
+                // 일반 몬스터 충돌 확인
                 if (IsPositionOccupied(nextPos, allEnemies)) break;
+
+                // 중립 오브젝트가 이동을 막는지 확인 (Forward 패턴은 막힘)
+                if (IsPositionBlockedByNeutralObject(nextPos, allEnemies)) break;
 
                 targetPos = nextPos;
             }
@@ -274,7 +291,7 @@ namespace Maglin.Enemy
         }
 
         /// <summary>
-        /// 플레이어 근처로 점프 이동
+        /// 플레이어 근처로 점프 이동 (중립 오브젝트 무시 가능)
         /// </summary>
         private Vector2Int MoveJumpToPlayer(Vector2Int currentPos, Vector2Int playerPosition, List<Enemy> allEnemies)
         {
@@ -292,8 +309,11 @@ namespace Maglin.Enemy
                     // 경계 확인
                     if (!IsValidPosition(candidatePos)) continue;
 
-                    // 충돌 확인
+                    // 일반 몬스터 충돌 확인 (중립 오브젝트는 Jump 패턴에서 무시)
                     if (IsPositionOccupied(candidatePos, allEnemies)) continue;
+
+                    // Jump 패턴은 중립 오브젝트를 무시하고 점프 가능
+                    // IsPositionBlockedByNeutralObject 체크하지 않음
 
                     candidatePositions.Add(candidatePos);
                 }
@@ -443,6 +463,78 @@ namespace Maglin.Enemy
         }
 
         /// <summary>
+        /// 위치에 이동을 막는 중립 오브젝트가 있는지 확인
+        /// </summary>
+        private bool IsPositionBlockedByNeutralObject(Vector2Int position, List<Enemy> allEnemies)
+        {
+            foreach (var otherEnemy in allEnemies)
+            {
+                if (otherEnemy == enemy || !otherEnemy.IsAlive) continue;
+
+                // 중립 오브젝트이고 몬스터 이동을 막는지 확인
+                if (otherEnemy.IsNeutralObject && otherEnemy.BlocksMonsterMovement)
+                {
+                    Vector2Int otherPos = otherEnemy.GridPosition;
+                    int otherSize = otherEnemy.SizeInTiles;
+
+                    for (int i = 0; i < otherSize; i++)
+                    {
+                        if (otherPos.x + i == position.x && otherPos.y == position.y)
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 이동 경로를 막는 중립 오브젝트 찾기
+        /// </summary>
+        private Enemy FindBlockingObject(List<Enemy> allEnemies)
+        {
+            if (enemy.IsNeutralObject) return null; // 중립 오브젝트는 다른 오브젝트를 공격하지 않음
+
+            Vector2Int currentPos = enemy.GridPosition;
+
+            // 현재 위치에서 플레이어 방향으로 가는 경로에 있는 중립 오브젝트 찾기
+            for (int x = currentPos.x - 1; x >= 1; x--) // 플레이어 방향으로 스캔
+            {
+                Vector2Int checkPos = new Vector2Int(x, currentPos.y);
+
+                foreach (var otherEnemy in allEnemies)
+                {
+                    if (otherEnemy == enemy || !otherEnemy.IsAlive) continue;
+
+                    // 중립 오브젝트이고 몬스터 이동을 막으며 몬스터가 공격할 수 있는 대상인지 확인
+                    if (otherEnemy.IsNeutralObject &&
+                        otherEnemy.BlocksMonsterMovement &&
+                        otherEnemy.MonstersAttackThis &&
+                        otherEnemy.GridPosition == checkPos)
+                    {
+                        return otherEnemy; // 가장 가까운 방해 오브젝트 반환
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 중립 오브젝트 공격 가능 여부 확인
+        /// </summary>
+        private bool CanAttackObject(Enemy targetObject)
+        {
+            if (targetObject == null || !targetObject.IsAlive || !targetObject.IsNeutralObject) return false;
+            if (enemy.IsNeutralObject) return false; // 중립 오브젝트는 다른 오브젝트를 공격하지 않음
+
+            int distance = Mathf.Abs(enemy.GridPosition.x - targetObject.GridPosition.x) +
+                          Mathf.Abs(enemy.GridPosition.y - targetObject.GridPosition.y);
+
+            return distance <= (enemyData?.AttackRange ?? 1);
+        }
+
+        /// <summary>
         /// 두 위치 사이에 장애물이 있는지 확인
         /// </summary>
         private bool HasLineOfSight(Vector2Int from, Vector2Int to, List<Enemy> allEnemies)
@@ -582,26 +674,35 @@ namespace Maglin.Enemy
         }
 
         /// <summary>
-        /// 앞으로 이동 (1칸, 2칸, 3칸)
+        /// 앞으로 이동 (1칸, 2칸, 3칸) - 중립 오브젝트 블록 고려
         /// </summary>
         private Vector2Int MoveForward(Vector2Int currentPos, Vector2Int playerPosition, List<Vector2Int> occupiedPositions, int moveDistance)
         {
             // 플레이어 쪽으로 moveDistance 칸 이동, 단 1번 슬롯까지만
             if (currentPos.x > playerPosition.x + 1)
             {
-                // 목표 위치 계산 (1번 슬롯을 넘지 않도록)
-                int targetX = Mathf.Max(1, currentPos.x - moveDistance);
-                var targetPos = new Vector2Int(targetX, currentPos.y);
+                // 중립 오브젝트 블록 위치 확인
+                var blockingPositions = GetBlockingNeutralObjectPositions();
 
-                // 겹치지 않는 위치 찾기 (목표에서 역순으로)
-                for (int x = targetX; x < currentPos.x; x++)
+                // 한 칸씩 이동하면서 블록 체크
+                Vector2Int targetPos = currentPos;
+                for (int step = 0; step < moveDistance; step++)
                 {
-                    var candidatePos = new Vector2Int(x, currentPos.y);
-                    if (!occupiedPositions.Contains(candidatePos))
-                    {
-                        return candidatePos;
-                    }
+                    Vector2Int nextPos = new Vector2Int(targetPos.x - 1, targetPos.y);
+
+                    // 경계 확인
+                    if (nextPos.x < 1) break;
+
+                    // 일반 점유 확인
+                    if (occupiedPositions.Contains(nextPos)) break;
+
+                    // 중립 오브젝트 블록 확인
+                    if (blockingPositions.Contains(nextPos)) break;
+
+                    targetPos = nextPos;
                 }
+
+                return targetPos;
             }
 
             return currentPos; // 이동할 수 없는 경우
@@ -645,6 +746,34 @@ namespace Maglin.Enemy
               Mathf.Abs(enemy.GridPosition.y - playerPosition.y);
 
             return distance <= (enemy.EnemyData?.AttackRange ?? 1);
+        }
+
+        /// <summary>
+        /// 이동을 막는 중립 오브젝트 위치들 가져오기
+        /// </summary>
+        private List<Vector2Int> GetBlockingNeutralObjectPositions()
+        {
+            var blockingPositions = new List<Vector2Int>();
+
+            // MonsterSpawnManager에서 스폰된 몬스터들 확인
+            if (Battle.MonsterSpawnManager.Instance != null)
+            {
+                foreach (var monsterObj in Battle.MonsterSpawnManager.Instance.SpawnedMonsters)
+                {
+                    if (monsterObj == null) continue;
+
+                    var otherEnemy = monsterObj.GetComponent<Enemy>();
+                    if (otherEnemy == null || !otherEnemy.IsAlive || otherEnemy == enemy) continue;
+
+                    // 중립 오브젝트이고 몬스터 이동을 막는 경우
+                    if (otherEnemy.IsNeutralObject && otherEnemy.BlocksMonsterMovement)
+                    {
+                        blockingPositions.Add(otherEnemy.GridPosition);
+                    }
+                }
+            }
+
+            return blockingPositions;
         }
         #endregion
     }

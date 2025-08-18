@@ -1301,6 +1301,75 @@ namespace Maglin.Battle
         }
 
         /// <summary>
+        /// 외부에서 몬스터 이동 요청 (카드 효과 등)
+        /// </summary>
+        public void RequestMonsterMovement(Maglin.Enemy.Enemy monster, Vector2Int newPosition)
+        {
+            if (monster == null) return;
+
+            // 몬스터의 그리드 위치 업데이트
+            SetMonsterGridPosition(monster, newPosition);
+
+            // 부드러운 이동으로 월드 위치 업데이트
+            UpdateMonsterPosition(monster);
+
+            // 이번 턴에 AI 이동을 건너뛰도록 표시
+            MarkMonsterMovedThisTurn(monster);
+
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] 외부 이동 요청 처리: {monster.EnemyName} -> {newPosition}");
+        }
+
+        /// <summary>
+        /// 몬스터가 이번 턴에 이미 이동했음을 표시
+        /// </summary>
+        private void MarkMonsterMovedThisTurn(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return;
+
+            // 몬스터에 "이번 턴 이동함" 플래그 설정
+            var moveFlag = monster.gameObject.GetComponent<MonsterMoveFlag>();
+            if (moveFlag == null)
+            {
+                moveFlag = monster.gameObject.AddComponent<MonsterMoveFlag>();
+            }
+            moveFlag.SetMovedThisTurn(true);
+        }
+
+        /// <summary>
+        /// 몬스터가 이번 턴에 이동했는지 확인
+        /// </summary>
+        private bool HasMonsterMovedThisTurn(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return false;
+
+            var moveFlag = monster.gameObject.GetComponent<MonsterMoveFlag>();
+            return moveFlag != null && moveFlag.HasMovedThisTurn();
+        }
+
+        /// <summary>
+        /// 모든 몬스터의 이동 플래그 초기화 (턴 시작 시)
+        /// </summary>
+        public void ResetAllMonsterMoveFlags()
+        {
+            var allMonsters = spawnedMonsters.ToList(); // 리스트 복사로 안전하게 순회
+            foreach (var monsterObj in allMonsters)
+            {
+                if (monsterObj != null)
+                {
+                    var moveFlag = monsterObj.GetComponent<MonsterMoveFlag>();
+                    if (moveFlag != null)
+                    {
+                        moveFlag.SetMovedThisTurn(false);
+                    }
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("[MonsterSpawnManager] 모든 몬스터 이동 플래그 초기화");
+        }
+
+        /// <summary>
         /// 스폰된 몬스터들 정리
         /// </summary>
         public void ClearSpawnedMonsters()
@@ -1385,6 +1454,15 @@ namespace Maglin.Battle
         {
             if (monster == null || !monster.IsAlive) yield break;
 
+            // 이번 턴에 이미 외부 요청으로 이동했다면 AI 이동 건너뛰기
+            if (HasMonsterMovedThisTurn(monster))
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] {monster.EnemyName} 이번 턴에 이미 이동함 - AI 이동 건너뛰기");
+                yield return new WaitForSeconds(0.2f);
+                yield break;
+            }
+
             var ai = monster.GetComponent<EnemyAI>();
             if (ai == null) yield break;
 
@@ -1403,11 +1481,11 @@ namespace Maglin.Battle
                 if (debugMode)
                 {
                     var movementPattern = monster.EnemyData?.MovementPattern.ToString() ?? "Unknown";
-                    Debug.Log($"[MonsterSpawnManager] {monster.EnemyName} 위치 이동: {monster.GridPosition} -> {newPosition} (패턴: {movementPattern})");
+                    Debug.Log($"[MonsterSpawnManager] {monster.EnemyName} AI 위치 이동: {monster.GridPosition} -> {newPosition} (패턴: {movementPattern})");
                 }
 
                 // 부드러운 이동 완료까지 대기
-                yield return new WaitForSeconds(0.6f);
+                yield return new WaitForSeconds(0.4f);
             }
             else
             {
@@ -1422,16 +1500,37 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 몬스터 공격 처리
+        /// 몬스터 공격 처리 (플레이어 및 중립 오브젝트)
         /// </summary>
         public IEnumerator ProcessMonsterAttack(Maglin.Enemy.Enemy monster)
         {
             if (monster == null || !monster.IsAlive) yield break;
+            if (monster.IsNeutralObject) yield break; // 중립 오브젝트는 공격하지 않음
 
             var ai = monster.GetComponent<EnemyAI>();
             if (ai == null) yield break;
 
-            // 플레이어 공격 가능한지 확인
+            // 1. 먼저 공격해야 할 중립 오브젝트가 있는지 확인
+            var targetObject = FindAttackableNeutralObject(monster);
+            if (targetObject != null)
+            {
+                var damage = monster.CurrentAttackDamage;
+
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] {monster.EnemyName}이 중립 오브젝트 {targetObject.EnemyName}를 공격! 데미지: {damage}");
+
+                // 오브젝트 공격 애니메이션
+                yield return StartCoroutine(PerformObjectAttack(monster, targetObject.GridPosition));
+
+                // 중립 오브젝트에게 데미지
+                targetObject.TakeDamage(damage, monster.Element);
+
+                // 공격 후 잠시 대기
+                yield return new WaitForSeconds(0.2f);
+                yield break;
+            }
+
+            // 2. 플레이어 공격 가능한지 확인
             if (ai.CanAttackPosition(playerGridPosition))
             {
                 var damage = monster.CurrentAttackDamage;
@@ -1463,7 +1562,7 @@ namespace Maglin.Battle
                 }
 
                 // 공격 후 잠시 대기
-                yield return new WaitForSeconds(0.3f);
+                yield return new WaitForSeconds(0.2f);
             }
             else
             {
@@ -1649,6 +1748,297 @@ namespace Maglin.Battle
             if (target != null)
             {
                 target.transform.position = originalPosition;
+            }
+        }
+
+        /// <summary>
+        /// 공격 가능한 중립 오브젝트 찾기
+        /// </summary>
+        private Maglin.Enemy.Enemy FindAttackableNeutralObject(Maglin.Enemy.Enemy attacker)
+        {
+            if (attacker == null || attacker.IsNeutralObject) return null;
+
+            foreach (var monsterObj in spawnedMonsters)
+            {
+                if (monsterObj == null) continue;
+
+                var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+                if (enemy == null || !enemy.IsAlive || enemy == attacker) continue;
+
+                // 중립 오브젝트이고 몬스터가 공격할 수 있는 대상인지 확인
+                if (enemy.IsNeutralObject && enemy.MonstersAttackThis)
+                {
+                    // 공격 범위 내에 있는지 확인
+                    int distance = Mathf.Abs(attacker.GridPosition.x - enemy.GridPosition.x) +
+                                   Mathf.Abs(attacker.GridPosition.y - enemy.GridPosition.y);
+
+                    if (distance <= (attacker.EnemyData?.AttackRange ?? 1))
+                    {
+                        // 몬스터의 이동 경로를 막고 있는지 확인 (플레이어쪽으로 가는 경로)
+                        if (enemy.BlocksMonsterMovement &&
+                            enemy.GridPosition.x < attacker.GridPosition.x &&
+                            enemy.GridPosition.y == attacker.GridPosition.y)
+                        {
+                            return enemy;
+                        }
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 오브젝트 공격 애니메이션 실행
+        /// </summary>
+        private IEnumerator PerformObjectAttack(Maglin.Enemy.Enemy monster, Vector2Int targetPosition)
+        {
+            if (monster == null) yield break;
+
+            Vector3 originalPosition = monster.transform.position;
+            Vector3 targetWorldPos = GridFieldManager.Instance != null
+                ? GridFieldManager.Instance.GridToWorldPosition(targetPosition)
+                : new Vector3(targetPosition.x + 0.5f, targetPosition.y + 0.5f, 0f);
+
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] {monster.EnemyName} 오브젝트 공격 시작: {originalPosition} -> {targetWorldPos}");
+
+            // 1. 오브젝트 방향으로 살짝 이동 (준비 자세)
+            Vector3 attackPosition = originalPosition + Vector3.left * 0.2f; // 오브젝트 방향으로 0.2f 이동
+            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, attackPosition, 0.15f));
+
+            // 2. 잠시 대기 (공격 준비)
+            yield return new WaitForSeconds(0.1f);
+
+            // 3. 공격 효과 (약간의 흔들림)
+            yield return StartCoroutine(ShakeEffect(monster.gameObject, 0.2f, 0.12f));
+
+            // 4. 원래 위치로 돌아가기
+            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, originalPosition, 0.2f));
+
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] {monster.EnemyName} 오브젝트 공격 완료");
+        }
+        #endregion
+
+        #region Monster Summoning System
+        /// <summary>
+        /// 카드 효과로 몬스터 소환
+        /// </summary>
+        public bool SummonMonsterFromCard(Maglin.Cards.CardSO cardData, Vector2Int? targetPosition = null)
+        {
+            if (cardData == null || !cardData.EnableMonsterSummon || cardData.MonsterToSummon == null)
+            {
+                if (debugMode)
+                    Debug.Log("[MonsterSpawnManager] 카드에 몬스터 소환 효과가 없거나 소환할 몬스터가 지정되지 않음");
+                return false;
+            }
+
+            Vector2Int summonPosition = DetermineSummonPosition(cardData.SummonPosition, targetPosition);
+
+            // 소환 위치가 유효하지 않으면 실패
+            if (summonPosition.x < 1 || summonPosition.x >= 10)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] 유효하지 않은 소환 위치: {summonPosition}");
+                return false;
+            }
+
+            // 해당 위치에 이미 몬스터가 있는지 확인
+            var existingMonster = GetMonsterAtPosition(summonPosition);
+            if (existingMonster != null)
+            {
+                // 기존 몬스터를 밀어낼지 확인
+                if (cardData.PushExistingMonster)
+                {
+                    Vector2Int pushPosition = new Vector2Int(summonPosition.x + 1, summonPosition.y);
+
+                    // 밀어낼 위치가 유효하고 비어있는지 확인
+                    if (pushPosition.x >= 10 || GetMonsterAtPosition(pushPosition) != null)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[MonsterSpawnManager] 몬스터를 밀어낼 수 없음: {pushPosition}");
+                        return false; // 소환 실패
+                    }
+
+                    // 기존 몬스터를 플레이어 반대쪽으로 밀어내기
+                    PushMonsterAwayFromPlayer(existingMonster, 1);
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnManager] 소환 위치에 이미 몬스터가 존재함: {summonPosition}");
+                    return false; // 소환 실패
+                }
+            }
+
+            // 몬스터 소환 실행
+            StartCoroutine(SummonMonsterCoroutine(cardData.MonsterToSummon, summonPosition));
+            return true;
+        }
+
+        /// <summary>
+        /// 소환 위치 결정
+        /// </summary>
+        private Vector2Int DetermineSummonPosition(Maglin.Cards.MonsterSummonPosition summonType, Vector2Int? targetPosition)
+        {
+            switch (summonType)
+            {
+                case Maglin.Cards.MonsterSummonPosition.InFrontOfPlayer:
+                    return new Vector2Int(1, 0); // 플레이어 바로 앞 (1번 슬롯)
+
+                case Maglin.Cards.MonsterSummonPosition.AtTargetPosition:
+                    if (targetPosition.HasValue && targetPosition.Value.x >= 1 && targetPosition.Value.x < 10)
+                    {
+                        return targetPosition.Value;
+                    }
+                    else
+                    {
+                        // 타겟 위치가 유효하지 않으면 플레이어 앞으로 대체
+                        if (debugMode)
+                            Debug.LogWarning($"[MonsterSpawnManager] 유효하지 않은 타겟 위치, 플레이어 앞으로 대체: {targetPosition}");
+                        return new Vector2Int(1, 0);
+                    }
+
+                case Maglin.Cards.MonsterSummonPosition.RandomEmpty:
+                    return FindRandomEmptyPosition();
+
+                default:
+                    if (debugMode)
+                        Debug.LogWarning($"[MonsterSpawnManager] 알 수 없는 소환 위치 타입: {summonType}");
+                    return new Vector2Int(1, 0); // 기본값: 플레이어 앞
+            }
+        }
+
+        /// <summary>
+        /// 랜덤한 빈 위치 찾기
+        /// </summary>
+        private Vector2Int FindRandomEmptyPosition()
+        {
+            var emptyPositions = new List<Vector2Int>();
+
+            // 1번부터 9번 슬롯까지 빈 곳 찾기
+            for (int x = 1; x < 10; x++)
+            {
+                Vector2Int pos = new Vector2Int(x, 0);
+                if (GetMonsterAtPosition(pos) == null)
+                {
+                    emptyPositions.Add(pos);
+                }
+            }
+
+            if (emptyPositions.Count > 0)
+            {
+                int randomIndex = UnityEngine.Random.Range(0, emptyPositions.Count);
+                return emptyPositions[randomIndex];
+            }
+
+            // 빈 곳이 없으면 플레이어 앞 반환 (기본값)
+            return new Vector2Int(1, 0);
+        }
+
+        /// <summary>
+        /// 특정 위치에 있는 몬스터 찾기
+        /// </summary>
+        private Maglin.Enemy.Enemy GetMonsterAtPosition(Vector2Int position)
+        {
+            foreach (var monsterObj in spawnedMonsters)
+            {
+                if (monsterObj == null) continue;
+
+                var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+                if (enemy != null && enemy.IsAlive && enemy.GridPosition == position)
+                {
+                    return enemy;
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// 몬스터를 플레이어 반대쪽으로 밀어내기
+        /// </summary>
+        private void PushMonsterAwayFromPlayer(Maglin.Enemy.Enemy monster, int distance)
+        {
+            if (monster == null) return;
+
+            Vector2Int currentPos = monster.GridPosition;
+            Vector2Int newPos = new Vector2Int(currentPos.x + distance, currentPos.y);
+
+            // 경계 확인
+            if (newPos.x >= 10)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[MonsterSpawnManager] 몬스터를 밀어낼 수 없음 (경계 초과): {monster.EnemyName}");
+                return;
+            }
+
+            // 대상 위치에 다른 몬스터가 있는지 확인
+            if (GetMonsterAtPosition(newPos) != null)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[MonsterSpawnManager] 몬스터를 밀어낼 수 없음 (위치 점유): {monster.EnemyName}");
+                return;
+            }
+
+            // 몬스터 위치 업데이트
+            SetMonsterGridPosition(monster, newPos);
+            UpdateMonsterPosition(monster);
+
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] {monster.EnemyName}을 {currentPos}에서 {newPos}로 밀어냄");
+        }
+
+        /// <summary>
+        /// 몬스터 소환 코루틴
+        /// </summary>
+        private IEnumerator SummonMonsterCoroutine(EnemySO enemyData, Vector2Int position)
+        {
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] 몬스터 소환 시작: {enemyData.EnemyName} at {position}");
+
+            // GridFieldManager 준비 대기
+            while (GridFieldManager.Instance == null || !GridFieldManager.Instance.IsInitialized)
+            {
+                yield return null;
+            }
+
+            // 몬스터 생성
+            GameObject monsterObj = CreateMonsterGameObject(enemyData.EnemyName, position, enemyData);
+
+            if (monsterObj != null)
+            {
+                var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+                if (enemy != null)
+                {
+                    // Enemy의 debugMode 설정
+                    var debugField = typeof(Maglin.Enemy.Enemy).GetField("debugMode",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (debugField != null)
+                    {
+                        debugField.SetValue(enemy, debugMode);
+                    }
+
+                    enemy.Initialize(enemyData, position);
+                    SetupMonsterHealthEvents(enemy);
+                }
+
+                spawnedMonsters.Add(monsterObj);
+
+                // 즉시 활성화 (애니메이션 없이)
+                monsterObj.SetActive(true);
+
+                // TargetManager에 몬스터 추가
+                if (TargetManager.Instance != null)
+                {
+                    TargetManager.Instance.AddMonster(monsterObj);
+                }
+
+                // 몬스터 스폰 이벤트 발생
+                OnMonsterSpawned?.Invoke(enemy);
+
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 소환 완료: {position}");
             }
         }
         #endregion

@@ -15,16 +15,16 @@ MonoBehaviour:
   cardName: ChainFrontHit
   cardType: 1
   elementType: 0
-  baseDamage: 3
+  baseDamage: 4
   baseHeal: 0
   manaCost: 0
-  targetType: 6
-  targetCount: 3
+  targetType: 4
+  targetCount: 4
   cardDescription: ChainFrontHit
   cardImage: {fileID: 0}
   cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
   cardSound: {fileID: 0}
-  showVFXPerTarget: 1
+  showVFXPerTarget: 0
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}

@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b1a6701b417e2446c94bc3b141f38062, type: 3}
+  m_Name: object1
+  m_EditorClassIdentifier: 
+  objectName: object1
+  description: object1
+  objectType: 0
+  objectSprite: {fileID: 21300000, guid: 92ae4c07df1d34699855732ef137b4fb, type: 3}
+  objectPrefab: {fileID: 8633294552988975469, guid: 54318a90ecbc74a9995271a043c2deba, type: 3}
+  size: {x: 1, y: 2}
+  maxHealth: 30
+  isDestructible: 1
+  canBeTargetedByPlayer: 1
+  canBeTargetedByMonsters: 1
+  blocksMovement: 1
+  blocksProjectiles: 0
+  monstersAttackThis: 1
+  triggerOnContact: 0
+  destroyEffect: 0
+  effectValue: 0
+  effectRange: 1
+  fieldEffectOnDestroy: {fileID: 0}
+  summonObjectOnDestroy: {fileID: 0}
+  summonCount: 1
+  spawnSound: {fileID: 0}
+  hitSound: {fileID: 0}
+  destroySound: {fileID: 0}
+  spawnVFX: {fileID: 0}
+  hitVFX: {fileID: 0}
+  destroyVFX: {fileID: 0}
+  isInvisibleToMonsters: 0
+  regeneratesHealth: 0
+  regenerationAmount: 1
+  hasTimedDestruction: 0
+  destructionTimer: 3
+  showDebugInfo: 0

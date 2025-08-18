@@ -18,7 +18,7 @@ MonoBehaviour:
   baseDamage: 1
   baseHeal: 0
   manaCost: 0
-  targetType: 8
+  targetType: 5
   targetCount: 2
   cardDescription: FrontN
   cardImage: {fileID: 0}
@@ -28,4 +28,6 @@ MonoBehaviour:
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
+  movementType: 0
+  movementDistance: 1
   requiredCombinations: []

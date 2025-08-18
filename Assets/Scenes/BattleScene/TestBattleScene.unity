@@ -1246,7 +1246,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53088569d052245a4961e6d07d4d9eeb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugMode: 0
+  debugMode: 1
   enableSpawnAnimations: 1
   useSequentialSpawn: 1
 --- !u!4 &340597818
@@ -2522,7 +2522,7 @@ Tilemap:
     m_Data: {r: 1, g: 1, b: 1, a: 1}
   m_TileObjectToInstantiateArray: []
   m_AnimationFrameRate: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_Origin: {x: 0, y: 0, z: 0}
   m_Size: {x: 11, y: 2, z: 1}
   m_TileAnchor: {x: 0.5, y: 0.5, z: 0}
@@ -3091,7 +3091,7 @@ MonoBehaviour:
   - {fileID: 0}
   - {fileID: 0}
   cardUIPrefab: {fileID: 350527894111610896, guid: b573633245e8d4647af4362d9c9ef83f, type: 3}
-  monsterPrefab: {fileID: 8633294552988975469, guid: 6b3250d8b13844fdeb13404a47de1178, type: 3}
+  monsterPrefab: {fileID: 8633294552988975469, guid: 54318a90ecbc74a9995271a043c2deba, type: 3}
   loadingUIPrefab: {fileID: 7490260722711204314, guid: 000e34f11f6eeba498c8703168cd1c7f, type: 3}
   rewardSelectionUI: {fileID: 1130329581}
   rewardSlots:
@@ -4468,7 +4468,7 @@ Tilemap:
     m_Data: {r: 1, g: 1, b: 1, a: 1}
   m_TileObjectToInstantiateArray: []
   m_AnimationFrameRate: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_Origin: {x: 0, y: 0, z: 0}
   m_Size: {x: 10, y: 1, z: 1}
   m_TileAnchor: {x: 0.5, y: 0.5, z: 0}

@@ -394,7 +394,7 @@ namespace Maglin.Battle
         /// </summary>
         private IEnumerator CleanupFragmentSpritesDelayed()
         {
-            yield return new WaitForSeconds(6.0f); // 애니메이션 완료 후 6초 대기 (충분히 볼 수 있도록)
+            yield return new WaitForSeconds(4.0f); // 애니메이션 완료 후 6초 대기 (충분히 볼 수 있도록)
 
             // 저장된 조각 스프라이트들 정리
             foreach (var spriteList in fragmentSpritesToCleanup)

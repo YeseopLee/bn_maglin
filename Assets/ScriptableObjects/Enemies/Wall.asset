@@ -10,26 +10,26 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5c5a97bf729a44666ad0d600a5799eb4, type: 3}
-  m_Name: Slime
+  m_Name: Wall
   m_EditorClassIdentifier: 
-  enemyName: Slime
+  enemyName: Wall
   enemyType: 0
-  enemySprite: {fileID: 21300000, guid: 92ae4c07df1d34699855732ef137b4fb, type: 3}
+  enemySprite: {fileID: 21300000, guid: de20f811e63ba410ca796decbd8b5f95, type: 3}
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
-  maxHealth: 10
+  maxHealth: 40
   enemyElement: 0
-  attackDamage: 5
-  attackPattern: 1
-  attackRange: 2
-  movementPattern: 0
+  attackDamage: 0
+  attackPattern: 0
+  attackRange: 1
+  movementPattern: 4
   movementSpeed: 1
   sizeInTiles: 1
   canSummonObjects: 0
   hasSpecialMechanics: 0
   specialAbilityDescription: 
-  isNeutralObject: 0
-  blocksMonsterMovement: 0
-  monstersAttackThis: 0
+  isNeutralObject: 1
+  blocksMonsterMovement: 1
+  monstersAttackThis: 1
   objectDescription: 
   goldReward: 0
   experienceReward: 0

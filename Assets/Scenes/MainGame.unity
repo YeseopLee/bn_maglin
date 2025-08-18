@@ -790,6 +790,54 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &562439726
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 562439728}
+  - component: {fileID: 562439727}
+  m_Layer: 0
+  m_Name: ObjectManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &562439727
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 562439726}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 71ba95b60b9764bf69bb7125262ba10d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spawnedObjects: []
+  debugMode: 1
+  objectPrefab: {fileID: 0}
+  isInitialized: 0
+--- !u!4 &562439728
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 562439726}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 30.059385, y: 18.981504, z: -0.43433544}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &568764740
 GameObject:
   m_ObjectHideFlags: 0
@@ -820,12 +868,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   starterDeck:
-  - {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
-  - {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
-  - {fileID: 11400000, guid: 50e9b4572b6934c77818a1769136c9fa, type: 2}
-  - {fileID: 11400000, guid: 50e9b4572b6934c77818a1769136c9fa, type: 2}
-  - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
-  - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+  - {fileID: 11400000, guid: 0b6439617f5674782aa0b8c51a78788c, type: 2}
+  - {fileID: 11400000, guid: ece1d2f4d760841a4a867627b28bafba, type: 2}
+  - {fileID: 11400000, guid: d3f1fe76ad1d94470907d4c85b8318ff, type: 2}
+  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
+  - {fileID: 11400000, guid: 2f69a2f0e5709445280533e3e8a4864c, type: 2}
   currentDeck: []
   hand: []
   discardPile: []
@@ -1031,7 +1078,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53088569d052245a4961e6d07d4d9eeb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugMode: 0
+  debugMode: 1
   enableSpawnAnimations: 1
   useSequentialSpawn: 1
 --- !u!4 &672295410
@@ -2247,3 +2294,4 @@ SceneRoots:
   - {fileID: 839472938}
   - {fileID: 478698860}
   - {fileID: 672295410}
+  - {fileID: 562439728}
