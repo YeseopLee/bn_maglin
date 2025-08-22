@@ -819,10 +819,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71ba95b60b9764bf69bb7125262ba10d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  spawnedObjects: []
-  debugMode: 1
-  objectPrefab: {fileID: 0}
-  isInitialized: 0
 --- !u!4 &562439728
 Transform:
   m_ObjectHideFlags: 0
@@ -873,6 +869,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: d3f1fe76ad1d94470907d4c85b8318ff, type: 2}
   - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
   - {fileID: 11400000, guid: 2f69a2f0e5709445280533e3e8a4864c, type: 2}
+  - {fileID: 11400000, guid: efd678e606cf34774b1d52d7195fc39e, type: 2}
+  - {fileID: 11400000, guid: ece1d2f4d760841a4a867627b28bafba, type: 2}
   currentDeck: []
   hand: []
   discardPile: []

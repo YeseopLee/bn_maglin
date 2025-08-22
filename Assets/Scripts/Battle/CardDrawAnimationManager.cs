@@ -302,6 +302,27 @@ namespace Maglin.Battle
         }
 
         /// <summary>
+        /// 새로운 카드만 드로우하는 애니메이션 (기존 손패는 유지)
+        /// </summary>
+        public void PlayNewCardDrawAnimation(List<Card> newCards)
+        {
+            if (newCards == null || newCards.Count == 0) return;
+
+            if (isAnimating)
+            {
+                // 현재 애니메이션 중이면 큐에 추가
+                drawQueue.Enqueue(new CardDrawRequest(newCards, true));
+                ProcessDrawQueue();
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 새로운 카드 드로우 애니메이션 시작: {newCards.Count}장");
+
+            StartCoroutine(ExecuteNewCardDrawAnimation(newCards));
+        }
+
+        /// <summary>
         /// 단일 카드 드로우 애니메이션
         /// </summary>
         public void PlaySingleCardDrawAnimation(Card card)
@@ -372,6 +393,17 @@ namespace Maglin.Battle
                 Debug.Log($"[CardDrawAnimationManager] 카드 무덤 애니메이션 시작: {cards.Count}장 → {graveTransform.name}");
 
             StartCoroutine(ExecuteCardToGraveAnimation(cards, cardUIs, graveTransform));
+        }
+
+        /// <summary>
+        /// 현재 손패의 카드 수 가져오기
+        /// </summary>
+        private int GetCurrentHandCardCount()
+        {
+            var handTransform = GetHandContent();
+            if (handTransform == null) return 0;
+
+            return handTransform.childCount;
         }
         #endregion
 
@@ -669,6 +701,124 @@ namespace Maglin.Battle
         }
 
         /// <summary>
+        /// 새로운 카드만 드로우하는 애니메이션 실행 (기존 손패는 그대로 유지)
+        /// </summary>
+        private IEnumerator ExecuteNewCardDrawAnimation(List<Card> newCards)
+        {
+            isAnimating = true;
+            animatingCards.Clear();
+
+            var deckTransform = GetDeckArea();
+            var handTransform = GetHandContent();
+            var prefab = GetCardUIPrefab();
+
+            if (deckTransform == null || handTransform == null || prefab == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[CardDrawAnimationManager] 필수 UI 참조가 없어 새 카드 애니메이션을 건너뛰고 폴백 모드로 실행합니다");
+
+                isAnimating = false;
+                CreateCardsDirectly(newCards);
+                yield break;
+            }
+
+            // 기존 손패 카드 수 확인
+            int existingCardCount = GetCurrentHandCardCount();
+
+            // 레이아웃 그룹은 활성화 상태 유지 (비활성화하지 않음)
+            var layoutGroup = handTransform.GetComponent<HorizontalLayoutGroup>();
+
+            List<GameObject> newCardUIs = new List<GameObject>();
+
+            // 새로운 카드들을 순차적으로 드로우
+            for (int i = 0; i < newCards.Count; i++)
+            {
+                var newCard = newCards[i];
+
+                // 새로운 카드 UI를 임시로 별도 부모에 생성 (레이아웃 영향 방지)
+                GameObject tempParent = new GameObject("TempCardParent");
+                tempParent.transform.SetParent(handTransform.parent, false);
+
+                // 새로운 카드 UI 생성 (임시 부모에)
+                GameObject cardUI = CreateCardUI(newCard, prefab, tempParent.transform);
+                newCardUIs.Add(cardUI);
+                animatingCards.Add(cardUI);
+
+                // 덱 위치에서 시작
+                cardUI.transform.position = deckTransform.position;
+                cardUI.transform.localScale = Vector3.one * cardSpawnScale;
+
+                // 손패 중앙 근처의 임시 위치 계산 (여러 카드가 겹치지 않도록)
+                Vector3 tempPosition = handTransform.position; // 손패 영역의 월드 위치
+                if (newCards.Count > 1)
+                {
+                    // 여러 장인 경우 살짝 다른 위치로 분산
+                    float offset = (i - (newCards.Count - 1) * 0.5f) * 30f; // 30픽셀씩 간격
+                    tempPosition += handTransform.right * offset;
+                }
+
+                // 손패 중앙(임시 위치)으로 이동하는 애니메이션
+                var moveSequence = DOTween.Sequence();
+                moveSequence.Append(cardUI.transform.DOMove(tempPosition, cardDrawDuration).SetEase(cardMoveEase));
+                moveSequence.Join(cardUI.transform.DOScale(Vector3.one, cardDrawDuration).SetEase(Ease.OutBack));
+
+                // 개별 카드 완료 이벤트 (애니메이션 완료 후 손패에 추가 + 이벤트 발생)
+                int cardIndex = i;
+                moveSequence.OnComplete(() =>
+                {
+                    // 실제 손패 영역으로 이동
+                    cardUI.transform.SetParent(handTransform, false);
+
+                    // 임시 부모 제거
+                    if (tempParent != null)
+                    {
+                        Destroy(tempParent);
+                    }
+
+                    // 레이아웃 강제 업데이트 (새 카드가 올바른 위치로 배치되도록)
+                    if (layoutGroup != null)
+                    {
+                        LayoutRebuilder.ForceRebuildLayoutImmediate(handTransform.GetComponent<RectTransform>());
+                    }
+
+                    // 완료 이벤트 발생
+                    OnCardDrawAnimationCompleted?.Invoke(newCards[cardIndex], newCardUIs[cardIndex]);
+                });
+
+                OnCardDrawAnimationStarted?.Invoke(newCard);
+
+                if (debugMode)
+                    Debug.Log($"[CardDrawAnimationManager] 새 카드 {i + 1}/{newCards.Count} 드로우: {newCard.CardName} → 손패 중앙");
+
+                // 다음 카드 드로우 전 딜레이
+                yield return new WaitForSeconds(cardInterval);
+            }
+
+            // 마지막 카드 애니메이션 완료까지 대기
+            yield return new WaitForSeconds(cardDrawDuration);
+
+            // 모든 카드가 손패에 정착한 후 최종 레이아웃 정리
+            if (layoutGroup != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(handTransform.GetComponent<RectTransform>());
+
+                if (debugMode)
+                    Debug.Log("[CardDrawAnimationManager] 최종 레이아웃 정리 완료");
+            }
+
+            isAnimating = false;
+
+            // 완료 이벤트 발생
+            OnAllCardDrawAnimationsCompleted?.Invoke(newCards);
+
+            if (debugMode)
+                Debug.Log($"[CardDrawAnimationManager] 새 카드 드로우 애니메이션 완료: {newCards.Count}장");
+
+            // 대기 중인 애니메이션 처리
+            ProcessDrawQueue();
+        }
+
+        /// <summary>
         /// 카드 재배치 애니메이션 실행
         /// </summary>
         private IEnumerator ExecuteCardArrangementAnimation()
@@ -786,7 +936,14 @@ namespace Maglin.Battle
         {
             yield return new WaitUntil(() => !isAnimating);
 
-            PlayCardDrawAnimation(request.Cards);
+            if (request.IsNewCardOnly)
+            {
+                PlayNewCardDrawAnimation(request.Cards);
+            }
+            else
+            {
+                PlayCardDrawAnimation(request.Cards);
+            }
             isProcessingQueue = false;
         }
 
@@ -853,10 +1010,12 @@ namespace Maglin.Battle
         private class CardDrawRequest
         {
             public List<Card> Cards { get; private set; }
+            public bool IsNewCardOnly { get; private set; }
 
-            public CardDrawRequest(List<Card> cards)
+            public CardDrawRequest(List<Card> cards, bool isNewCardOnly = false)
             {
                 Cards = new List<Card>(cards);
+                IsNewCardOnly = isNewCardOnly;
             }
         }
         #endregion

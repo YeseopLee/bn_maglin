@@ -1238,6 +1238,7 @@ namespace Maglin.Battle
 
             // 카드 수 변화 감지 (드로우 vs 사용/제거)
             bool isCardIncrease = handCards.Count > lastHandCardCount;
+            int cardCountDiff = handCards.Count - lastHandCardCount;
             lastHandCardCount = handCards.Count;
 
             // 강제로 애니메이션 없이 업데이트하거나, 애니메이션 매니저가 없거나 카드가 없는 경우
@@ -1260,17 +1261,40 @@ namespace Maglin.Battle
             }
 
             if (debugMode)
-                Debug.Log($"[BattleUIManager] 손패 UI 업데이트 (애니메이션 모드): {handCards.Count}장");
+                Debug.Log($"[BattleUIManager] 손패 UI 업데이트 (애니메이션 모드): {handCards.Count}장, 증가분: {cardCountDiff}");
 
-            // 기존 UI 정리
-            ClearHandCardUIs();
+            // 카드가 1-2장 추가된 경우 (드로우 버튼 등) 새로운 카드만 애니메이션
+            if (isCardIncrease && cardCountDiff <= 2 && handCardUIs.Count > 0)
+            {
+                // 새로 추가된 카드들만 가져오기
+                var newCards = handCards.GetRange(handCards.Count - cardCountDiff, cardCountDiff);
 
-            // 덱 카운트 및 버튼 상태 업데이트
-            UpdateDeckCountUI();
-            UpdateButtonStates();
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] 새 카드 드로우 애니메이션: {newCards.Count}장");
 
-            // 애니메이션 실행 - 이 부분이 실제로 카드를 생성합니다
-            CardDrawAnimationManager.Instance.PlayCardDrawAnimation(handCards);
+                // 덱 카운트 및 버튼 상태 업데이트
+                UpdateDeckCountUI();
+                UpdateButtonStates();
+
+                // 새로운 카드만 드로우 애니메이션 실행
+                CardDrawAnimationManager.Instance.PlayNewCardDrawAnimation(newCards);
+            }
+            else
+            {
+                // 전체 손패 다시 드로우 (게임 시작, 턴 시작 등)
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] 전체 카드 드로우 애니메이션: {handCards.Count}장");
+
+                // 기존 UI 정리
+                ClearHandCardUIs();
+
+                // 덱 카운트 및 버튼 상태 업데이트
+                UpdateDeckCountUI();
+                UpdateButtonStates();
+
+                // 전체 카드 드로우 애니메이션 실행
+                CardDrawAnimationManager.Instance.PlayCardDrawAnimation(handCards);
+            }
         }
 
         /// <summary>

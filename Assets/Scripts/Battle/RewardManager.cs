@@ -78,7 +78,7 @@ namespace Maglin.Battle
         {
             if (isShowingRewards)
             {
-                Debug.LogWarning("[RewardManager] 이미 보상을 표시 중입니다.");
+                Debug.LogWarning($"[RewardManager] 이미 보상을 표시 중입니다. 중복 호출 무시됨: {currentFloor}층 {floorType}");
                 return;
             }
 
@@ -166,11 +166,11 @@ namespace Maglin.Battle
                 hasSelectedRelic = true;
             }
 
-            // 모든 선택이 완료되면 보상 완료 처리
-            if (hasSelectedCard && hasSelectedRelic)
-            {
-                CompleteRewards();
-            }
+            // 보상을 하나 선택하면 바로 완료 처리 (스킵과 동일한 동작)
+            if (debugMode)
+                Debug.Log("[RewardManager] 보상 선택 완료, 다음 층으로 진행");
+
+            CompleteRewards();
         }
 
         /// <summary>

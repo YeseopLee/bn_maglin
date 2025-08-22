@@ -15,10 +15,10 @@ MonoBehaviour:
   cardName: allBall
   cardType: 1
   elementType: 0
-  baseDamage: 1
+  baseDamage: 30
   baseHeal: 0
   manaCost: 0
-  targetType: 3
+  targetType: 2
   targetCount: 1
   cardDescription: EnergyBall
   cardImage: {fileID: 0}
@@ -28,9 +28,10 @@ MonoBehaviour:
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
-  objectToSpawn: {fileID: 0}
-  spawnTargetPosition: -1
-  spawnAtTarget: 1
   movementType: 3
   movementDistance: 4
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 0}
+  summonPosition: 0
+  pushExistingMonster: 1
   requiredCombinations: []

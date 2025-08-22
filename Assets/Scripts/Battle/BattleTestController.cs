@@ -1522,11 +1522,36 @@ namespace Maglin.Battle
                 return true;
             }
 
-            // 모든 몬스터 처치 확인
+            // 모든 적 몬스터 처치 확인 (중립 오브젝트 제외)
             var aliveMonsters = TargetManager.Instance?.GetAliveEnemies() ?? new List<Maglin.Enemy.Enemy>();
 
-            if (aliveMonsters.Count == 0)
+            // 중립 오브젝트가 아닌 적 몬스터만 필터링
+            var aliveEnemyMonsters = aliveMonsters.Where(monster =>
+                monster != null &&
+                monster.EnemyData != null &&
+                !monster.EnemyData.IsNeutralObject).ToList();
+
+            if (debugMode)
             {
+                Debug.Log($"[BattleTestController] 전투 종료 확인:");
+                Debug.Log($"  - 전체 살아있는 몬스터: {aliveMonsters.Count}마리");
+                Debug.Log($"  - 적 몬스터 (중립 제외): {aliveEnemyMonsters.Count}마리");
+
+                foreach (var monster in aliveMonsters)
+                {
+                    if (monster?.EnemyData != null)
+                    {
+                        Debug.Log($"  - {monster.EnemyName}: {(monster.EnemyData.IsNeutralObject ? "중립 오브젝트" : "적 몬스터")}");
+                    }
+                }
+            }
+
+            // 적 몬스터가 모두 죽었으면 전투 승리
+            if (aliveEnemyMonsters.Count == 0)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 모든 적 몬스터 처치 완료! 전투 승리");
+
                 EndBattle(true);
                 return true;
             }
@@ -1553,10 +1578,33 @@ namespace Maglin.Battle
             if (victory)
             {
                 if (debugMode)
-                    Debug.Log("[BattleTestController] 전투 승리! 보상을 표시합니다.");
+                    Debug.Log("[BattleTestController] 전투 승리!");
 
-                // 전투 승리 시 보상 표시
-                ShowBattleRewards();
+                // 테스트 모드에서만 직접 보상 표시, 프로덕션 모드에서는 FloorManager가 처리
+                if (useTestMode)
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 테스트 모드 - 보상을 표시합니다.");
+                    ShowBattleRewards();
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 프로덕션 모드 - FloorManager에게 층 완료 알림");
+
+                    // 프로덕션 모드: FloorManager에게 현재 층 완료 알림
+                    if (FloorManager.Instance != null)
+                    {
+                        Debug.Log($"[BattleTestController] FloorManager.Instance 존재, CompleteCurrentFloor 호출");
+                        FloorManager.Instance.CompleteCurrentFloor();
+                        Debug.Log($"[BattleTestController] CompleteCurrentFloor 호출 완료");
+                    }
+                    else
+                    {
+                        Debug.LogError("[BattleTestController] FloorManager.Instance가 null입니다! 테스트 모드로 폴백");
+                        ShowBattleRewards();
+                    }
+                }
             }
             else
             {
@@ -1687,51 +1735,40 @@ namespace Maglin.Battle
                 BattleUIManager.Instance.HideRewardUI();
             }
 
-            if (useTestMode)
-            {
-                // 테스트 모드: 간단히 로그만 출력
-                if (debugMode)
-                    Debug.Log("[BattleTestController] 테스트 모드 - 전투 완전 종료");
-            }
-            else
-            {
-                // 프로덕션 모드: 전투 완료 후 다음 층으로 진행
-                StartCoroutine(CompleteBattleAndProceed());
-            }
+            // 보상 선택 완료 후 정리 작업만 수행
+            // (다음 층 진행은 FloorManager.CompleteCurrentFloor()에서 자동으로 처리됨)
+            if (debugMode)
+                Debug.Log("[BattleTestController] 보상 선택 완료 - 정리 작업 수행");
+
+            // 추가 정리 작업이 필요하면 여기에 추가
+            SetInputBlocked(true); // 입력 차단 유지
         }
 
         /// <summary>
         /// 전투 완료 후 다음 층 진행 처리 (프로덕션 모드)
+        /// 현재 사용하지 않음 - FloorManager에서 자동 진행 처리
         /// </summary>
+        /*
         private System.Collections.IEnumerator CompleteBattleAndProceed()
         {
             if (debugMode)
                 Debug.Log("[BattleTestController] 전투 완료, 다음 층으로 진행 시작");
 
+            // UI 정리 작업
+            BattleUIManager.Instance?.HideRewardUI();
+            SetInputBlocked(true); // 입력 다시 막기
+
             // 잠시 대기
-            yield return new WaitForSeconds(0.5f);
+            yield return new WaitForSeconds(1f);
 
-            // FloorManager에 현재 층 완료 알림
-            if (FloorManager.Instance != null)
-            {
-                FloorManager.Instance.CompleteCurrentFloor();
-
-                // 잠시 대기 후 다음 층으로 진행
-                yield return new WaitForSeconds(0.5f);
-
-                FloorManager.Instance.ProceedToNextFloor();
-            }
-            else
-            {
-                Debug.LogError("[BattleTestController] FloorManager가 없습니다!");
-
-                // 폴백: GameManager로 직접 메인 메뉴 복귀
-                if (GameManager.Instance != null)
-                {
-                    GameManager.Instance.ReturnToMainMenu();
-                }
-            }
+            // 전투 완료 정리 작업만 수행
+            // (다음 층 진행은 FloorManager.CompleteCurrentFloor()에서 자동으로 처리됨)
+            if (debugMode)
+                Debug.Log("[BattleTestController] 전투 완료 정리 작업 완료");
+            
+            // 추가 정리 작업이 필요하면 여기에 추가
         }
+        */
 
         /// <summary>
         /// 보상 건너뛰기가 선택되었을 때 호출

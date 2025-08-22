@@ -80,7 +80,7 @@ namespace Maglin.Core
         [SerializeField] private string shopSceneName = "TestShopScene";
         [SerializeField] private string eventSceneName = "TestEventScene";
         [SerializeField] private string mainGameSceneName = "MainGame";
-        
+
         // Public 프로퍼티들
         public string BattleSceneName => battleSceneName;
         public string ShopSceneName => shopSceneName;
@@ -188,9 +188,18 @@ namespace Maglin.Core
         /// </summary>
         public void CompleteCurrentFloor()
         {
+            Debug.Log($"[FloorManager] CompleteCurrentFloor 호출됨. isProcessingFloor: {isProcessingFloor}");
+
             if (!isProcessingFloor)
             {
-                Debug.LogWarning("No floor is being processed!");
+                Debug.LogWarning("[FloorManager] No floor is being processed! 강제로 보상 표시 시도");
+
+                // 강제로 보상 표시 (전투 승리 시에만)
+                if (ShouldShowRewards(CurrentFloorType))
+                {
+                    Debug.Log($"[FloorManager] 강제 보상 화면 표시 시작");
+                    ShowBattleRewards(currentFloor, CurrentFloorType);
+                }
                 return;
             }
 
@@ -212,13 +221,15 @@ namespace Maglin.Core
             OnFloorCompleted?.Invoke(completedFloor);
 
             // 전투 층인 경우 보상 표시
+            Debug.Log($"[FloorManager] 보상 표시 확인 - ShouldShowRewards({CurrentFloorType}): {ShouldShowRewards(CurrentFloorType)}");
             if (ShouldShowRewards(CurrentFloorType))
             {
+                Debug.Log($"[FloorManager] 보상 화면 표시 시작");
                 ShowBattleRewards(currentFloor, CurrentFloorType);
             }
             else
             {
-                // 보상이 없는 층 (상점, 이벤트 등)은 바로 다음 층으로
+                Debug.Log($"[FloorManager] 보상 화면 표시하지 않음. 바로 다음 층 진행");
                 FinishFloorCompletion();
             }
         }
@@ -239,6 +250,17 @@ namespace Maglin.Core
         /// </summary>
         private void ShowBattleRewards(int floor, FloorType floorType)
         {
+            Debug.Log($"[FloorManager] ShowBattleRewards 호출됨. floor: {floor}, floorType: {floorType}");
+
+            if (Battle.RewardManager.Instance != null)
+            {
+                Debug.Log($"[FloorManager] RewardManager.Instance 존재, ShowBattleRewards 호출");
+            }
+            else
+            {
+                Debug.LogError($"[FloorManager] RewardManager.Instance가 null입니다!");
+            }
+
             if (Battle.RewardManager.Instance != null)
             {
                 // RewardManager 이벤트 구독 (일회성)

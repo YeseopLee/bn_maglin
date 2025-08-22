@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
   m_Name: SummonWall
   m_EditorClassIdentifier: 
-  cardName: MakeOBject
+  cardName: SummonWall
   cardType: 1
   elementType: 0
   baseDamage: 1
@@ -20,9 +20,9 @@ MonoBehaviour:
   manaCost: 0
   targetType: 0
   targetCount: 1
-  cardDescription: EnergyBall
+  cardDescription: SummonWall
   cardImage: {fileID: 0}
-  cardEffect: {fileID: 11400000, guid: b7f58eae985884cbc94b88a63f342266, type: 2}
+  cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 0
   comboFailureType: 0
@@ -30,4 +30,8 @@ MonoBehaviour:
   fieldEffectToApply: {fileID: 0}
   movementType: 0
   movementDistance: 3
+  enableMonsterSummon: 1
+  monsterToSummon: {fileID: 11400000, guid: bd17793a8b9cb411bb4fbb5351f04b5c, type: 2}
+  summonPosition: 2
+  pushExistingMonster: 1
   requiredCombinations: []

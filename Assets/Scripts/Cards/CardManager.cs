@@ -701,10 +701,14 @@ namespace Maglin.Cards
                 return;
             }
 
+            // 현재 덱에 추가
             currentDeck.Add(card);
 
+            // 스타터 덱에도 추가 (다음 층 초기화 시에도 유지되도록)
+            starterDeck.Add(card);
+
             if (debugMode)
-                Debug.Log($"[CardManager] 덱에 카드 추가: {card.CardName}");
+                Debug.Log($"[CardManager] 덱에 카드 추가: {card.CardName} (현재 덱 & 스타터 덱)");
         }
 
         /// <summary>
@@ -717,10 +721,13 @@ namespace Maglin.Cards
             // 현재 덱에서 제거 시도
             if (currentDeck.Remove(card))
             {
+                // 스타터 덱에서도 제거 (영구적 제거)
+                starterDeck.Remove(card);
+
                 removedCards.Add(card);
 
                 if (debugMode)
-                    Debug.Log($"[CardManager] 덱에서 카드 제거: {card.CardName}");
+                    Debug.Log($"[CardManager] 덱에서 카드 제거: {card.CardName} (현재 덱 & 스타터 덱)");
 
                 return true;
             }

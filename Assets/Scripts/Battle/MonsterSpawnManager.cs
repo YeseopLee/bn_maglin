@@ -1008,8 +1008,8 @@ namespace Maglin.Battle
                     }
                 }
 
-                if (debugMode)
-                    Debug.Log($"[MonsterSpawnManager] WorldSpace 체력바 위치 업데이트: {monster.name} -> 로컬위치: {healthBarCanvas.localPosition}, 월드위치: {healthBarCanvas.position}");
+                // if (debugMode)
+                //     Debug.Log($"[MonsterSpawnManager] WorldSpace 체력바 위치 업데이트: {monster.name} -> 로컬위치: {healthBarCanvas.localPosition}, 월드위치: {healthBarCanvas.position}");
             }
 
             // TextMesh 체력 텍스트 찾기 (기본 생성된 경우 - 하위 호환성)
