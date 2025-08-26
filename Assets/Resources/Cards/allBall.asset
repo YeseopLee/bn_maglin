@@ -15,7 +15,7 @@ MonoBehaviour:
   cardName: allBall
   cardType: 1
   elementType: 0
-  baseDamage: 30
+  baseDamage: 10
   baseHeal: 0
   manaCost: 0
   targetType: 2

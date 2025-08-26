@@ -51,27 +51,51 @@ namespace Maglin.Event
         }
 
         /// <summary>
-        /// 이벤트 발생 체크 (층 이동 시 호출)
+        /// 이벤트 발생 체크 (FloorManager에서 호출)
+        /// 실제 이벤트를 시작하지 않고 발생 여부만 확인
         /// </summary>
         public bool TryTriggerEvent(int currentFloor)
         {
             if (isEventActive)
             {
-                Debug.LogWarning("Event is already active!");
+                Debug.LogWarning("[EventManager] Event is already active!");
                 return false;
             }
 
             // 이벤트 발생 확률 체크
             if (Random.Range(0f, 1f) > eventChance)
+            {
+                Debug.Log($"[EventManager] 이벤트 발생 확률 체크 실패. 확률: {eventChance:P}");
                 return false;
+            }
 
-            // 현재 층에서 등장 가능한 이벤트 선택
+            // 현재 층에서 등장 가능한 이벤트가 있는지 확인
             EventSO selectedEvent = SelectRandomEvent(currentFloor);
             if (selectedEvent == null)
+            {
+                Debug.LogWarning($"[EventManager] {currentFloor}층에서 등장 가능한 이벤트가 없습니다.");
                 return false;
+            }
 
-            StartEvent(selectedEvent);
+            Debug.Log($"[EventManager] {currentFloor}층에서 이벤트 '{selectedEvent.EventName}' 발생 결정");
+
+            // 이벤트 발생 예정으로 저장 (실제 시작은 StartSelectedEvent에서)
+            currentEvent = selectedEvent;
             return true;
+        }
+
+        /// <summary>
+        /// 선택된 이벤트 시작 (이벤트 씬에서 호출)
+        /// </summary>
+        public void StartSelectedEvent()
+        {
+            if (currentEvent == null)
+            {
+                Debug.LogError("[EventManager] 시작할 이벤트가 없습니다!");
+                return;
+            }
+
+            StartEvent(currentEvent);
         }
 
         /// <summary>
@@ -81,7 +105,7 @@ namespace Maglin.Event
         {
             if (eventData == null)
             {
-                Debug.LogError("Event data is null!");
+                Debug.LogError("[EventManager] Event data is null!");
                 return;
             }
 
@@ -90,11 +114,15 @@ namespace Maglin.Event
 
         /// <summary>
         /// 현재 층에서 등장 가능한 이벤트 중 랜덤 선택
+        /// 인스펙터에 등록된 availableEvents에서만 선택
         /// </summary>
         private EventSO SelectRandomEvent(int currentFloor)
         {
             if (availableEvents == null || availableEvents.Length == 0)
+            {
+                Debug.LogWarning("[EventManager] 인스펙터에 등록된 이벤트가 없습니다!");
                 return null;
+            }
 
             // 현재 층에서 등장 가능하고 유효한 이벤트들 필터링
             var validEvents = availableEvents.Where(e =>
@@ -105,10 +133,22 @@ namespace Maglin.Event
             ).ToList();
 
             if (validEvents.Count == 0)
+            {
+                Debug.LogWarning($"[EventManager] {currentFloor}층에서 등장 가능한 이벤트가 없습니다. " +
+                    $"전체 이벤트 수: {availableEvents.Length}");
                 return null;
+            }
+
+            Debug.Log($"[EventManager] {currentFloor}층에서 등장 가능한 이벤트 수: {validEvents.Count}");
 
             // 가중치 기반 선택
             float totalWeight = validEvents.Sum(e => e.SpawnWeight);
+            if (totalWeight <= 0f)
+            {
+                Debug.LogWarning("[EventManager] 이벤트 가중치 합이 0 이하입니다. 첫 번째 이벤트를 선택합니다.");
+                return validEvents[0];
+            }
+
             float randomValue = Random.Range(0f, totalWeight);
             float currentWeight = 0f;
 
@@ -117,11 +157,14 @@ namespace Maglin.Event
                 currentWeight += eventData.SpawnWeight;
                 if (randomValue <= currentWeight)
                 {
+                    Debug.Log($"[EventManager] 선택된 이벤트: {eventData.EventName} (가중치: {eventData.SpawnWeight})");
                     return eventData;
                 }
             }
 
-            return validEvents[validEvents.Count - 1]; // 안전장치
+            // 안전장치 - 이론적으로는 여기까지 오면 안됨
+            Debug.LogWarning("[EventManager] 가중치 계산 오류로 마지막 이벤트를 선택합니다.");
+            return validEvents[validEvents.Count - 1];
         }
 
         /// <summary>

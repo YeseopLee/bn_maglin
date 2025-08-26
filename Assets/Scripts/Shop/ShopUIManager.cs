@@ -521,6 +521,10 @@ namespace Maglin.Shop
                     case ShopItemType.Relic:
                         relicItems.Add((currentItems[i], i));
                         break;
+                    case ShopItemType.CardRemoval:
+                    case ShopItemType.HealthRestore:
+                        // 서비스 아이템들은 UpdateServiceSlots에서 처리
+                        break;
                 }
             }
 
@@ -555,7 +559,11 @@ namespace Maglin.Shop
             }
 
             // 서비스 슬롯 업데이트
+            if (debugMode)
+                Debug.Log("[ShopUIManager] UpdateServiceSlots 호출 시작");
             UpdateServiceSlots();
+            if (debugMode)
+                Debug.Log("[ShopUIManager] UpdateServiceSlots 호출 완료");
 
             if (debugMode)
                 Debug.Log($"[ShopUIManager] 아이템 UI 업데이트 완료: 카드 {cardItems.Count}개, 유물 {relicItems.Count}개");
@@ -566,7 +574,15 @@ namespace Maglin.Shop
         /// </summary>
         private void UpdateServiceSlots()
         {
-            if (currentItems == null) return;
+            if (currentItems == null)
+            {
+                if (debugMode)
+                    Debug.Log("[ShopUIManager] UpdateServiceSlots: currentItems가 null");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] UpdateServiceSlots: 총 {currentItems.Length}개 아이템 확인");
 
             // 카드 제거 서비스 찾기
             ShopItem cardRemovalItem = System.Array.Find(currentItems,
@@ -586,8 +602,26 @@ namespace Maglin.Shop
             }
 
             // 체력 회복 서비스 찾기
-            ShopItem healthRestoreItem = System.Array.Find(currentItems,
-                item => item.itemType == ShopItemType.HealthRestore);
+            ShopItem healthRestoreItem = null;
+            int healthRestoreIndex = -1;
+
+            if (debugMode)
+                Debug.Log("[ShopUIManager] 체력 회복 아이템 검색 시작");
+
+            for (int i = 0; i < currentItems.Length; i++)
+            {
+                if (debugMode)
+                    Debug.Log($"[ShopUIManager] 아이템 {i}: {currentItems[i].itemName} (타입: {currentItems[i].itemType})");
+
+                if (currentItems[i].itemType == ShopItemType.HealthRestore)
+                {
+                    healthRestoreItem = currentItems[i];
+                    healthRestoreIndex = i;
+                    if (debugMode)
+                        Debug.Log($"[ShopUIManager] 체력 회복 아이템 발견: {healthRestoreItem.itemName} (인덱스: {healthRestoreIndex})");
+                    break;
+                }
+            }
 
             if (healthRestoreItem != null && healthRestoreSlot != null)
             {
@@ -597,8 +631,20 @@ namespace Maglin.Shop
                 var button = healthRestoreSlot.GetComponent<Button>();
                 if (button != null)
                 {
-                    button.interactable = ShopManager.Instance.CanPurchaseItem(System.Array.IndexOf(currentItems, healthRestoreItem));
+                    bool canPurchase = ShopManager.Instance.CanPurchaseItem(healthRestoreIndex);
+                    button.interactable = canPurchase;
+
+                    if (debugMode)
+                    {
+                        Debug.Log($"[ShopUIManager] 체력 회복 버튼 상태 업데이트: 활성화={canPurchase}, " +
+                                 $"현재체력={PlayerManager.Instance?.CurrentHealth}, 최대체력={PlayerManager.Instance?.MaxHealth}, " +
+                                 $"골드={PlayerManager.Instance?.CurrentGold}, 가격={ShopManager.Instance.GetItemPrice(healthRestoreItem)}");
+                    }
                 }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[ShopUIManager] 체력 회복 아이템이 없음 - 이제 항상 생성되어야 함");
             }
         }
 
@@ -797,6 +843,7 @@ namespace Maglin.Shop
         private void OnGoldChanged(int newGold)
         {
             UpdatePlayerStatus();
+            UpdateShopItems(); // 골드 변경 시 모든 상품 버튼 상태 업데이트
         }
 
         /// <summary>
@@ -805,6 +852,7 @@ namespace Maglin.Shop
         private void OnHealthChanged(int currentHealth, int maxHealth)
         {
             UpdatePlayerStatus();
+            UpdateShopItems(); // 체력 회복 버튼 상태 업데이트
         }
 
         /// <summary>

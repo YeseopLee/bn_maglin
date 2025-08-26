@@ -216,6 +216,7 @@ namespace Maglin.Shop
 
         /// <summary>
         /// 카드 구매 처리
+        /// 스타터 덱에 카드 추가
         /// </summary>
         private bool PurchaseCard(CardSO cardData, int price)
         {
@@ -224,11 +225,11 @@ namespace Maglin.Shop
             // 골드 차감
             PlayerManager.Instance.SpendGold(price);
 
-            // 카드를 플레이어 덱에 추가
+            // 카드를 플레이어 스타터 덱에 추가
             if (CardManager.Instance != null)
             {
-                CardManager.Instance.AddCardToDeck(cardData);
-                Debug.Log($"Purchased card: {cardData.CardName}");
+                CardManager.Instance.AddCardToStarterDeck(cardData);
+                Debug.Log($"Purchased card added to starter deck: {cardData.CardName}");
                 return true;
             }
 
@@ -319,9 +320,33 @@ namespace Maglin.Shop
             if (item.itemType == ShopItemType.CardRemoval && cardRemovalUsed)
                 return false;
 
-            int price = GetItemPrice(item);
+            // 체력 회복 서비스 특별 처리
+            if (item.itemType == ShopItemType.HealthRestore)
+            {
+                if (PlayerManager.Instance == null)
+                {
+                    Debug.Log("[ShopManager] CanPurchaseItem: PlayerManager가 null");
+                    return false;
+                }
 
-            return PlayerManager.Instance != null && PlayerManager.Instance.CurrentGold >= price;
+                // 현재 체력이 최대 체력과 같으면 구매 불가
+                bool isHealthFull = PlayerManager.Instance.CurrentHealth >= PlayerManager.Instance.MaxHealth;
+                if (isHealthFull)
+                {
+                    Debug.Log($"[ShopManager] CanPurchaseItem: 체력이 가득참 ({PlayerManager.Instance.CurrentHealth}/{PlayerManager.Instance.MaxHealth})");
+                    return false;
+                }
+            }
+
+            int price = GetItemPrice(item);
+            bool hasEnoughGold = PlayerManager.Instance != null && PlayerManager.Instance.CurrentGold >= price;
+
+            if (!hasEnoughGold && item.itemType == ShopItemType.HealthRestore)
+            {
+                Debug.Log($"[ShopManager] CanPurchaseItem: 골드 부족 (현재:{PlayerManager.Instance?.CurrentGold}, 필요:{price})");
+            }
+
+            return hasEnoughGold;
         }
 
         /// <summary>
@@ -336,6 +361,7 @@ namespace Maglin.Shop
 
         /// <summary>
         /// 카드 제거 실행 (카드 선택 UI에서 호출)
+        /// 스타터 덱에서 카드 제거
         /// </summary>
         public bool RemoveCard(CardSO cardToRemove, int cardIndex)
         {
@@ -349,8 +375,8 @@ namespace Maglin.Shop
                 return false;
             }
 
-            // 덱에서 특정 인덱스의 카드 제거
-            bool removed = CardManager.Instance.RemoveCardFromDeckByIndex(cardToRemove, cardIndex);
+            // 스타터 덱에서 특정 인덱스의 카드 제거
+            bool removed = CardManager.Instance.RemoveCardFromStarterDeckByIndex(cardToRemove, cardIndex);
             if (removed)
             {
                 // 실제 카드 제거 시에 골드 차감
@@ -368,7 +394,7 @@ namespace Maglin.Shop
                     }
                 }
 
-                Debug.Log($"Removed card from deck: {cardToRemove.CardName} (인덱스: {cardIndex})");
+                Debug.Log($"Removed card from starter deck: {cardToRemove.CardName} (인덱스: {cardIndex})");
             }
 
             return removed;
@@ -385,6 +411,7 @@ namespace Maglin.Shop
 
         /// <summary>
         /// 플레이어 덱의 카드 목록 반환 (카드 제거 UI용)
+        /// 스타터 덱 기준으로 반환
         /// </summary>
         public List<CardSO> GetPlayerDeckCards()
         {
@@ -394,15 +421,15 @@ namespace Maglin.Shop
                 return new List<CardSO>();
             }
 
-            var deckCards = CardManager.Instance.GetDeckCards();
-            Debug.Log($"[ShopManager] 현재 덱 카드 수: {deckCards.Count}");
+            var starterDeckCards = CardManager.Instance.GetStarterDeckCards();
+            Debug.Log($"[ShopManager] 스타터 덱 카드 수: {starterDeckCards.Count}");
 
-            if (deckCards.Count > 0)
+            if (starterDeckCards.Count > 0)
             {
-                Debug.Log($"[ShopManager] 덱 카드 목록: {string.Join(", ", deckCards.Select(c => c.CardName))}");
+                Debug.Log($"[ShopManager] 스타터 덱 카드 목록: {string.Join(", ", starterDeckCards.Select(c => c.CardName))}");
             }
 
-            return deckCards;
+            return starterDeckCards;
         }
     }
 }

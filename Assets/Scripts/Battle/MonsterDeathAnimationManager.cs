@@ -47,6 +47,13 @@ namespace Maglin.Battle
         [SerializeField] private bool debugMode = false;
         #endregion
 
+        #region Active Animations Tracking
+        /// <summary>
+        /// 현재 진행 중인 사망 애니메이션 카운터
+        /// </summary>
+        private int activeDeathAnimations = 0;
+        #endregion
+
         #region Events
         /// <summary>
         /// 몬스터 사망 애니메이션 시작 이벤트
@@ -57,6 +64,11 @@ namespace Maglin.Battle
         /// 몬스터 사망 애니메이션 완료 이벤트
         /// </summary>
         public static event System.Action<GameObject> OnDeathAnimationCompleted;
+
+        /// <summary>
+        /// 모든 진행 중인 사망 애니메이션이 완료되었을 때 발생하는 이벤트
+        /// </summary>
+        public static event System.Action OnAllDeathAnimationsCompleted;
         #endregion
 
         #region Unity Lifecycle
@@ -92,6 +104,12 @@ namespace Maglin.Battle
         {
             if (monster == null) return;
 
+            // 활성 애니메이션 카운터 증가
+            activeDeathAnimations++;
+
+            if (debugMode)
+                Debug.Log($"[MonsterDeathAnimationManager] 사망 애니메이션 시작: {monster.name}, 현재 활성 애니메이션: {activeDeathAnimations}");
+
             StartCoroutine(ExecuteDeathAnimation(monster));
         }
 
@@ -101,9 +119,18 @@ namespace Maglin.Battle
         public void StopAllDeathAnimations()
         {
             StopAllCoroutines();
+            activeDeathAnimations = 0;
 
             if (debugMode)
                 Debug.Log("[MonsterDeathAnimationManager] 모든 사망 애니메이션 중단");
+        }
+
+        /// <summary>
+        /// 현재 진행 중인 사망 애니메이션이 있는지 확인
+        /// </summary>
+        public bool HasActiveDeathAnimations()
+        {
+            return activeDeathAnimations > 0;
         }
         #endregion
 
@@ -161,11 +188,23 @@ namespace Maglin.Battle
             // 메모리 정리 (잠시 후에 실행)
             StartCoroutine(CleanupFragmentSpritesDelayed());
 
+            // 활성 애니메이션 카운터 감소
+            activeDeathAnimations--;
+
+            if (debugMode)
+                Debug.Log($"[MonsterDeathAnimationManager] 사망 애니메이션 완료: {monster.name}, 남은 활성 애니메이션: {activeDeathAnimations}");
+
             // 이벤트 발생
             OnDeathAnimationCompleted?.Invoke(monster);
 
-            if (debugMode)
-                Debug.Log($"[MonsterDeathAnimationManager] 사망 애니메이션 완료: {monster.name}");
+            // 모든 애니메이션이 완료되었는지 확인
+            if (activeDeathAnimations <= 0)
+            {
+                if (debugMode)
+                    Debug.Log("[MonsterDeathAnimationManager] 모든 사망 애니메이션 완료");
+
+                OnAllDeathAnimationsCompleted?.Invoke();
+            }
         }
 
         /// <summary>

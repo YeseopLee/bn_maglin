@@ -310,21 +310,30 @@ namespace Maglin.Shop
         {
             // PlayerManager를 통해 현재 체력 확인
             var playerManager = FindObjectOfType<Maglin.Player.PlayerManager>();
-            if (playerManager == null) return null;
+            if (playerManager == null)
+            {
+                // PlayerManager가 없을 때는 기본 아이템 생성
+                return new ShopItem
+                {
+                    itemType = ShopItemType.HealthRestore,
+                    itemName = "체력 회복",
+                    itemDescription = "체력을 회복합니다",
+                    healthRestoreAmount = 30, // 기본값
+                    basePrice = healthRestorePrice,
+                    isPriceFixed = true
+                };
+            }
 
             int missingHP = playerManager.MaxHealth - playerManager.CurrentHealth;
-            if (missingHP <= 0) return null; // 체력이 가득참
 
-            // 고정 가격 사용 (잃은 체력과 상관없이)
-            int totalPrice = healthRestorePrice;
-
+            // 체력이 가득 차더라도 아이템은 생성 (구매 가능 여부는 ShopManager에서 결정)
             return new ShopItem
             {
                 itemType = ShopItemType.HealthRestore,
                 itemName = "체력 회복",
-                itemDescription = $"체력을 {missingHP}만큼 회복합니다",
-                healthRestoreAmount = missingHP,
-                basePrice = totalPrice,
+                itemDescription = missingHP <= 0 ? "체력이 이미 가득참" : $"체력을 {missingHP}만큼 회복합니다",
+                healthRestoreAmount = missingHP > 0 ? missingHP : 30, // 최소 30으로 설정
+                basePrice = healthRestorePrice,
                 isPriceFixed = true
             };
         }

@@ -61,8 +61,7 @@ namespace Maglin.Battle
         [Header("보상 풀")]
         [SerializeField] private RewardPoolData rewardPool;
 
-        [Header("이벤트 설정 (일반층인 경우)")]
-        [SerializeField] private float eventChance = 0.1f;     // 이벤트 발생 확률 (10%)
+
 
         [Header("난이도 스케일링")]
         [SerializeField] private float difficultyMultiplier = 1.0f; // 난이도 배수
@@ -73,31 +72,47 @@ namespace Maglin.Battle
         public string Description => stageDescription;
         public BattleSpawnData[] AvailableBattles => availableBattles;
         public RewardPoolData RewardPool => rewardPool;
-        public float EventChance => eventChance;
+
         public float DifficultyMultiplier => difficultyMultiplier;
 
         /// <summary>
         /// 가중치를 고려하여 랜덤 전투 선택
+        /// 현재 층에서 등장 가능한 BattleSO만 필터링하여 선택
         /// </summary>
         public BattleSO GetRandomBattle(int currentFloor)
         {
             if (availableBattles == null || availableBattles.Length == 0)
+            {
+                Debug.LogWarning($"[BattleStageSO] {name}에 사용 가능한 전투가 없습니다.");
                 return null;
+            }
 
             // 현재 층에서 등장 가능한 전투만 필터링
             var validBattles = System.Array.FindAll(availableBattles,
-                battle => battle.battleData != null &&
+                battle => battle != null &&
+                         battle.battleData != null &&
                          currentFloor >= battle.minFloor &&
                          currentFloor <= battle.maxFloor);
 
             if (validBattles.Length == 0)
+            {
+                Debug.LogWarning($"[BattleStageSO] {name}에서 {currentFloor}층에 등장 가능한 전투가 없습니다.");
                 return null;
+            }
+
+            Debug.Log($"[BattleStageSO] {name}에서 {currentFloor}층에 등장 가능한 전투 수: {validBattles.Length}");
 
             // 가중치 기반 랜덤 선택
             float totalWeight = 0f;
             foreach (var battle in validBattles)
             {
                 totalWeight += battle.spawnWeight;
+            }
+
+            if (totalWeight <= 0f)
+            {
+                Debug.LogWarning($"[BattleStageSO] {name}의 전투 가중치 합이 0 이하입니다. 첫 번째 전투를 선택합니다.");
+                return validBattles[0].battleData;
             }
 
             float randomValue = Random.Range(0f, totalWeight);
@@ -108,30 +123,40 @@ namespace Maglin.Battle
                 currentWeight += battle.spawnWeight;
                 if (randomValue <= currentWeight)
                 {
+                    Debug.Log($"[BattleStageSO] 선택된 전투: {battle.battleData.name} (가중치: {battle.spawnWeight})");
                     return battle.battleData;
                 }
             }
 
-            // 기본값으로 첫 번째 전투 반환
+            // 기본값으로 첫 번째 전투 반환 (이론적으로는 여기까지 오면 안됨)
+            Debug.LogWarning($"[BattleStageSO] 가중치 계산 오류로 첫 번째 전투를 선택합니다: {validBattles[0].battleData.name}");
             return validBattles[0].battleData;
         }
 
-        /// <summary>
-        /// 이벤트가 발생해야 하는지 확인
-        /// </summary>
-        public bool ShouldTriggerEvent()
-        {
-            return stageType == StageType.Normal && Random.Range(0f, 1f) <= eventChance;
-        }
+
 
         /// <summary>
         /// 이 BattleStage가 해당 층에서 등장 가능한지 확인
+        /// BattleStageSO 내부의 BattleSO 중 하나라도 해당 층에서 등장 가능하면 true
         /// </summary>
         public bool CanAppearOnFloor(int floor)
         {
-            // 기본적으로 모든 층에서 등장 가능
-            // 향후 특정 층에서만 등장하는 스테이지가 있다면 여기서 조건 추가
-            return true;
+            if (availableBattles == null || availableBattles.Length == 0)
+                return false;
+
+            // 내부 BattleSO 중 하나라도 현재 층에서 등장 가능하면 true
+            foreach (var battleSpawnData in availableBattles)
+            {
+                if (battleSpawnData != null &&
+                    battleSpawnData.battleData != null &&
+                    floor >= battleSpawnData.minFloor &&
+                    floor <= battleSpawnData.maxFloor)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

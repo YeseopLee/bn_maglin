@@ -36,6 +36,7 @@ namespace Maglin.Battle
         private bool isPlayerTurn = true;
         private int currentTurn = 1;
         private bool isInputBlocked = false;
+        private bool pendingBattleEnd = false; // 사망 애니메이션 대기 중인 전투 종료
 
         // 현재 층 정보
         private int currentFloor = 1;
@@ -103,6 +104,12 @@ namespace Maglin.Battle
 
             // VFX 이벤트 구독 해제
             VFXEffectManager.OnVFXHit -= OnVFXHit;
+
+            // MonsterDeathAnimationManager 이벤트 구독 해제
+            if (MonsterDeathAnimationManager.Instance != null)
+            {
+                MonsterDeathAnimationManager.OnAllDeathAnimationsCompleted -= OnAllDeathAnimationsCompleted;
+            }
         }
         #endregion
 
@@ -617,6 +624,14 @@ namespace Maglin.Battle
 
             // VFX 이벤트 구독
             VFXEffectManager.OnVFXHit += OnVFXHit;
+
+            // MonsterDeathAnimationManager 이벤트 구독
+            if (MonsterDeathAnimationManager.Instance != null)
+            {
+                MonsterDeathAnimationManager.OnAllDeathAnimationsCompleted += OnAllDeathAnimationsCompleted;
+                if (debugMode)
+                    Debug.Log("[BattleTestController] MonsterDeathAnimationManager 이벤트 구독 완료");
+            }
 
             if (debugMode)
             {
@@ -1546,14 +1561,30 @@ namespace Maglin.Battle
                 }
             }
 
-            // 적 몬스터가 모두 죽었으면 전투 승리
+            // 적 몬스터가 모두 죽었으면 전투 승리 (사망 애니메이션 대기)
             if (aliveEnemyMonsters.Count == 0)
             {
                 if (debugMode)
-                    Debug.Log("[BattleTestController] 모든 적 몬스터 처치 완료! 전투 승리");
+                    Debug.Log("[BattleTestController] 모든 적 몬스터 처치 완료! 사망 애니메이션 대기 중...");
 
-                EndBattle(true);
-                return true;
+                // 사망 애니메이션이 진행 중인지 확인
+                if (MonsterDeathAnimationManager.Instance != null &&
+                    MonsterDeathAnimationManager.Instance.HasActiveDeathAnimations())
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 사망 애니메이션 진행 중, 전투 종료 대기");
+
+                    pendingBattleEnd = true;
+                    return false; // 아직 전투 종료하지 않음
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 사망 애니메이션 없음, 즉시 전투 승리");
+
+                    EndBattle(true);
+                    return true;
+                }
             }
 
             return false;
@@ -1815,6 +1846,25 @@ namespace Maglin.Battle
         {
             yield return new WaitForSeconds(0.5f);
             CheckBattleEnd();
+        }
+
+        /// <summary>
+        /// 모든 사망 애니메이션 완료 이벤트 처리
+        /// </summary>
+        private void OnAllDeathAnimationsCompleted()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 모든 사망 애니메이션 완료됨");
+
+            // 대기 중인 전투 종료가 있으면 실행
+            if (pendingBattleEnd)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 대기 중이던 전투 종료 실행");
+
+                pendingBattleEnd = false;
+                EndBattle(true);
+            }
         }
 
         #region Floor Manager Events

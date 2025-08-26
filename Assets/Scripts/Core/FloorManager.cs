@@ -63,7 +63,7 @@ namespace Maglin.Core
         [Header("층 설정")]
         [SerializeField] private int currentFloor = 1;
         [SerializeField] private int maxFloor = 100;
-        [SerializeField] private float eventChance = 0.2f; // 이벤트 발생 확률
+
 
         [Header("층별 규칙 설정")]
         [SerializeField] private int eliteFloorInterval = 5;    // 5층마다 엘리트
@@ -105,6 +105,7 @@ namespace Maglin.Core
         // 층 진행 기록
         private List<FloorInfo> floorHistory = new List<FloorInfo>();
         private bool isProcessingFloor = false;
+        private bool isCurrentFloorEvent = false; // 현재 층이 이벤트인지 추적
 
         private void Awake()
         {
@@ -156,6 +157,7 @@ namespace Maglin.Core
             }
 
             isProcessingFloor = true;
+            isCurrentFloorEvent = false; // 플래그 초기화
             FloorInfo currentFloorInfo = CurrentFloorInfo;
 
             Debug.Log($"Starting floor {currentFloor}: {currentFloorInfo.floorName}");
@@ -167,7 +169,22 @@ namespace Maglin.Core
             switch (CurrentFloorType)
             {
                 case FloorType.Start:
+                    StartBattle();
+                    break;
+
                 case FloorType.Normal:
+                    // 일반층에서는 이벤트 발생 확률 체크
+                    if (ShouldTriggerEvent())
+                    {
+                        isCurrentFloorEvent = true; // 이벤트 플래그 설정
+                        StartEvent();
+                    }
+                    else
+                    {
+                        StartBattle();
+                    }
+                    break;
+
                 case FloorType.Elite:
                 case FloorType.Boss:
                     StartBattle();
@@ -178,9 +195,36 @@ namespace Maglin.Core
                     break;
 
                 case FloorType.Event:
+                    isCurrentFloorEvent = true; // 이벤트 플래그 설정
                     StartEvent();
                     break;
             }
+        }
+
+        /// <summary>
+        /// 이벤트가 발생해야 하는지 확인 (EventManager와 연동)
+        /// </summary>
+        private bool ShouldTriggerEvent()
+        {
+            if (Event.EventManager.Instance == null)
+            {
+                Debug.LogWarning("[FloorManager] EventManager.Instance가 null입니다. 이벤트를 건너뜁니다.");
+                return false;
+            }
+
+            // EventManager에서 이벤트 발생 여부 확인
+            bool shouldTrigger = Event.EventManager.Instance.TryTriggerEvent(currentFloor);
+
+            if (shouldTrigger)
+            {
+                Debug.Log($"[FloorManager] {currentFloor}층에서 이벤트가 발생합니다!");
+            }
+            else
+            {
+                Debug.Log($"[FloorManager] {currentFloor}층에서 일반 전투를 진행합니다.");
+            }
+
+            return shouldTrigger;
         }
 
         /// <summary>
@@ -220,9 +264,11 @@ namespace Maglin.Core
             Debug.Log($"Completed floor {currentFloor}: {completedFloor.floorName}");
             OnFloorCompleted?.Invoke(completedFloor);
 
-            // 전투 층인 경우 보상 표시
-            Debug.Log($"[FloorManager] 보상 표시 확인 - ShouldShowRewards({CurrentFloorType}): {ShouldShowRewards(CurrentFloorType)}");
-            if (ShouldShowRewards(CurrentFloorType))
+            // 전투 층인 경우에만 보상 표시 (이벤트 층은 제외)
+            bool shouldShowRewards = ShouldShowRewards(CurrentFloorType) && !isCurrentFloorEvent;
+            Debug.Log($"[FloorManager] 보상 표시 확인 - ShouldShowRewards({CurrentFloorType}): {ShouldShowRewards(CurrentFloorType)}, isCurrentFloorEvent: {isCurrentFloorEvent}, 최종 결과: {shouldShowRewards}");
+
+            if (shouldShowRewards)
             {
                 Debug.Log($"[FloorManager] 보상 화면 표시 시작");
                 ShowBattleRewards(currentFloor, CurrentFloorType);
@@ -298,6 +344,7 @@ namespace Maglin.Core
         private void FinishFloorCompletion()
         {
             isProcessingFloor = false;
+            isCurrentFloorEvent = false; // 이벤트 플래그 리셋
 
             // 다음 층으로 진행
             if (currentFloor < maxFloor)
@@ -399,12 +446,7 @@ namespace Maglin.Core
                 (floor - 1) % shopFloorInterval != 0)
                 return FloorType.Elite;
 
-            // 이벤트 발생 확률 체크 (전투 대신 등장)
-            // 특별한 층(보스, 상점, 엘리트)이 아닌 경우에만 이벤트 확률 적용
-            if (Random.Range(0f, 1f) < eventChance)
-                return FloorType.Event;
-
-            // 기본은 일반 전투층
+            // 기본은 일반 전투층 (이벤트 확률은 StartCurrentFloor에서 처리)
             return FloorType.Normal;
         }
 
@@ -457,7 +499,7 @@ namespace Maglin.Core
         /// </summary>
         private void StartEvent()
         {
-            Debug.Log($"Starting event on floor {currentFloor}");
+            Debug.Log($"[FloorManager] Starting event on floor {currentFloor}");
 
             // GameManager에게 이벤트 상태로 전환 요청
             if (GameManager.Instance != null)
@@ -474,49 +516,65 @@ namespace Maglin.Core
         /// </summary>
         public BattleStageSO GetBattleStageForFloor(int floor, FloorType floorType)
         {
-            // 먼저 층 번호 기반으로 리소스에서 로드 시도
-            string stageResourcePath = $"BattleStage/F{floor:D2}";
-            var battleStage = Resources.Load<BattleStageSO>(stageResourcePath);
+            // 인스펙터에 등록된 스테이지 중에서 현재 층에 등장할 수 있는 스테이지 찾기
+            BattleStageSO[] stagePool = GetStagePoolByFloorType(floorType);
 
-            if (battleStage == null)
+            if (stagePool == null || stagePool.Length == 0)
             {
-                stageResourcePath = $"F{floor:D2}";
-                battleStage = Resources.Load<BattleStageSO>(stageResourcePath);
+                Debug.LogWarning($"[FloorManager] No battle stages registered for floor type: {floorType}");
+                return null;
             }
 
-            if (battleStage != null)
+            // 현재 층에서 등장 가능한 스테이지 필터링
+            var validStages = System.Array.FindAll(stagePool, stage =>
+                stage != null && CanStageAppearOnFloor(stage, floor));
+
+            if (validStages.Length == 0)
             {
-                Debug.Log($"[FloorManager] Found specific battle stage for floor {floor}: {battleStage.name}");
-                return battleStage;
+                Debug.LogWarning($"[FloorManager] No valid battle stages found for floor {floor} type: {floorType}");
+                return null;
             }
 
-            // 특정 층 스테이지가 없으면 타입별로 선택
-            return SelectBattleStage(floorType);
+            // 첫 번째로 매칭되는 스테이지 반환 (추후 가중치 로직 추가 가능)
+            var selectedStage = validStages[Random.Range(0, validStages.Length)];
+            Debug.Log($"[FloorManager] Selected battle stage for floor {floor}: {selectedStage.name}");
+            return selectedStage;
         }
 
         /// <summary>
-        /// 층 타입에 맞는 전투 스테이지 선택
+        /// 층 타입에 맞는 스테이지 풀 가져오기
         /// </summary>
-        private BattleStageSO SelectBattleStage(FloorType floorType)
+        private BattleStageSO[] GetStagePoolByFloorType(FloorType floorType)
         {
-            BattleStageSO[] stagePool = floorType switch
+            return floorType switch
             {
                 FloorType.Elite => eliteBattleStages,
                 FloorType.Boss => bossBattleStages,
                 _ => normalBattleStages
             };
+        }
 
-            if (stagePool == null || stagePool.Length == 0)
-                return null;
+        /// <summary>
+        /// 특정 스테이지가 현재 층에서 등장할 수 있는지 확인
+        /// BattleStageSO 내부의 모든 BattleSO가 현재 층에서 등장 가능한지 확인
+        /// </summary>
+        private bool CanStageAppearOnFloor(BattleStageSO stage, int floor)
+        {
+            if (stage == null || stage.AvailableBattles == null)
+                return false;
 
-            // 현재 층에 맞는 스테이지 필터링
-            var validStages = System.Array.FindAll(stagePool, stage =>
-                stage != null && stage.CanAppearOnFloor(currentFloor));
+            // BattleStageSO 내부의 BattleSO 중 하나라도 현재 층에서 등장 가능하면 true
+            foreach (var battleSpawnData in stage.AvailableBattles)
+            {
+                if (battleSpawnData != null &&
+                    floor >= battleSpawnData.minFloor &&
+                    floor <= battleSpawnData.maxFloor)
+                {
+                    return true;
+                }
+            }
 
-            if (validStages.Length == 0)
-                return stagePool[Random.Range(0, stagePool.Length)]; // 제한이 없다면 전체에서 랜덤
-
-            return validStages[Random.Range(0, validStages.Length)];
+            return false;
         }
 
         #region Scene Loading
@@ -651,13 +709,7 @@ namespace Maglin.Core
             return (float)currentFloor / maxFloor * 100f;
         }
 
-        /// <summary>
-        /// 이벤트 발생 확률 설정
-        /// </summary>
-        public void SetEventChance(float chance)
-        {
-            eventChance = Mathf.Clamp01(chance);
-        }
+
 
         /// <summary>
         /// 층별 규칙 설정
@@ -711,11 +763,8 @@ namespace Maglin.Core
             // 현재 층 완료 처리
             CompleteCurrentFloor();
 
-            // 잠시 대기
+            // 잠시 대기 (FinishFloorCompletion에서 ProceedToNextFloor가 호출됨)
             yield return new WaitForSeconds(0.5f);
-
-            // 다음 층으로 진행
-            ProceedToNextFloor();
         }
     }
 }

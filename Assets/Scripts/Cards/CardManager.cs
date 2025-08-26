@@ -133,6 +133,14 @@ namespace Maglin.Cards
         }
 
         /// <summary>
+        /// 스타터 덱 카드 목록 반환 (상점 카드 제거용)
+        /// </summary>
+        public List<CardSO> GetStarterDeckCards()
+        {
+            return new List<CardSO>(starterDeck);
+        }
+
+        /// <summary>
         /// 임시무덤 카드 수
         /// </summary>
         public int DiscardPileCount => discardPile.Count;
@@ -712,6 +720,27 @@ namespace Maglin.Cards
         }
 
         /// <summary>
+        /// 스타터 덱에만 카드 추가 (상점 구매용)
+        /// </summary>
+        public void AddCardToStarterDeck(CardSO card)
+        {
+            if (card == null)
+            {
+                Debug.LogError("[CardManager] null 카드를 스타터 덱에 추가하려고 시도했습니다.");
+                return;
+            }
+
+            // 현재 덱에 추가
+            currentDeck.Add(card);
+
+            // 스타터 덱에도 추가 (영구적 추가)
+            starterDeck.Add(card);
+
+            if (debugMode)
+                Debug.Log($"[CardManager] 스타터 덱에 카드 추가: {card.CardName} (현재 덱 & 스타터 덱)");
+        }
+
+        /// <summary>
         /// 덱에서 카드 제거 (상점에서 카드 제거 등)
         /// </summary>
         public bool RemoveCardFromDeck(CardSO card)
@@ -782,6 +811,40 @@ namespace Maglin.Cards
 
             if (debugMode)
                 Debug.LogWarning($"[CardManager] 인덱스 {cardIndex}의 카드가 일치하지 않음. 예상: {card.CardName}, 실제: {(cardIndex < currentDeck.Count ? currentDeck[cardIndex].CardName : "없음")}");
+
+            return false;
+        }
+
+        /// <summary>
+        /// 스타터 덱에서 특정 인덱스의 카드 제거 (상점 카드 제거용)
+        /// </summary>
+        public bool RemoveCardFromStarterDeckByIndex(CardSO card, int cardIndex)
+        {
+            if (card == null || cardIndex < 0 || cardIndex >= starterDeck.Count) return false;
+
+            // 스타터 덱에서 지정된 인덱스의 카드가 맞는지 확인
+            if (starterDeck[cardIndex] == card)
+            {
+                // 스타터 덱에서 제거
+                starterDeck.RemoveAt(cardIndex);
+
+                // 현재 덱에서도 해당 카드 제거 (첫 번째 발견된 카드)
+                if (currentDeck.Remove(card))
+                {
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 현재 덱에서도 카드 제거: {card.CardName}");
+                }
+
+                removedCards.Add(card);
+
+                if (debugMode)
+                    Debug.Log($"[CardManager] 스타터 덱에서 카드 제거 (인덱스 {cardIndex}): {card.CardName}");
+
+                return true;
+            }
+
+            if (debugMode)
+                Debug.LogWarning($"[CardManager] 스타터 덱 인덱스 {cardIndex}의 카드가 일치하지 않음. 예상: {card.CardName}, 실제: {(cardIndex < starterDeck.Count ? starterDeck[cardIndex].CardName : "없음")}");
 
             return false;
         }
