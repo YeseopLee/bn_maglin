@@ -25,6 +25,7 @@ namespace Maglin.UI
 
         private bool isDragging = false;
         private bool isReturning = false;
+        private bool isDragEnabled = true; // 드래그 활성화/비활성화 제어
 
         private void Awake()
         {
@@ -65,7 +66,7 @@ namespace Maglin.UI
         /// </summary>
         public void OnBeginDrag(PointerEventData eventData)
         {
-            if (isReturning) return;
+            if (isReturning || !isDragEnabled) return;
 
             isDragging = true;
 
@@ -223,5 +224,33 @@ namespace Maglin.UI
         /// 현재 복귀 중인지 확인
         /// </summary>
         public bool IsReturning => isReturning;
+
+        /// <summary>
+        /// 드래그 기능 활성화/비활성화
+        /// </summary>
+        public void SetDragEnabled(bool enabled)
+        {
+            isDragEnabled = enabled;
+
+            // 비활성화될 때 현재 드래그 중이면 강제로 원래 위치로 복귀
+            if (!enabled && isDragging)
+            {
+                ReturnToOriginalPosition();
+            }
+
+            // 시각적 피드백 (선택적)
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = enabled ? 1f : 0.7f;
+            }
+        }
+
+        /// <summary>
+        /// 현재 드래그 가능 상태 반환
+        /// </summary>
+        public bool IsDragEnabled()
+        {
+            return isDragEnabled;
+        }
     }
 }

@@ -102,6 +102,9 @@ namespace Maglin.Battle
             if (PlayerManager.Instance != null)
             {
                 PlayerManager.Instance.OnBattleStart();
+
+                // 애니메이션이 시작되도록 강제로 업데이트
+                StartCoroutine(DelayedAnimationStart());
             }
 
             isInitialized = true;
@@ -218,7 +221,7 @@ namespace Maglin.Battle
             // SpriteRenderer 컴포넌트 추가
             var spriteRenderer = playerGameObject.AddComponent<SpriteRenderer>();
             spriteRenderer.sprite = playerSprite;
-            spriteRenderer.color = Color.blue;
+            spriteRenderer.color = Color.white; // 파란색 제거 - 원본 스프라이트 색상 사용
             spriteRenderer.sortingLayerName = "Default";
             spriteRenderer.sortingOrder = 10;
 
@@ -264,6 +267,66 @@ namespace Maglin.Battle
             return Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f));
         }
 
+        /// <summary>
+        /// 플레이어 스프라이트 업데이트 (애니메이션 상태 변경 시 호출)
+        /// </summary>
+        public void UpdatePlayerSprite()
+        {
+            if (playerGameObject == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 플레이어 게임오브젝트가 없어 스프라이트를 업데이트할 수 없습니다.");
+                return;
+            }
+
+            // PlayerManager에서 현재 상태의 스프라이트 가져오기
+            Sprite newSprite = null;
+            if (PlayerManager.Instance != null)
+            {
+                newSprite = PlayerManager.Instance.GetPlayerSprite();
+            }
+
+            // 스프라이트가 없으면 기본 스프라이트 사용
+            if (newSprite == null)
+            {
+                newSprite = CreateDefaultPlayerSprite();
+            }
+
+            // SpriteRenderer 컴포넌트 찾아서 스프라이트 업데이트
+            var spriteRenderer = playerGameObject.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null)
+            {
+                spriteRenderer.sprite = newSprite;
+
+                // 피격 상태에서만 색상 변경 (원본 스프라이트 색상 유지)
+                if (PlayerManager.Instance != null)
+                {
+                    var currentState = PlayerManager.Instance.CurrentAnimationState;
+                    switch (currentState)
+                    {
+                        case PlayerManager.PlayerAnimationState.Hit:
+                            spriteRenderer.color = new Color(1f, 0.5f, 0.5f, 1f); // 약간 빨간색 틴트
+                            break;
+                        case PlayerManager.PlayerAnimationState.Death:
+                            spriteRenderer.color = new Color(0.7f, 0.7f, 0.7f, 1f); // 약간 어둡게
+                            break;
+                        default:
+                            spriteRenderer.color = Color.white; // 원본 색상 유지
+                            break;
+                    }
+                }
+
+                if (debugMode)
+                {
+                    var currentState = PlayerManager.Instance?.CurrentAnimationState ?? PlayerManager.PlayerAnimationState.Idle;
+                    Debug.Log($"[PlayerBattleManager] 플레이어 스프라이트 업데이트: {currentState}");
+                }
+            }
+            else
+            {
+                Debug.LogError("[PlayerBattleManager] 플레이어 게임오브젝트에 SpriteRenderer 컴포넌트가 없습니다!");
+            }
+        }
 
         #endregion
 
@@ -312,6 +375,27 @@ namespace Maglin.Battle
         public void MovePlayer(Vector2Int newPosition)
         {
             MovePlayerToGrid(newPosition);
+        }
+
+        /// <summary>
+        /// 지연된 애니메이션 시작 (플레이어 게임오브젝트가 완전히 생성된 후)
+        /// </summary>
+        private System.Collections.IEnumerator DelayedAnimationStart()
+        {
+            // 한 프레임 대기 (플레이어 게임오브젝트 완전 생성 대기)
+            yield return null;
+
+            if (PlayerManager.Instance != null)
+            {
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] 지연된 애니메이션 시작 트리거");
+
+                // 강제로 Idle 애니메이션 재시작
+                PlayerManager.Instance.ForceSetAnimationState(PlayerManager.PlayerAnimationState.Idle);
+
+                // 즉시 스프라이트 업데이트
+                UpdatePlayerSprite();
+            }
         }
         #endregion
 

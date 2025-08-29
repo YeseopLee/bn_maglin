@@ -252,7 +252,7 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 타겟 마커 활성화/비활성화 (프리팹의 기존 UI 사용)
+        /// 타겟 마커 활성화/비활성화 (애니메이션 지원)
         /// </summary>
         private void SetTargetMarkerActive(Maglin.Enemy.Enemy enemy, bool active)
         {
@@ -263,10 +263,15 @@ namespace Maglin.Battle
             {
                 targetMarker.gameObject.SetActive(active);
 
-                // 마커가 활성화될 때 올바른 위치에 있는지 확인
+                // 마커가 활성화될 때 올바른 위치에 있는지 확인하고 애니메이션 시작
                 if (active)
                 {
                     UpdateTargetMarkerPosition(targetMarker, enemy);
+                    StartTargetMarkerAnimation(targetMarker);
+                }
+                else
+                {
+                    StopTargetMarkerAnimation(targetMarker);
                 }
             }
             else if (debugMode)
@@ -283,14 +288,14 @@ namespace Maglin.Battle
             if (targetMarker == null || enemy == null) return;
 
             // 몬스터의 SpriteRenderer 크기를 고려하여 마커 위치 계산 (캐시 활용)
-            float yOffset = 0.7f; // 기본값
+            float yOffset = 0.0f; // 기본값
 
             SpriteRenderer monsterRenderer = enemy.GetComponent<SpriteRenderer>();
             if (monsterRenderer != null && monsterRenderer.sprite != null)
             {
                 // 스프라이트의 실제 크기를 고려하여 위쪽에 배치
-                float spriteHeight = monsterRenderer.bounds.size.y;
-                yOffset = spriteHeight * 0.6f; // 스프라이트 위쪽 60% 지점
+                // float spriteHeight = monsterRenderer.bounds.size.y;
+                // yOffset = spriteHeight * 0.6f; // 스프라이트 위쪽 60% 지점
             }
 
             // 마커가 몬스터의 자식이므로 localPosition을 사용
@@ -319,6 +324,70 @@ namespace Maglin.Battle
             // {
             //     Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커 위치 업데이트: 로컬={targetMarker.localPosition}");
             // }
+        }
+
+        /// <summary>
+        /// 타겟 마커 애니메이션 시작
+        /// </summary>
+        private void StartTargetMarkerAnimation(Transform targetMarker)
+        {
+            if (targetMarker == null) return;
+
+            TargetMarkerAnimator markerAnimator = targetMarker.GetComponent<TargetMarkerAnimator>();
+            if (markerAnimator != null)
+            {
+                markerAnimator.StartAnimation();
+
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 타겟 마커 애니메이션 시작: {targetMarker.name}");
+            }
+            else if (debugMode)
+            {
+                Debug.LogWarning($"[TargetManager] {targetMarker.name}에서 TargetMarkerAnimator를 찾을 수 없습니다.");
+            }
+        }
+
+        /// <summary>
+        /// 타겟 마커 애니메이션 중지
+        /// </summary>
+        private void StopTargetMarkerAnimation(Transform targetMarker)
+        {
+            if (targetMarker == null) return;
+
+            TargetMarkerAnimator markerAnimator = targetMarker.GetComponent<TargetMarkerAnimator>();
+            if (markerAnimator != null)
+            {
+                markerAnimator.StopAnimation();
+
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 타겟 마커 애니메이션 중지: {targetMarker.name}");
+            }
+        }
+
+        /// <summary>
+        /// 타겟 마커 애니메이션 프레임 설정 (런타임에서 스프라이트 배열 설정)
+        /// </summary>
+        public void SetTargetMarkerAnimationFrames(Sprite[] frames, float frameRate = 10f)
+        {
+            foreach (var monsterObj in spawnedMonsters)
+            {
+                if (monsterObj != null)
+                {
+                    Transform targetMarker = monsterObj.transform.Find("TargetMarker");
+                    if (targetMarker != null)
+                    {
+                        TargetMarkerAnimator markerAnimator = targetMarker.GetComponent<TargetMarkerAnimator>();
+                        if (markerAnimator != null)
+                        {
+                            markerAnimator.SetAnimationFrames(frames);
+                            markerAnimator.SetFrameRate(frameRate);
+
+                            if (debugMode)
+                                Debug.Log($"[TargetManager] {monsterObj.name} 타겟 마커 애니메이션 프레임 설정: {frames?.Length ?? 0}개");
+                        }
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -1244,7 +1313,7 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[TargetManager] 전투 준비 완료 시작 - 스폰된 몬스터 수: {spawnedMonsters.Count}, 현재 타겟: {currentTarget?.EnemyName ?? "없음"}");
 
-            // 현재 타겟이 있으면 마커 활성화
+            // 현재 타겟이 있으면 마커 활성화 및 애니메이션 시작
             if (currentTarget != null && currentTarget.IsAlive)
             {
                 SetTargetMarkerActive(currentTarget, true);
@@ -1258,7 +1327,7 @@ namespace Maglin.Battle
                     markerPositionSet = true;
 
                     if (debugMode)
-                        Debug.Log($"[TargetManager] 기존 타겟 마커 활성화: {currentTarget.EnemyName}");
+                        Debug.Log($"[TargetManager] 기존 타겟 마커 활성화 및 애니메이션 시작: {currentTarget.EnemyName}");
                 }
                 else
                 {

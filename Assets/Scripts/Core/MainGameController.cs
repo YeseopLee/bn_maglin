@@ -296,12 +296,12 @@ namespace Maglin.Core
                 if (GameManager.Instance == null)
                 {
                     Debug.LogError("[MainGameController] GameManager가 없어서 게임을 시작할 수 없습니다!");
-                    
+
                     if (LoadingManager.Instance != null)
                     {
                         await LoadingManager.Instance.HideLoading();
                     }
-                    
+
                     startButton.interactable = true;
                     return;
                 }
@@ -355,13 +355,13 @@ namespace Maglin.Core
             catch (System.Exception e)
             {
                 Debug.LogError($"[MainGameController] 게임 시작 중 오류 발생: {e.Message}");
-                
+
                 // 로딩 화면 정리
                 if (LoadingManager.Instance != null)
                 {
                     await LoadingManager.Instance.HideLoading();
                 }
-                
+
                 // 버튼 다시 활성화
                 startButton.interactable = true;
             }

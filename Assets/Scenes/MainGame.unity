@@ -1126,11 +1126,39 @@ MonoBehaviour:
   maxMana: 30
   manaRecoveryPerTurn: 10
   maxHandSize: 5
-  currentHealth: 0
-  currentMana: 0
+  currentHealth: 100
+  currentMana: 30
   currentGold: 500
   currentRelics: []
-  debugMode: 0
+  idleSprites:
+  - {fileID: -160463798, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1976825843, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -404060229, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1521543304, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -483965303, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 369282708, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1577144373, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1272574604, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -509191186, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  attackSprites1:
+  - {fileID: -160463798, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1976825843, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -404060229, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1521543304, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -483965303, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 369282708, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1577144373, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1272574604, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -509191186, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  attackSprites2: []
+  attackSprites3: []
+  hitSprites: []
+  deathSprites: []
+  idleFrameRate: 1
+  attackFrameRate: 1
+  hitFrameRate: 1
+  deathFrameRate: 1
+  debugMode: 1
 --- !u!4 &696505714
 Transform:
   m_ObjectHideFlags: 0

@@ -79,6 +79,10 @@ namespace Maglin.Battle
         [SerializeField] private Button drawButton;
         [SerializeField] private TextMeshProUGUI turnIndicator;
 
+        [Header("슬라이더 UI")]
+        [SerializeField] private Slider healthSlider;
+        [SerializeField] private Slider manaSlider;
+
         [Header("조합 슬롯 UI")]
         [SerializeField] private Transform elementSlot;
         [SerializeField] private Transform active1Slot;
@@ -446,7 +450,9 @@ namespace Maglin.Battle
             TMPro.TextMeshProUGUI fieldEffectTurnsText,
             GameObject cardUIPrefab,
             GameObject monsterPrefab,
-            GameObject loadingUIPrefab = null)
+            GameObject loadingUIPrefab = null,
+            Slider healthSlider = null,
+            Slider manaSlider = null)
         {
             this.healthText = healthText;
             this.manaText = manaText;
@@ -470,6 +476,17 @@ namespace Maglin.Battle
             if (loadingUIPrefab != null)
             {
                 this.loadingUIPrefab = loadingUIPrefab;
+            }
+
+            // 슬라이더 설정 (제공된 경우)
+            if (healthSlider != null)
+            {
+                this.healthSlider = healthSlider;
+            }
+
+            if (manaSlider != null)
+            {
+                this.manaSlider = manaSlider;
             }
 
             if (debugMode)
@@ -1169,9 +1186,30 @@ namespace Maglin.Battle
         /// </summary>
         private void UpdateHealthUI()
         {
-            if (healthText != null && PlayerManager.Instance != null)
+            if (PlayerManager.Instance != null)
             {
-                healthText.text = $"체력: {PlayerManager.Instance.CurrentHealth}/{PlayerManager.Instance.MaxHealth}";
+                // 텍스트 업데이트
+                if (healthText != null)
+                {
+                    healthText.text = $"{PlayerManager.Instance.CurrentHealth}/{PlayerManager.Instance.MaxHealth}";
+                }
+
+                // 슬라이더 업데이트
+                if (healthSlider != null)
+                {
+                    float maxHealth = PlayerManager.Instance.MaxHealth;
+                    float currentHealth = PlayerManager.Instance.CurrentHealth;
+
+                    if (maxHealth > 0)
+                    {
+                        float healthRatio = currentHealth / maxHealth;
+                        healthSlider.value = healthRatio;
+                    }
+                    else
+                    {
+                        healthSlider.value = 0f;
+                    }
+                }
             }
         }
 
@@ -1180,9 +1218,30 @@ namespace Maglin.Battle
         /// </summary>
         private void UpdateManaUI()
         {
-            if (manaText != null && PlayerManager.Instance != null)
+            if (PlayerManager.Instance != null)
             {
-                manaText.text = $"마나: {PlayerManager.Instance.CurrentMana}/{PlayerManager.Instance.MaxMana}";
+                // 텍스트 업데이트
+                if (manaText != null)
+                {
+                    manaText.text = $"{PlayerManager.Instance.CurrentMana}/{PlayerManager.Instance.MaxMana}";
+                }
+
+                // 슬라이더 업데이트
+                if (manaSlider != null)
+                {
+                    float maxMana = PlayerManager.Instance.MaxMana;
+                    float currentMana = PlayerManager.Instance.CurrentMana;
+
+                    if (maxMana > 0)
+                    {
+                        float manaRatio = currentMana / maxMana;
+                        manaSlider.value = manaRatio;
+                    }
+                    else
+                    {
+                        manaSlider.value = 0f;
+                    }
+                }
             }
         }
 
@@ -1193,7 +1252,7 @@ namespace Maglin.Battle
         {
             if (goldText != null && PlayerManager.Instance != null)
             {
-                goldText.text = $"골드: {PlayerManager.Instance.CurrentGold}";
+                goldText.text = $"{PlayerManager.Instance.CurrentGold}";
             }
         }
 

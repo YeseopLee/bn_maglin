@@ -104,6 +104,11 @@ namespace Maglin.Battle
         /// VFX 종료 이벤트
         /// </summary>
         public static event Action<VFXInstance> OnVFXEnded;
+
+        /// <summary>
+        /// 카드의 모든 VFX와 공격이 완료되었을 때 발생하는 이벤트
+        /// </summary>
+        public static event Action<Card> OnCardAttackSequenceCompleted;
         #endregion
 
         #region Fields
@@ -118,8 +123,29 @@ namespace Maglin.Battle
         // 활성 VFX 인스턴스들
         private List<VFXInstance> activeVFXInstances = new List<VFXInstance>();
 
+        // 카드별 진행중인 VFX 추적
+        private Dictionary<Card, List<VFXInstance>> cardVFXTracker = new Dictionary<Card, List<VFXInstance>>();
+
+        // 카드별 체인 공격 진행 추적 (ChainFrontHits용)
+        private Dictionary<Card, bool> cardChainAttackInProgress = new Dictionary<Card, bool>();
+
         // 컴포넌트 참조
         private TargetManager targetManager;
+        #endregion
+
+        #region Public Methods
+        /// <summary>
+        /// VFX가 없는 카드의 공격 시퀀스 즉시 완료 처리
+        /// </summary>
+        public void NotifyCardWithoutVFXCompleted(Card card)
+        {
+            if (card == null) return;
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] VFX 없는 카드 {card.CardName} 즉시 완료 처리");
+
+            OnCardAttackSequenceCompleted?.Invoke(card);
+        }
         #endregion
 
         #region Unity Events
@@ -523,6 +549,16 @@ namespace Maglin.Battle
                 var vfxInstance = new VFXInstance(vfxObject, vfxData, new Transform[] { target }, sourceCard, i, totalVFXCount);
                 activeVFXInstances.Add(vfxInstance);
 
+                // 카드별 VFX 추적에 등록
+                if (sourceCard != null)
+                {
+                    if (!cardVFXTracker.ContainsKey(sourceCard))
+                    {
+                        cardVFXTracker[sourceCard] = new List<VFXInstance>();
+                    }
+                    cardVFXTracker[sourceCard].Add(vfxInstance);
+                }
+
                 // 사운드 재생
                 if (vfxData.SoundEffect != null)
                 {
@@ -626,6 +662,9 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[VFXEffectManager] ChainFrontHits VFX 시작: {chainCount}회 연속 재생");
 
+            // 체인 공격 진행 상태 설정
+            cardChainAttackInProgress[card] = true;
+
             // 코루틴으로 순차적 재생 시작
             StartCoroutine(PlayChainVFXSequence(card, vfxData, chainCount));
         }
@@ -657,8 +696,14 @@ namespace Maglin.Battle
                 yield return new WaitForSeconds(vfxData.EffectDuration);
             }
 
+            // 체인 공격 완료 상태 업데이트
+            cardChainAttackInProgress[card] = false;
+
             if (debugMode)
                 Debug.Log("[VFXEffectManager] ChainFrontHits VFX 시퀀스 완료");
+
+            // 카드 공격 시퀀스 완료 검사
+            CheckCardAttackSequenceCompletion(card);
         }
 
         /// <summary>
@@ -673,6 +718,51 @@ namespace Maglin.Battle
 
             // 가장 앞의 적 (X 좌표가 가장 작은 적)
             return aliveEnemies[0].transform;
+        }
+
+        /// <summary>
+        /// 카드의 모든 공격 시퀀스가 완료되었는지 검사
+        /// </summary>
+        private void CheckCardAttackSequenceCompletion(Card card)
+        {
+            if (card == null) return;
+
+            // 체인 공격이 진행 중인지 확인
+            if (cardChainAttackInProgress.ContainsKey(card) && cardChainAttackInProgress[card])
+            {
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 카드 {card.CardName} 체인 공격 아직 진행 중");
+                return;
+            }
+
+            // 해당 카드의 VFX가 모두 완료되었는지 확인
+            if (cardVFXTracker.ContainsKey(card))
+            {
+                var cardVFXList = cardVFXTracker[card];
+                bool allVFXCompleted = cardVFXList.All(vfx => !vfx.isActive);
+
+                if (!allVFXCompleted)
+                {
+                    if (debugMode)
+                        Debug.Log($"[VFXEffectManager] 카드 {card.CardName} VFX 아직 진행 중: {cardVFXList.Count(vfx => vfx.isActive)}개 남음");
+                    return;
+                }
+
+                // 모든 VFX가 완료되었으므로 추적에서 제거
+                cardVFXTracker.Remove(card);
+            }
+
+            // 체인 공격 추적에서도 제거
+            if (cardChainAttackInProgress.ContainsKey(card))
+            {
+                cardChainAttackInProgress.Remove(card);
+            }
+
+            // 카드의 모든 공격 시퀀스가 완료됨
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 카드 {card.CardName} 모든 공격 시퀀스 완료!");
+
+            OnCardAttackSequenceCompleted?.Invoke(card);
         }
 
         /// <summary>
@@ -701,6 +791,9 @@ namespace Maglin.Battle
 
                 if (debugMode)
                     Debug.Log($"[VFXEffectManager] VFX 종료: {vfxInstance.effectData.EffectName}");
+
+                // 카드별 VFX 완료 검사
+                CheckCardAttackSequenceCompletion(vfxInstance.sourceCard);
             }
         }
 

@@ -167,23 +167,31 @@ namespace Maglin.Editor
         }
 
         /// <summary>
-        /// 타겟 마커 생성
+        /// 타겟 마커 생성 (애니메이션 지원)
         /// </summary>
         private void CreateTargetMarker(GameObject parent)
         {
             GameObject targetMarker = new GameObject("TargetMarker");
             targetMarker.transform.SetParent(parent.transform, false);
 
+            // SpriteRenderer 컴포넌트 추가
             SpriteRenderer markerSprite = targetMarker.AddComponent<SpriteRenderer>();
-            markerSprite.color = Color.yellow;
-            markerSprite.sortingOrder = 5;
+            markerSprite.color = Color.white; // 원본 스프라이트 색상 유지
+            markerSprite.sortingOrder = 10; // 가장 위에 그려지도록
+
+            // Animator 컴포넌트 추가 (애니메이션용)
+            Animator animator = targetMarker.AddComponent<Animator>();
+            // 런타임에 애니메이션 컨트롤러를 설정할 예정
+
+            // 타겟 마커 애니메이션 스크립트 추가
+            targetMarker.AddComponent<Maglin.Battle.TargetMarkerAnimator>();
 
             // 기본적으로 비활성화
             targetMarker.SetActive(false);
 
             // 마커 위치 조정
             targetMarker.transform.localPosition = new Vector3(0, 0.7f, 0);
-            targetMarker.transform.localScale = new Vector3(0.3f, 0.3f, 1f);
+            targetMarker.transform.localScale = new Vector3(1f, 1f, 1f); // 스프라이트 원본 크기로 시작
         }
 
         /// <summary>

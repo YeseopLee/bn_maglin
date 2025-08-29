@@ -37,6 +37,7 @@ namespace Maglin.Battle
         private int currentTurn = 1;
         private bool isInputBlocked = false;
         private bool pendingBattleEnd = false; // 사망 애니메이션 대기 중인 전투 종료
+        private bool isCardInteractionBlocked = false; // 카드 상호작용 차단 여부
 
         // 현재 층 정보
         private int currentFloor = 1;
@@ -104,12 +105,92 @@ namespace Maglin.Battle
 
             // VFX 이벤트 구독 해제
             VFXEffectManager.OnVFXHit -= OnVFXHit;
+            VFXEffectManager.OnCardAttackSequenceCompleted -= OnCardAttackSequenceCompleted;
 
             // MonsterDeathAnimationManager 이벤트 구독 해제
             if (MonsterDeathAnimationManager.Instance != null)
             {
                 MonsterDeathAnimationManager.OnAllDeathAnimationsCompleted -= OnAllDeathAnimationsCompleted;
             }
+
+            // PlayerManager 애니메이션 이벤트 구독 해제
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.OnPlayerAnimationChanged -= OnPlayerAnimationChanged;
+            }
+        }
+        #endregion
+
+        #region Card Interaction Control
+        /// <summary>
+        /// 모든 손패 카드의 드래그 기능 활성화/비활성화
+        /// </summary>
+        private void SetCardInteractionEnabled(bool enabled)
+        {
+            isCardInteractionBlocked = !enabled;
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 카드 상호작용 {(enabled ? "활성화" : "비활성화")}");
+
+            // BattleUIManager를 통해 손패의 모든 카드에 적용
+            if (BattleUIManager.Instance != null)
+            {
+                SetHandCardDragEnabled(enabled);
+            }
+        }
+
+        /// <summary>
+        /// 손패 카드들의 드래그 기능 제어
+        /// </summary>
+        private void SetHandCardDragEnabled(bool enabled)
+        {
+            // BattleUIManager의 손패 카드 UI들에 접근
+            var handCardUIs = GetHandCardUIs();
+
+            if (handCardUIs != null)
+            {
+                foreach (var cardUI in handCardUIs)
+                {
+                    if (cardUI != null)
+                    {
+                        // CardDraggable 컴포넌트 찾아서 드래그 설정
+                        var cardDraggable = cardUI.GetComponent<CardDraggable>();
+                        if (cardDraggable != null)
+                        {
+                            cardDraggable.SetDragEnabled(enabled);
+                        }
+
+                        // Button 컴포넌트도 비활성화 (클릭 방지)
+                        var button = cardUI.GetComponent<Button>();
+                        if (button != null)
+                        {
+                            button.interactable = enabled;
+                        }
+                    }
+                }
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] {handCardUIs.Count}개 카드의 드래그 기능 {(enabled ? "활성화" : "비활성화")}");
+            }
+        }
+
+        /// <summary>
+        /// BattleUIManager에서 손패 카드 UI 리스트 가져오기 (리플렉션 사용)
+        /// </summary>
+        private List<GameObject> GetHandCardUIs()
+        {
+            if (BattleUIManager.Instance == null) return null;
+
+            // 리플렉션을 사용하여 private 필드에 접근
+            var field = typeof(BattleUIManager).GetField("handCardUIs",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (field != null)
+            {
+                return field.GetValue(BattleUIManager.Instance) as List<GameObject>;
+            }
+
+            return null;
         }
         #endregion
 
@@ -378,6 +459,14 @@ namespace Maglin.Battle
             // 모든 매니저 초기화 완료 후 이벤트 구독
             SubscribeToManagerEvents();
 
+            // PlayerManager 애니메이션 이벤트 구독
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.OnPlayerAnimationChanged += OnPlayerAnimationChanged;
+                if (debugMode)
+                    Debug.Log("[BattleTestController] PlayerManager 애니메이션 이벤트 구독 완료");
+            }
+
             // 씬 전환 후 UI 참조 재설정 (DontDestroyOnLoad로 인한 참조 무효화 방지)
             RefreshUIManagerReferences();
             RefreshCardDrawAnimationManagerReferences();
@@ -624,6 +713,7 @@ namespace Maglin.Battle
 
             // VFX 이벤트 구독
             VFXEffectManager.OnVFXHit += OnVFXHit;
+            VFXEffectManager.OnCardAttackSequenceCompleted += OnCardAttackSequenceCompleted;
 
             // MonsterDeathAnimationManager 이벤트 구독
             if (MonsterDeathAnimationManager.Instance != null)
@@ -1158,6 +1248,17 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[BattleTestController] {cardData.CardName} 효과 실행: 데미지={cardData.BaseDamage}, 힐={cardData.BaseHeal}, 대상={cardData.Target}");
 
+            // 카드 상호작용 차단
+            SetCardInteractionEnabled(false);
+
+            // 공격/힐 카드인 경우 플레이어 공격 애니메이션 실행
+            if ((cardData.BaseDamage > 0 || cardData.BaseHeal > 0) && PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.PlayAttackAnimation(1, 0.5f);
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 플레이어 공격 애니메이션 실행");
+            }
+
             // VFX 이펙트 실행 (CardSO만 있는 경우 임시 Card 인스턴스 생성)
             if (cardData.Effect != null && VFXEffectManager.Instance != null)
             {
@@ -1185,6 +1286,17 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log($"[BattleTestController] {cardData.CardName} 효과 실행: 데미지={cardData.BaseDamage}, 힐={cardData.BaseHeal}, 대상={cardData.Target}");
+
+            // 카드 상호작용 차단
+            SetCardInteractionEnabled(false);
+
+            // 공격/힐 카드인 경우 플레이어 공격 애니메이션 실행
+            if ((cardData.BaseDamage > 0 || cardData.BaseHeal > 0) && PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.PlayAttackAnimation(1, 0.5f);
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 플레이어 공격 애니메이션 실행");
+            }
 
             // VFX 이펙트 실행
             if (cardData.Effect != null && VFXEffectManager.Instance != null)
@@ -1279,7 +1391,14 @@ namespace Maglin.Battle
                 StartCoroutine(SummonMonsterFromCard(cardData));
             }
 
-            // VFX 없는 카드 효과 적용 후 전투 종료 조건 확인
+            // VFX 없는 카드 효과 적용 후 VFX 완료 알림 (VFX가 없으므로 즉시 완료)
+            if (VFXEffectManager.Instance != null)
+            {
+                var tempCard = new Card(cardData);
+                VFXEffectManager.Instance.NotifyCardWithoutVFXCompleted(tempCard);
+            }
+
+            // 전투 종료 조건 확인
             CheckBattleEnd();
         }
 
@@ -1467,6 +1586,21 @@ namespace Maglin.Battle
             {
                 CheckBattleEnd();
             }
+        }
+
+        /// <summary>
+        /// 카드의 모든 공격 시퀀스 완료 이벤트 처리
+        /// </summary>
+        private void OnCardAttackSequenceCompleted(Card card)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 카드 {card.CardName} 모든 공격 시퀀스 완료 - 카드 상호작용 재활성화");
+
+            // 카드 상호작용 재활성화
+            SetCardInteractionEnabled(true);
+
+            // 전투 종료 조건 확인
+            CheckBattleEnd();
         }
 
         /// <summary>
@@ -2323,6 +2457,21 @@ namespace Maglin.Battle
             if (BattleUIManager.Instance != null)
             {
                 BattleUIManager.Instance.OnFieldEffectRemoved(fieldEffect);
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 애니메이션 변경 이벤트 핸들러
+        /// </summary>
+        private void OnPlayerAnimationChanged(PlayerManager.PlayerAnimationState newState)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 플레이어 애니메이션 변경: {newState}");
+
+            // PlayerBattleManager에 애니메이션 변경 알림
+            if (PlayerBattleManager.Instance != null)
+            {
+                PlayerBattleManager.Instance.UpdatePlayerSprite();
             }
         }
         #endregion
