@@ -4,6 +4,8 @@ using TMPro;
 using System.Collections.Generic;
 using Maglin.Player;
 using Maglin.Cards;
+using Maglin.Relics; // RelicSO를 위해 추가
+using Maglin.Battle; // CardUIData를 위해 추가
 
 namespace Maglin.Shop
 {
@@ -18,8 +20,7 @@ namespace Maglin.Shop
         [SerializeField] private TextMeshProUGUI healthText;
 
         [Header("상품 슬롯")]
-        [SerializeField] private Transform[] cardSlots = new Transform[5];
-        [SerializeField] private Transform[] relicSlots = new Transform[3];
+        [SerializeField] private Transform[] itemSlots = new Transform[8]; // 통합된 아이템 슬롯 (카드5개 + 유물3개)
         [SerializeField] private Transform cardRemovalSlot;
         [SerializeField] private Transform healthRestoreSlot;
 
@@ -34,6 +35,7 @@ namespace Maglin.Shop
 
         [Header("프리팹")]
         [SerializeField] private GameObject cardUIPrefab;
+        [SerializeField] private GameObject relicPrefab; // 유물 프리팹
 
         // 싱글톤
         public static ShopUIManager Instance { get; private set; }
@@ -234,31 +236,49 @@ namespace Maglin.Shop
         /// </summary>
         private void FindItemSlots()
         {
-            // 카드 슬롯
-            for (int i = 0; i < cardSlots.Length; i++)
+            if (debugMode)
+                Debug.Log("[ShopUIManager] FindItemSlots 시작");
+
+            // 통합된 아이템 슬롯 찾기 (CardSlot_0~4, RelicSlot_0~2 순서로)
+            for (int i = 0; i < itemSlots.Length; i++)
             {
-                if (cardSlots[i] == null)
+                GameObject slotObj = null;
+                string slotName = "";
+
+                // 처음 5개는 카드 슬롯으로 찾기
+                if (i < 5)
                 {
-                    var slotObj = GameObject.Find($"CardSlot_{i}");
-                    if (slotObj != null)
-                    {
-                        cardSlots[i] = slotObj.transform;
-                    }
+                    slotName = $"CardSlot_{i}";
+                    slotObj = GameObject.Find(slotName);
+                }
+                // 나머지 3개는 유물 슬롯으로 찾기
+                else
+                {
+                    slotName = $"RelicSlot_{i - 5}";
+                    slotObj = GameObject.Find(slotName);
+                }
+
+                if (slotObj != null)
+                {
+                    itemSlots[i] = slotObj.transform;
+                    if (debugMode)
+                        Debug.Log($"[ShopUIManager] 슬롯 {i} 찾음: {slotName} -> {slotObj.name}");
+                }
+                else if (debugMode)
+                {
+                    Debug.LogWarning($"[ShopUIManager] 슬롯 {i} 찾을 수 없음: {slotName}");
                 }
             }
 
-            // 유물 슬롯
-            for (int i = 0; i < relicSlots.Length; i++)
+            // 찾은 슬롯 수 확인
+            int foundSlots = 0;
+            for (int i = 0; i < itemSlots.Length; i++)
             {
-                if (relicSlots[i] == null)
-                {
-                    var slotObj = GameObject.Find($"RelicSlot_{i}");
-                    if (slotObj != null)
-                    {
-                        relicSlots[i] = slotObj.transform;
-                    }
-                }
+                if (itemSlots[i] != null) foundSlots++;
             }
+
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] 총 {foundSlots}개 슬롯 찾음 (카드 5개 + 유물 3개 예상)");
 
             // 서비스 슬롯
             if (cardRemovalSlot == null)
@@ -357,30 +377,15 @@ namespace Maglin.Shop
         /// </summary>
         private void SetupItemSlotButtons()
         {
-            // 카드 슬롯
-            for (int i = 0; i < cardSlots.Length; i++)
+            // 통합된 아이템 슬롯
+            for (int i = 0; i < itemSlots.Length; i++)
             {
-                if (cardSlots[i] != null)
+                if (itemSlots[i] != null)
                 {
-                    var button = cardSlots[i].GetComponent<Button>();
+                    var button = itemSlots[i].GetComponent<Button>();
                     if (button != null)
                     {
                         int slotIndex = i; // 클로저용
-                        button.onClick.RemoveAllListeners();
-                        button.onClick.AddListener(() => OnItemSlotClicked(slotIndex));
-                    }
-                }
-            }
-
-            // 유물 슬롯
-            for (int i = 0; i < relicSlots.Length; i++)
-            {
-                if (relicSlots[i] != null)
-                {
-                    var button = relicSlots[i].GetComponent<Button>();
-                    if (button != null)
-                    {
-                        int slotIndex = i + cardSlots.Length; // 카드 슬롯 다음부터
                         button.onClick.RemoveAllListeners();
                         button.onClick.AddListener(() => OnItemSlotClicked(slotIndex));
                     }
@@ -507,19 +512,16 @@ namespace Maglin.Shop
             if (debugMode)
                 Debug.Log($"[ShopUIManager] 상점 아이템 업데이트: {currentItems.Length}개");
 
-            // 타입별로 아이템 분류
-            var cardItems = new List<(ShopItem item, int index)>();
-            var relicItems = new List<(ShopItem item, int index)>();
+            // 일반 아이템 (카드, 유물)만 필터링 (서비스 제외)
+            var normalItems = new List<(ShopItem item, int index)>();
 
             for (int i = 0; i < currentItems.Length; i++)
             {
                 switch (currentItems[i].itemType)
                 {
                     case ShopItemType.Card:
-                        cardItems.Add((currentItems[i], i));
-                        break;
                     case ShopItemType.Relic:
-                        relicItems.Add((currentItems[i], i));
+                        normalItems.Add((currentItems[i], i));
                         break;
                     case ShopItemType.CardRemoval:
                     case ShopItemType.HealthRestore:
@@ -528,33 +530,18 @@ namespace Maglin.Shop
                 }
             }
 
-            // 카드 슬롯 업데이트
-            for (int i = 0; i < cardSlots.Length; i++)
+            // 통합된 아이템 슬롯 업데이트
+            for (int i = 0; i < itemSlots.Length; i++)
             {
-                if (i < cardItems.Count)
+                if (i < normalItems.Count)
                 {
-                    UpdateItemSlot(cardSlots[i], cardItems[i].item, cardItems[i].index);
+                    UpdateItemSlot(itemSlots[i], normalItems[i].item, normalItems[i].index);
                     if (debugMode)
-                        Debug.Log($"[ShopUIManager] 카드 슬롯 {i}: {cardItems[i].item.itemName} (구매완료: {(itemsPurchased != null && cardItems[i].index < itemsPurchased.Length ? itemsPurchased[cardItems[i].index] : false)})");
+                        Debug.Log($"[ShopUIManager] 아이템 슬롯 {i}: {normalItems[i].item.itemName} ({normalItems[i].item.itemType}) (구매완료: {(itemsPurchased != null && normalItems[i].index < itemsPurchased.Length ? itemsPurchased[normalItems[i].index] : false)})");
                 }
                 else
                 {
-                    ClearItemSlot(cardSlots[i]);
-                }
-            }
-
-            // 유물 슬롯 업데이트
-            for (int i = 0; i < relicSlots.Length; i++)
-            {
-                if (i < relicItems.Count)
-                {
-                    UpdateItemSlot(relicSlots[i], relicItems[i].item, relicItems[i].index);
-                    if (debugMode)
-                        Debug.Log($"[ShopUIManager] 유물 슬롯 {i}: {relicItems[i].item.itemName}");
-                }
-                else
-                {
-                    ClearItemSlot(relicSlots[i]);
+                    ClearItemSlot(itemSlots[i]);
                 }
             }
 
@@ -566,7 +553,7 @@ namespace Maglin.Shop
                 Debug.Log("[ShopUIManager] UpdateServiceSlots 호출 완료");
 
             if (debugMode)
-                Debug.Log($"[ShopUIManager] 아이템 UI 업데이트 완료: 카드 {cardItems.Count}개, 유물 {relicItems.Count}개");
+                Debug.Log($"[ShopUIManager] 아이템 UI 업데이트 완료: 총 {normalItems.Count}개 아이템");
         }
 
         /// <summary>
@@ -649,7 +636,7 @@ namespace Maglin.Shop
         }
 
         /// <summary>
-        /// 개별 아이템 슬롯 업데이트
+        /// 개별 아이템 슬롯 업데이트 (프리팹 사용)
         /// </summary>
         private void UpdateItemSlot(Transform slot, ShopItem item, int itemIndex)
         {
@@ -663,86 +650,314 @@ namespace Maglin.Shop
             if (debugMode)
                 Debug.Log($"[ShopUIManager] UpdateItemSlot: {slot.name} <- {item.itemName}");
 
-            // 아이템 아이콘
-            var iconImage = slot.Find("ItemIcon")?.GetComponent<Image>();
-            if (iconImage != null)
+            // 슬롯 활성화
+            slot.gameObject.SetActive(true);
+
+            // 기존 프리팹 인스턴스 정리
+            ClearItemSlotContent(slot);
+
+            GameObject itemUI = null;
+
+            switch (item.itemType)
             {
-                iconImage.sprite = item.itemIcon;
-                iconImage.color = item.itemIcon != null ? Color.white : GetItemTypeColor(item.itemType);
-                if (debugMode)
-                    Debug.Log($"[ShopUIManager] 아이콘 업데이트: {item.itemName} (sprite: {item.itemIcon})");
-            }
-            else if (debugMode)
-            {
-                Debug.LogWarning($"[ShopUIManager] ItemIcon을 찾을 수 없음: {slot.name}");
+                case ShopItemType.Card:
+                    itemUI = CreateCardShopUI(slot, item, itemIndex);
+                    break;
+
+                case ShopItemType.Relic:
+                    itemUI = CreateRelicShopUI(slot, item, itemIndex);
+                    break;
+
+                case ShopItemType.CardRemoval:
+                case ShopItemType.HealthRestore:
+                    // 서비스 아이템은 기존 방식 사용 (슬롯 UI 유지)
+                    UpdateServiceItemSlot(slot, item, itemIndex);
+                    break;
             }
 
-            // 아이템 이름
-            var nameText = slot.Find("ItemName")?.GetComponent<TextMeshProUGUI>();
+            if (itemUI != null && debugMode)
+            {
+                Debug.Log($"[ShopUIManager] 상점 아이템 UI 생성 완료: {item.itemType} - {item.itemName}");
+            }
+        }
+
+        /// <summary>
+        /// 아이템 슬롯 내용 정리 (프리팹 인스턴스만)
+        /// </summary>
+        private void ClearItemSlotContent(Transform slot)
+        {
+            // CardUIPrefab(Clone)이나 RelicPrefab(Clone) 같은 프리팹 인스턴스만 제거
+            for (int i = slot.childCount - 1; i >= 0; i--)
+            {
+                var child = slot.GetChild(i);
+                if (child.name.Contains("Prefab") || child.name.Contains("Clone"))
+                {
+                    Destroy(child.gameObject);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 카드 상점 UI 생성 (CardUIPrefab 사용)
+        /// </summary>
+        private GameObject CreateCardShopUI(Transform slot, ShopItem item, int itemIndex)
+        {
+            if (cardUIPrefab == null || item.cardData == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[ShopUIManager] CardUIPrefab이 없거나 카드 데이터가 null입니다.");
+                return null;
+            }
+
+            // CardUIPrefab 인스턴스화
+            GameObject cardUI = Instantiate(cardUIPrefab, slot);
+
+            // 카드 데이터 설정
+            var cardUIData = cardUI.GetComponent<CardUIData>();
+            if (cardUIData == null)
+            {
+                cardUIData = cardUI.AddComponent<CardUIData>();
+            }
+
+            // Card 인스턴스 생성 (상점용)
+            var cardInstance = new Card(item.cardData);
+            cardUIData.CardInstance = cardInstance;
+
+            // 카드 정보 업데이트
+            UpdateCardUIInfo(cardUI, cardInstance);
+
+            // 상점 구매 버튼 이벤트 설정
+            var button = cardUI.GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => OnItemSlotClicked(itemIndex));
+                button.interactable = ShopManager.Instance.CanPurchaseItem(itemIndex);
+            }
+
+            // 가격 및 구매 완료 상태 오버레이 추가
+            CreateShopItemOverlay(cardUI, item, itemIndex);
+
+            // 크기 조정 (상점 슬롯에 맞게)
+            var rectTransform = cardUI.GetComponent<RectTransform>();
+            if (rectTransform != null)
+            {
+                rectTransform.anchorMin = Vector2.zero;
+                rectTransform.anchorMax = Vector2.one;
+                rectTransform.offsetMin = Vector2.zero;
+                rectTransform.offsetMax = Vector2.zero;
+                rectTransform.localScale = Vector3.one;
+            }
+
+            return cardUI;
+        }
+
+        /// <summary>
+        /// 유물 상점 UI 생성 (RelicPrefab 사용)
+        /// </summary>
+        private GameObject CreateRelicShopUI(Transform slot, ShopItem item, int itemIndex)
+        {
+            if (relicPrefab == null || item.relicData == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[ShopUIManager] RelicPrefab이 없거나 유물 데이터가 null입니다.");
+                return null;
+            }
+
+            // RelicPrefab 인스턴스화
+            GameObject relicUI = Instantiate(relicPrefab, slot);
+
+            // 유물 정보 업데이트
+            UpdateRelicUIInfo(relicUI, item.relicData);
+
+            // 상점 구매 버튼 이벤트 설정 (RelicPanel에 Button 컴포넌트 추가)
+            var relicPanel = relicUI.transform.Find("RelicPanel");
+            if (relicPanel != null)
+            {
+                var button = relicPanel.GetComponent<Button>();
+                if (button == null)
+                {
+                    button = relicPanel.gameObject.AddComponent<Button>();
+                    button.targetGraphic = relicPanel.GetComponent<Image>();
+                }
+
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => OnItemSlotClicked(itemIndex));
+                button.interactable = ShopManager.Instance.CanPurchaseItem(itemIndex);
+            }
+
+            // 가격 및 구매 완료 상태 오버레이 추가
+            CreateShopItemOverlay(relicUI, item, itemIndex);
+
+            // 크기 조정 (상점 슬롯에 맞게)
+            var rectTransform = relicUI.GetComponent<RectTransform>();
+            if (rectTransform != null)
+            {
+                rectTransform.anchorMin = Vector2.zero;
+                rectTransform.anchorMax = Vector2.one;
+                rectTransform.offsetMin = Vector2.zero;
+                rectTransform.offsetMax = Vector2.zero;
+                rectTransform.localScale = Vector3.one * 0.8f; // 유물은 약간 작게
+            }
+
+            return relicUI;
+        }
+
+        /// <summary>
+        /// 상점 아이템 오버레이 생성 (가격, 구매 완료 표시)
+        /// </summary>
+        private void CreateShopItemOverlay(GameObject itemUI, ShopItem item, int itemIndex)
+        {
+            // 오버레이 패널 생성
+            GameObject overlay = new GameObject("ShopOverlay");
+            overlay.transform.SetParent(itemUI.transform, false);
+
+            var overlayRect = overlay.AddComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+
+            // 가격 텍스트 추가
+            GameObject priceTextObj = new GameObject("PriceText");
+            priceTextObj.transform.SetParent(overlay.transform, false);
+
+            var priceText = priceTextObj.AddComponent<TextMeshProUGUI>();
+            var priceRect = priceTextObj.GetComponent<RectTransform>();
+
+            // 가격 텍스트 위치 설정 (하단)
+            priceRect.anchorMin = new Vector2(0, 0);
+            priceRect.anchorMax = new Vector2(1, 0.2f);
+            priceRect.offsetMin = Vector2.zero;
+            priceRect.offsetMax = Vector2.zero;
+
+            // 가격 텍스트 스타일
+            priceText.text = $"{ShopManager.Instance.GetItemPrice(item)} 골드";
+            priceText.fontSize = 16;
+            priceText.color = Color.white;
+            priceText.alignment = TextAlignmentOptions.Center;
+            priceText.fontStyle = TMPro.FontStyles.Bold;
+
+            // 배경 추가 (가독성을 위해)
+            var bgObj = new GameObject("PriceBackground");
+            bgObj.transform.SetParent(overlay.transform, false);
+
+            var bgRect = bgObj.AddComponent<RectTransform>();
+            bgRect.anchoredPosition = priceRect.anchoredPosition;
+            bgRect.sizeDelta = new Vector2(priceRect.sizeDelta.x + 10, priceRect.sizeDelta.y + 5);
+
+            var bgImage = bgObj.AddComponent<Image>();
+            bgImage.color = new Color(0, 0, 0, 0.7f); // 반투명 검은색 배경
+
+            // 가격 텍스트를 배경 앞으로 이동
+            priceTextObj.transform.SetAsLastSibling();
+
+            // 구매 완료 상태 처리
+            if (itemsPurchased != null && itemIndex < itemsPurchased.Length && itemsPurchased[itemIndex])
+            {
+                priceText.text = "구매 완료";
+                priceText.color = Color.green;
+                bgImage.color = new Color(0, 0.5f, 0, 0.8f); // 초록색 배경
+
+                // 전체 아이템에 회색 오버레이 추가
+                var soldOutOverlay = new GameObject("SoldOutOverlay");
+                soldOutOverlay.transform.SetParent(overlay.transform, false);
+
+                var soldOutRect = soldOutOverlay.AddComponent<RectTransform>();
+                soldOutRect.anchorMin = Vector2.zero;
+                soldOutRect.anchorMax = Vector2.one;
+                soldOutRect.offsetMin = Vector2.zero;
+                soldOutRect.offsetMax = Vector2.zero;
+
+                var soldOutImage = soldOutOverlay.AddComponent<Image>();
+                soldOutImage.color = new Color(0.5f, 0.5f, 0.5f, 0.5f); // 반투명 회색
+            }
+        }
+
+        /// <summary>
+        /// 서비스 아이템 슬롯 업데이트 (기존 방식)
+        /// </summary>
+        private void UpdateServiceItemSlot(Transform slot, ShopItem item, int itemIndex)
+        {
+            // 서비스들은 기존 슬롯 UI 사용
+            var nameText = slot.Find("ServiceName")?.GetComponent<TextMeshProUGUI>();
             if (nameText != null)
             {
                 nameText.text = item.itemName;
-                if (debugMode)
-                    Debug.Log($"[ShopUIManager] 이름 업데이트: {item.itemName}");
-            }
-            else if (debugMode)
-            {
-                Debug.LogWarning($"[ShopUIManager] ItemName을 찾을 수 없음: {slot.name}");
             }
 
-            // 아이템 설명
-            var descText = slot.Find("ItemDescription")?.GetComponent<TextMeshProUGUI>();
+            var descText = slot.Find("ServiceDescription")?.GetComponent<TextMeshProUGUI>();
             if (descText != null)
             {
                 descText.text = item.itemDescription;
             }
-            else if (debugMode)
-            {
-                Debug.LogWarning($"[ShopUIManager] ItemDescription을 찾을 수 없음: {slot.name}");
-            }
 
-            // 가격
+            // 가격 업데이트
             var priceText = slot.Find("ItemPrice")?.GetComponent<TextMeshProUGUI>();
             if (priceText != null)
             {
                 int finalPrice = ShopManager.Instance.GetItemPrice(item);
                 priceText.text = $"{finalPrice} 골드";
             }
-            else if (debugMode)
-            {
-                Debug.LogWarning($"[ShopUIManager] ItemPrice를 찾을 수 없음: {slot.name}");
-            }
 
-            // 버튼 상태
+            // 버튼 상태 업데이트
             var button = slot.GetComponent<Button>();
             if (button != null)
             {
                 button.interactable = ShopManager.Instance.CanPurchaseItem(itemIndex);
             }
+        }
 
-            // 구매 완료 표시
-            if (itemsPurchased != null && itemIndex < itemsPurchased.Length && itemsPurchased[itemIndex])
+        /// <summary>
+        /// 카드 UI 정보 업데이트 (BattleUIManager와 동일)
+        /// </summary>
+        private void UpdateCardUIInfo(GameObject cardUI, Card card)
+        {
+            var nameText = cardUI.transform.Find("CardName")?.GetComponent<TextMeshProUGUI>();
+            if (nameText != null)
             {
-                var slotImage = slot.GetComponent<Image>();
-                if (slotImage != null)
-                {
-                    slotImage.color = new Color(0.5f, 0.5f, 0.5f, 1f); // 회색으로 표시
-                }
-
-                // 가격 텍스트를 "구매 완료"로 변경
-                if (priceText != null)
-                {
-                    priceText.text = "구매 완료";
-                    priceText.color = Color.green;
-                }
-
-                if (debugMode)
-                    Debug.Log($"[ShopUIManager] 구매 완료 표시 적용: {item.itemName}");
+                nameText.text = card.CardName;
             }
-            else if (priceText != null)
+
+            var costText = cardUI.transform.Find("CardCost")?.GetComponent<TextMeshProUGUI>();
+            if (costText != null)
             {
-                // 구매 가능한 상태일 때 가격 색상 복원
-                priceText.color = Color.white;
+                costText.text = $"{card.CurrentManaCost}";
+            }
+
+            var descText = cardUI.transform.Find("CardDescription")?.GetComponent<TextMeshProUGUI>();
+            if (descText != null)
+            {
+                descText.text = card.Description;
+            }
+
+            var infoText = cardUI.transform.Find("CardInfo")?.GetComponent<TextMeshProUGUI>();
+            if (infoText != null)
+            {
+                infoText.text = $"{card.Element} | {card.Type}";
+            }
+        }
+
+        /// <summary>
+        /// 유물 UI 정보 업데이트 (BattleUIManager와 동일)
+        /// </summary>
+        private void UpdateRelicUIInfo(GameObject relicUI, RelicSO relicData)
+        {
+            if (relicUI == null || relicData == null) return;
+
+            // RelicImage 업데이트
+            var relicImage = relicUI.transform.Find("RelicPanel/RelicImage")?.GetComponent<Image>();
+            if (relicImage != null && relicData.Image != null)
+            {
+                relicImage.sprite = relicData.Image;
+                relicImage.color = Color.white;
+            }
+
+            // RelicDescription 업데이트
+            var relicDesc = relicUI.transform.Find("RelicPanel/RelicDescription")?.GetComponent<TextMeshProUGUI>();
+            if (relicDesc != null)
+            {
+                relicDesc.text = relicData.Description;
             }
         }
 
@@ -781,45 +996,20 @@ namespace Maglin.Shop
         }
 
         /// <summary>
-        /// 아이템 슬롯 클리어
+        /// 아이템 슬롯 클리어 (프리팹 인스턴스 제거)
         /// </summary>
         private void ClearItemSlot(Transform slot)
         {
             if (slot == null) return;
 
-            // 아이콘 클리어
-            var iconImage = slot.Find("ItemIcon")?.GetComponent<Image>();
-            if (iconImage != null)
-            {
-                iconImage.sprite = null;
-                iconImage.color = Color.gray;
-            }
+            // 프리팹 인스턴스들만 제거
+            ClearItemSlotContent(slot);
 
-            // 텍스트 클리어
-            var nameText = slot.Find("ItemName")?.GetComponent<TextMeshProUGUI>();
-            if (nameText != null)
-            {
-                nameText.text = "품절";
-            }
+            // 슬롯은 활성화 상태로 유지 (빈 슬롯으로 표시)
+            slot.gameObject.SetActive(true);
 
-            var descText = slot.Find("ItemDescription")?.GetComponent<TextMeshProUGUI>();
-            if (descText != null)
-            {
-                descText.text = "";
-            }
-
-            var priceText = slot.Find("ItemPrice")?.GetComponent<TextMeshProUGUI>();
-            if (priceText != null)
-            {
-                priceText.text = "";
-            }
-
-            // 버튼 비활성화
-            var button = slot.GetComponent<Button>();
-            if (button != null)
-            {
-                button.interactable = false;
-            }
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] 슬롯 클리어: {slot.name} (활성화 상태 유지)");
         }
 
         /// <summary>

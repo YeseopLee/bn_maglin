@@ -21,10 +21,17 @@ MonoBehaviour:
   targetType: 0
   targetCount: 1
   cardDescription: Water Element
-  cardImage: {fileID: 0}
+  cardImage: {fileID: 1272574604, guid: 2e78de6253f02460996ef0083f3667d4, type: 3}
   cardEffect: {fileID: 0}
   cardSound: {fileID: 0}
+  showVFXPerTarget: 1
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
+  movementType: 0
+  movementDistance: 1
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 0}
+  summonPosition: 0
+  pushExistingMonster: 1
   requiredCombinations: []

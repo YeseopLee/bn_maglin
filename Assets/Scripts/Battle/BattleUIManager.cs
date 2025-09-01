@@ -99,6 +99,7 @@ namespace Maglin.Battle
 
         [Header("프리팹")]
         [SerializeField] private GameObject cardUIPrefab;
+        [SerializeField] private GameObject relicPrefab; // 유물 프리팹
         [SerializeField] private GameObject monsterPrefab;
         [SerializeField] private GameObject loadingUIPrefab; // 로딩 UI 프리팹 (초기 블랙스크린용)
 
@@ -449,7 +450,8 @@ namespace Maglin.Battle
             UnityEngine.UI.Image fieldAreaImage,
             TMPro.TextMeshProUGUI fieldEffectTurnsText,
             GameObject cardUIPrefab,
-            GameObject monsterPrefab,
+            GameObject relicPrefab = null,
+            GameObject monsterPrefab = null,
             GameObject loadingUIPrefab = null,
             Slider healthSlider = null,
             Slider manaSlider = null)
@@ -471,6 +473,12 @@ namespace Maglin.Battle
             this.fieldEffectTurnsText = fieldEffectTurnsText;
             this.cardUIPrefab = cardUIPrefab;
             this.monsterPrefab = monsterPrefab;
+
+            // 유물 프리팹 설정 (제공된 경우)
+            if (relicPrefab != null)
+            {
+                this.relicPrefab = relicPrefab;
+            }
 
             // 로딩 UI 프리팹 설정 (제공된 경우)
             if (loadingUIPrefab != null)
@@ -2008,7 +2016,7 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 개별 보상 슬롯 업데이트
+        /// 개별 보상 슬롯 업데이트 (프리팹 사용)
         /// </summary>
         private void UpdateRewardSlot(Transform slot, RewardItem reward)
         {
@@ -2016,21 +2024,201 @@ namespace Maglin.Battle
 
             slot.gameObject.SetActive(true);
 
-            // 보상 아이콘 업데이트
-            var iconImage = slot.Find("RewardIcon")?.GetComponent<Image>();
-            var nameText = slot.Find("RewardName")?.GetComponent<TextMeshProUGUI>();
-            var descText = slot.Find("RewardDescription")?.GetComponent<TextMeshProUGUI>();
+            // 기존 자식 오브젝트들 정리
+            ClearRewardSlotContent(slot);
+
+            GameObject rewardUI = null;
 
             switch (reward.rewardType)
             {
                 case RewardType.Card:
-                    UpdateCardReward(iconImage, nameText, descText, reward);
+                    rewardUI = CreateCardRewardUI(slot, reward);
                     break;
 
                 case RewardType.Relic:
-                    UpdateRelicReward(iconImage, nameText, descText, reward);
+                    rewardUI = CreateRelicRewardUI(slot, reward);
                     break;
             }
+
+            if (rewardUI != null && debugMode)
+            {
+                Debug.Log($"[BattleUIManager] 보상 UI 생성 완료: {reward.rewardType} - {reward.GetRewardName()}");
+            }
+        }
+
+        /// <summary>
+        /// 보상 슬롯 내용 정리
+        /// </summary>
+        private void ClearRewardSlotContent(Transform slot)
+        {
+            // CardUIPrefab(Clone)이나 RelicPrefab(Clone) 같은 프리팹 인스턴스만 제거
+            for (int i = slot.childCount - 1; i >= 0; i--)
+            {
+                var child = slot.GetChild(i);
+                if (child.name.Contains("Prefab") || child.name.Contains("Clone"))
+                {
+                    Destroy(child.gameObject);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 카드 보상 UI 생성 (CardUIPrefab 사용)
+        /// </summary>
+        private GameObject CreateCardRewardUI(Transform slot, RewardItem reward)
+        {
+            if (cardUIPrefab == null || reward.cardReward == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleUIManager] CardUIPrefab이 없거나 카드 보상이 null입니다.");
+                return null;
+            }
+
+            // CardUIPrefab 인스턴스화
+            GameObject cardUI = Instantiate(cardUIPrefab, slot);
+
+            // 카드 데이터 설정
+            var cardUIData = cardUI.GetComponent<CardUIData>();
+            if (cardUIData == null)
+            {
+                cardUIData = cardUI.AddComponent<CardUIData>();
+            }
+
+            // Card 인스턴스 생성 (보상용)
+            var cardInstance = new Card(reward.cardReward);
+            cardUIData.CardInstance = cardInstance;
+
+            // 카드 정보 업데이트
+            UpdateCardUIInfo(cardUI, cardInstance);
+
+            // 보상 선택 버튼 이벤트 설정
+            var button = cardUI.GetComponent<Button>();
+            if (button != null)
+            {
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => OnRewardCardClicked(reward));
+            }
+
+            // 크기 조정 (보상 슬롯에 맞게)
+            var rectTransform = cardUI.GetComponent<RectTransform>();
+            if (rectTransform != null)
+            {
+                rectTransform.anchorMin = Vector2.zero;
+                rectTransform.anchorMax = Vector2.one;
+                rectTransform.offsetMin = Vector2.zero;
+                rectTransform.offsetMax = Vector2.zero;
+                rectTransform.localScale = Vector3.one;
+            }
+
+            return cardUI;
+        }
+
+        /// <summary>
+        /// 유물 보상 UI 생성 (RelicPrefab 사용)
+        /// </summary>
+        private GameObject CreateRelicRewardUI(Transform slot, RewardItem reward)
+        {
+            if (relicPrefab == null || reward.relicReward == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleUIManager] RelicPrefab이 없거나 유물 보상이 null입니다.");
+                return null;
+            }
+
+            // RelicPrefab 인스턴스화
+            GameObject relicUI = Instantiate(relicPrefab, slot);
+
+            // 유물 정보 업데이트
+            UpdateRelicUIInfo(relicUI, reward.relicReward);
+
+            // 보상 선택 버튼 이벤트 설정 (RelicPanel에 Button 컴포넌트 추가)
+            var relicPanel = relicUI.transform.Find("RelicPanel");
+            if (relicPanel != null)
+            {
+                var button = relicPanel.GetComponent<Button>();
+                if (button == null)
+                {
+                    button = relicPanel.gameObject.AddComponent<Button>();
+                    button.targetGraphic = relicPanel.GetComponent<Image>();
+                }
+
+                button.onClick.RemoveAllListeners();
+                button.onClick.AddListener(() => OnRewardRelicClicked(reward));
+            }
+
+            // 크기 조정 (보상 슬롯에 맞게)
+            var rectTransform = relicUI.GetComponent<RectTransform>();
+            if (rectTransform != null)
+            {
+                rectTransform.anchorMin = Vector2.zero;
+                rectTransform.anchorMax = Vector2.one;
+                rectTransform.offsetMin = Vector2.zero;
+                rectTransform.offsetMax = Vector2.zero;
+                rectTransform.localScale = Vector3.one * 0.8f; // 유물은 약간 작게
+            }
+
+            return relicUI;
+        }
+
+        /// <summary>
+        /// 유물 UI 정보 업데이트
+        /// </summary>
+        private void UpdateRelicUIInfo(GameObject relicUI, RelicSO relicData)
+        {
+            if (relicUI == null || relicData == null) return;
+
+            // RelicImage 업데이트
+            var relicImage = relicUI.transform.Find("RelicPanel/RelicImage")?.GetComponent<Image>();
+            if (relicImage != null && relicData.Image != null)
+            {
+                relicImage.sprite = relicData.Image;
+                relicImage.color = Color.white;
+            }
+
+            // RelicDescription 업데이트
+            var relicDesc = relicUI.transform.Find("RelicPanel/RelicDescription")?.GetComponent<TextMeshProUGUI>();
+            if (relicDesc != null)
+            {
+                relicDesc.text = relicData.Description;
+            }
+        }
+
+        /// <summary>
+        /// 카드 보상 클릭 이벤트
+        /// </summary>
+        private void OnRewardCardClicked(RewardItem reward)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 카드 보상 선택: {reward.cardReward?.CardName}");
+
+            OnRewardSelected?.Invoke(GetRewardSlotIndex(reward));
+        }
+
+        /// <summary>
+        /// 유물 보상 클릭 이벤트
+        /// </summary>
+        private void OnRewardRelicClicked(RewardItem reward)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 유물 보상 선택: {reward.relicReward?.RelicName}");
+
+            OnRewardSelected?.Invoke(GetRewardSlotIndex(reward));
+        }
+
+        /// <summary>
+        /// 보상의 슬롯 인덱스 찾기
+        /// </summary>
+        private int GetRewardSlotIndex(RewardItem reward)
+        {
+            if (currentRewards != null)
+            {
+                for (int i = 0; i < currentRewards.Length; i++)
+                {
+                    if (currentRewards[i] == reward)
+                        return i;
+                }
+            }
+            return -1;
         }
 
         // 골드 보상 UI 업데이트 메서드 - 더 이상 사용 안함 (골드는 자동 지급)
@@ -2041,75 +2229,7 @@ namespace Maglin.Battle
         }
         */
 
-        /// <summary>
-        /// 카드 보상 UI 업데이트
-        /// </summary>
-        private void UpdateCardReward(Image iconImage, TextMeshProUGUI nameText, TextMeshProUGUI descText, RewardItem reward)
-        {
-            if (reward.cardReward == null) return;
 
-            if (iconImage != null)
-            {
-                // 카드 스프라이트가 있으면 사용, 없으면 기본 색상
-                if (reward.cardReward.Image != null)
-                {
-                    iconImage.sprite = reward.cardReward.Image;
-                    iconImage.color = Color.white;
-                }
-                else
-                {
-                    // 카드 타입에 따른 기본 색상
-                    iconImage.color = GetCardTypeColor(reward.cardReward.Type);
-                    iconImage.sprite = null;
-                }
-            }
-
-            if (nameText != null)
-            {
-                nameText.text = reward.cardReward.CardName;
-                nameText.color = Color.white;
-            }
-
-            if (descText != null)
-            {
-                descText.text = reward.cardReward.Description;
-            }
-        }
-
-        /// <summary>
-        /// 유물 보상 UI 업데이트
-        /// </summary>
-        private void UpdateRelicReward(Image iconImage, TextMeshProUGUI nameText, TextMeshProUGUI descText, RewardItem reward)
-        {
-            if (reward.relicReward == null) return;
-
-            if (iconImage != null)
-            {
-                // 유물 스프라이트가 있으면 사용, 없으면 기본 색상
-                if (reward.relicReward.Image != null)
-                {
-                    iconImage.sprite = reward.relicReward.Image;
-                    iconImage.color = Color.white;
-                }
-                else
-                {
-                    // 유물 타입에 따른 기본 색상
-                    iconImage.color = GetRelicTypeColor(reward.relicReward.Type);
-                    iconImage.sprite = null;
-                }
-            }
-
-            if (nameText != null)
-            {
-                nameText.text = reward.relicReward.RelicName;
-                nameText.color = GetRelicTypeColor(reward.relicReward.Type);
-            }
-
-            if (descText != null)
-            {
-                descText.text = reward.relicReward.Description;
-            }
-        }
 
         // 경험치 보상 UI 업데이트 메서드 - 더 이상 사용 안함
         /*
