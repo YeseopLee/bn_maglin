@@ -7,10 +7,9 @@ using System.Collections;
 namespace Maglin.UI
 {
     /// <summary>
-    /// 개별 카드 UI - 카드 정보 표시 및 드래그 기능 제공
+    /// 개별 카드 UI - 카드 정보 표시 및 hover 기능 제공 (드래그는 CardDraggable에서 처리)
     /// </summary>
-    public class CardUI : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler,
-                          IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
+    public class CardUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerClickHandler
     {
         [Header("UI 컴포넌트")]
         [SerializeField] private Image cardImage;
@@ -22,10 +21,9 @@ namespace Maglin.UI
         [SerializeField] private GameObject selectionEffect;
         [SerializeField] private CanvasGroup canvasGroup;
 
-        [Header("드래그 설정")]
-        [SerializeField] private float dragScale = 1.2f;
-        [SerializeField] private float hoverScale = 1.1f;
-        [SerializeField] private float animationDuration = 0.2f;
+        [Header("애니메이션 설정")]
+        [SerializeField] private float hoverScale = 1.2f;
+        [SerializeField] private float animationDuration = 0.05f;
 
         [Header("카드 상태 색상")]
         [SerializeField] private Color normalColor = Color.white;
@@ -36,16 +34,16 @@ namespace Maglin.UI
         // 카드 데이터
         private Card associatedCard;
         private bool isSelected;
-        private bool isDragging;
+
         private bool isInteractable = true;
         private bool hasInsufficientMana;
 
-        // 드래그 관련
-        private Vector3 originalPosition;
+        // 스케일 관련
         private Vector3 originalScale;
-        private Transform originalParent;
-        private int originalSiblingIndex;
-        private Canvas dragCanvas;
+
+        // hover z-order 관리
+        private int originalSortOrder;
+        private bool isHovering;
 
         // 참조
         private HandCardUI parentHand;
@@ -65,6 +63,9 @@ namespace Maglin.UI
             originalScale = transform.localScale;
             if (canvasGroup == null)
                 canvasGroup = GetComponent<CanvasGroup>();
+
+            // 원본 정렬 순서 저장
+            originalSortOrder = transform.GetSiblingIndex();
         }
 
         #endregion
@@ -204,7 +205,7 @@ namespace Maglin.UI
 
         public Card AssociatedCard => associatedCard;
         public bool IsSelected => isSelected;
-        public bool IsDragging => isDragging;
+
         public bool IsInteractable => isInteractable;
         public CardSlotUI CurrentSlot => currentSlot;
 
@@ -273,17 +274,22 @@ namespace Maglin.UI
 
         public void OnPointerClick(PointerEventData eventData)
         {
-            if (!isInteractable || isDragging) return;
+            if (!isInteractable) return;
 
             OnCardClicked?.Invoke(this);
         }
 
         public void OnPointerEnter(PointerEventData eventData)
         {
-            if (!isInteractable || isDragging) return;
+            if (!isInteractable) return;
+
+            isHovering = true;
 
             if (highlightEffect != null)
                 highlightEffect.SetActive(true);
+
+            // 카드를 맨 앞으로 가져오기 (겹침 방지)
+            BringToFront();
 
             AnimateScale(originalScale * hoverScale);
             OnCardHoverEnter?.Invoke(this);
@@ -291,86 +297,62 @@ namespace Maglin.UI
 
         public void OnPointerExit(PointerEventData eventData)
         {
-            if (isDragging) return;
+
+            isHovering = false;
 
             if (highlightEffect != null)
                 highlightEffect.SetActive(false);
+
+            // 원래 위치로 되돌리기
+            RestoreOriginalOrder();
 
             AnimateScale(originalScale);
             OnCardHoverExit?.Invoke(this);
         }
 
-        public void OnBeginDrag(PointerEventData eventData)
+        // 드래그 기능은 CardDraggable 컴포넌트에서 처리
+
+        /// <summary>
+        /// 카드를 맨 앞으로 가져오기 (hover 시 겹침 방지)
+        /// </summary>
+        private void BringToFront()
         {
-            if (!isInteractable) return;
-
-            isDragging = true;
-
-            // 드래그 준비
-            originalPosition = transform.position;
-            originalParent = transform.parent;
-            originalSiblingIndex = transform.GetSiblingIndex();
-
-            // 최상위 캔버스로 이동 (다른 UI 위에 표시되도록)
-            dragCanvas = FindDragCanvas();
-            if (dragCanvas != null)
-                transform.SetParent(dragCanvas.transform, true);
-
-            // 드래그 시각 효과
-            AnimateScale(originalScale * dragScale);
-            if (canvasGroup != null)
-                canvasGroup.alpha = 0.8f;
-
-            if (highlightEffect != null)
-                highlightEffect.SetActive(false);
-        }
-
-        public void OnDrag(PointerEventData eventData)
-        {
-            if (!isDragging) return;
-
-            transform.position = eventData.position;
-        }
-
-        public void OnEndDrag(PointerEventData eventData)
-        {
-            if (!isDragging) return;
-
-            isDragging = false;
-
-            // 슬롯에 드롭되지 않았다면 원래 위치로 복귀
-            if (currentSlot == null)
+            // Canvas 컴포넌트 추가하여 sorting order로 앞으로 가져오기
+            var canvas = GetComponent<Canvas>();
+            if (canvas == null)
             {
-                transform.SetParent(originalParent, true);
-                transform.SetSiblingIndex(originalSiblingIndex);
-                transform.position = originalPosition;
+                canvas = gameObject.AddComponent<Canvas>();
+                canvas.overrideSorting = true;
             }
 
-            // 시각 효과 복원
-            AnimateScale(originalScale);
-            if (canvasGroup != null)
-                canvasGroup.alpha = 1f;
+            // GraphicRaycaster도 함께 추가 (UI 이벤트를 위해)
+            var raycaster = GetComponent<GraphicRaycaster>();
+            if (raycaster == null)
+            {
+                raycaster = gameObject.AddComponent<GraphicRaycaster>();
+            }
+
+            // 높은 sorting order로 설정하여 앞에 표시
+            canvas.sortingOrder = 1000;
         }
 
         /// <summary>
-        /// 드래그용 캔버스 찾기
+        /// 원래 정렬 순서로 되돌리기
         /// </summary>
-        private Canvas FindDragCanvas()
+        private void RestoreOriginalOrder()
         {
-            Canvas[] canvases = FindObjectsOfType<Canvas>();
-            Canvas topCanvas = null;
-            int highestSortingOrder = int.MinValue;
-
-            foreach (Canvas canvas in canvases)
+            // Canvas와 GraphicRaycaster 제거하여 원래 상태로 복구
+            var raycaster = GetComponent<GraphicRaycaster>();
+            if (raycaster != null)
             {
-                if (canvas.sortingOrder > highestSortingOrder)
-                {
-                    highestSortingOrder = canvas.sortingOrder;
-                    topCanvas = canvas;
-                }
+                Destroy(raycaster);
             }
 
-            return topCanvas;
+            var canvas = GetComponent<Canvas>();
+            if (canvas != null)
+            {
+                Destroy(canvas);
+            }
         }
 
         #endregion

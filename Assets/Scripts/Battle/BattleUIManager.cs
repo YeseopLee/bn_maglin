@@ -852,13 +852,14 @@ namespace Maglin.Battle
             {
                 cardUI.transform.SetParent(targetSlot, false);
                 cardUI.transform.localPosition = Vector3.zero;
-                cardUI.transform.localScale = Vector3.one * 0.8f;
+                // 크기 변경 제거: cardUI.transform.localScale = Vector3.one * 0.8f;
 
-                var image = cardUI.GetComponent<Image>();
-                if (image != null)
-                {
-                    image.color = Color.cyan;
-                }
+                // 색상 변경 제거:
+                // var image = cardUI.GetComponent<Image>();
+                // if (image != null)
+                // {
+                //     image.color = Color.cyan;
+                // }
             }
         }
 
@@ -870,13 +871,15 @@ namespace Maglin.Battle
             if (cardUI != null && handContent != null)
             {
                 cardUI.transform.SetParent(handContent, false);
+                // 크기 초기화는 유지 (원래 크기로 되돌리기 위해)
                 cardUI.transform.localScale = Vector3.one;
 
-                var image = cardUI.GetComponent<Image>();
-                if (image != null)
-                {
-                    image.color = Color.white;
-                }
+                // 색상 초기화 제거 (원본 색상 유지):
+                // var image = cardUI.GetComponent<Image>();
+                // if (image != null)
+                // {
+                //     image.color = Color.white;
+                // }
 
                 if (!handCardUIs.Contains(cardUI))
                 {
@@ -1383,6 +1386,20 @@ namespace Maglin.Battle
             if (cardDraggable == null)
             {
                 cardDraggable = cardUI.AddComponent<CardDraggable>();
+            }
+
+            // CanvasGroup 컴포넌트 추가 (CardUI에서 필요)
+            var canvasGroup = cardUI.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = cardUI.AddComponent<CanvasGroup>();
+            }
+
+            // CardUI 컴포넌트 추가 (hover 기능을 위해)
+            var cardUIComponent = cardUI.GetComponent<CardUI>();
+            if (cardUIComponent == null)
+            {
+                cardUIComponent = cardUI.AddComponent<CardUI>();
             }
 
             var button = cardUI.GetComponent<Button>();
@@ -2164,6 +2181,9 @@ namespace Maglin.Battle
                 handCardUIs.Add(cardUI);
             }
 
+            // 손패 레이아웃 업데이트 (spacing 포함) - 개별 카드 추가 시마다
+            UpdateHandUILayout();
+
             // 필요시 추가 UI 업데이트
             UpdateDeckCountUI();
         }
@@ -2175,6 +2195,9 @@ namespace Maglin.Battle
         {
             if (debugMode)
                 Debug.Log($"[BattleUIManager] 모든 카드 드로우 애니메이션 완료: {cards?.Count ?? 0}장");
+
+            // 손패 레이아웃 업데이트 (spacing 포함)
+            UpdateHandUILayout();
 
             // 전체 UI 업데이트
             UpdateAllUI();
@@ -2203,11 +2226,45 @@ namespace Maglin.Battle
             var layoutGroup = handContent.GetComponent<HorizontalLayoutGroup>();
             if (layoutGroup != null)
             {
+                // 손패 카드 수에 따른 동적 spacing 조정
+                UpdateHandSpacing(layoutGroup);
+
                 LayoutRebuilder.ForceRebuildLayoutImmediate(handContent as RectTransform);
             }
 
             // 버튼 상태 업데이트
             UpdateButtonStates();
+        }
+
+        /// <summary>
+        /// 손패 카드 수에 따른 spacing 동적 조정
+        /// </summary>
+        private void UpdateHandSpacing(HorizontalLayoutGroup layoutGroup)
+        {
+            if (layoutGroup == null) return;
+
+            int cardCount = handCardUIs.Count;
+
+            // 기본 spacing: 5장일 때 -30
+            // 카드가 늘어날 때마다 -30씩 추가: 6장(-60), 7장(-90), ...
+            float baseSpacing = -30f; // 5장 기준
+            float additionalSpacing = -20f; // 추가 카드당 spacing
+
+            float newSpacing;
+            if (cardCount <= 5)
+            {
+                newSpacing = baseSpacing;
+            }
+            else
+            {
+                int additionalCards = cardCount - 5;
+                newSpacing = baseSpacing + (additionalSpacing * additionalCards);
+            }
+
+            layoutGroup.spacing = newSpacing;
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 손패 spacing 업데이트: {cardCount}장 -> spacing: {newSpacing}");
         }
 
         /// <summary>
@@ -2228,7 +2285,7 @@ namespace Maglin.Battle
                 handCardUIs.Add(cardUI);
             }
 
-            // UI 업데이트
+            // UI 업데이트 (spacing 포함)
             UpdateHandUILayout();
         }
 

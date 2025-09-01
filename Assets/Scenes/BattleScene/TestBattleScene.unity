@@ -1109,7 +1109,7 @@ MonoBehaviour:
     m_Top: 5
     m_Bottom: 5
   m_ChildAlignment: 0
-  m_Spacing: -20
+  m_Spacing: -30
   m_ChildForceExpandWidth: 1
   m_ChildForceExpandHeight: 1
   m_ChildControlWidth: 0
@@ -2253,6 +2253,87 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &494234831
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 494234833}
+  - component: {fileID: 494234832}
+  m_Layer: 0
+  m_Name: PlayerManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &494234832
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 494234831}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 829f2ff37929a443984888233446df6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  maxMana: 30
+  manaRecoveryPerTurn: 10
+  maxHandSize: 6
+  currentHealth: 100
+  currentMana: 30
+  currentGold: 500
+  currentRelics: []
+  idleSprites:
+  - {fileID: -160463798, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1976825843, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -404060229, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1521543304, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -483965303, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 369282708, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1577144373, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1272574604, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -509191186, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  attackSprites1:
+  - {fileID: -160463798, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1976825843, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -404060229, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1521543304, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -483965303, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 369282708, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1577144373, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1272574604, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -509191186, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  attackSprites2: []
+  attackSprites3: []
+  hitSprites: []
+  deathSprites: []
+  idleFrameRate: 12
+  attackFrameRate: 12
+  hitFrameRate: 12
+  deathFrameRate: 12
+  debugMode: 1
+--- !u!4 &494234833
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 494234831}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 281.66098, y: 252.9118, z: 85251.64}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &521096124
 GameObject:
   m_ObjectHideFlags: 0
@@ -3726,7 +3807,7 @@ MonoBehaviour:
   - {fileID: 805159052}
   - {fileID: 450451973}
   skipRewardButton: {fileID: 275697070}
-  debugMode: 0
+  debugMode: 1
 --- !u!1 &734061672
 GameObject:
   m_ObjectHideFlags: 0
@@ -5712,7 +5793,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -690.00006, y: -94.578}
+  m_AnchoredPosition: {x: -674, y: -61}
   m_SizeDelta: {x: 120, y: 37.768}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1055929089
@@ -5728,7 +5809,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.5188679, g: 0.28635636, b: 0.28635636, a: 0.60784316}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -6559,8 +6640,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 0.3}
-  m_AnchoredPosition: {x: 0, y: 69.419}
-  m_SizeDelta: {x: 0, y: 138.84}
+  m_AnchoredPosition: {x: 0, y: 77.419495}
+  m_SizeDelta: {x: -32, y: 122.83899}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1092874399
 MonoBehaviour:
@@ -6708,8 +6789,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: End Turn
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b2c546111848e4f4c91f67678dbfb8a0, type: 2}
+  m_sharedMaterial: {fileID: 7266985481857341559, guid: b2c546111848e4f4c91f67678dbfb8a0, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -10704,8 +10785,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Draw (10)
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b2c546111848e4f4c91f67678dbfb8a0, type: 2}
+  m_sharedMaterial: {fileID: 7266985481857341559, guid: b2c546111848e4f4c91f67678dbfb8a0, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -12260,8 +12341,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Use
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: b2c546111848e4f4c91f67678dbfb8a0, type: 2}
+  m_sharedMaterial: {fileID: 7266985481857341559, guid: b2c546111848e4f4c91f67678dbfb8a0, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
@@ -12391,3 +12472,4 @@ SceneRoots:
   - {fileID: 314816618}
   - {fileID: 1322891915}
   - {fileID: 349089489}
+  - {fileID: 494234833}

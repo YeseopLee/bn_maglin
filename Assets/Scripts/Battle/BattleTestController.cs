@@ -869,11 +869,14 @@ namespace Maglin.Battle
             // 첫 번째 턴이 아닐 때만 카드 드로우 (초기 카드 드로우는 BattleInitializationSequence에서 처리)
             if (currentTurn > 1 && CardManager.Instance != null)
             {
-                // 손패 초기화 후 최대 손패까지 드로우
+                // PlayerManager의 MaxHandSize까지 드로우
                 var drawnCards = CardManager.Instance.DrawCardsToMax();
 
                 if (debugMode)
-                    Debug.Log($"[BattleTestController] {drawnCards.Count}장 드로우 완료");
+                {
+                    int maxHandSize = PlayerManager.Instance?.MaxHandSize ?? 5;
+                    Debug.Log($"[BattleTestController] {drawnCards.Count}장 드로우 완료 (최대 손패: {maxHandSize}장)");
+                }
             }
             else if (debugMode)
             {

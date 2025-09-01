@@ -430,6 +430,20 @@ namespace Maglin.Battle
                 cardDraggable = cardUI.AddComponent<CardDraggable>();
             }
 
+            // CanvasGroup 컴포넌트 추가 (CardUI에서 필요)
+            var canvasGroup = cardUI.GetComponent<CanvasGroup>();
+            if (canvasGroup == null)
+            {
+                canvasGroup = cardUI.AddComponent<CanvasGroup>();
+            }
+
+            // CardUI 컴포넌트 추가 (hover 기능을 위해)
+            var cardUIComponent = cardUI.GetComponent<CardUI>();
+            if (cardUIComponent == null)
+            {
+                cardUIComponent = cardUI.AddComponent<CardUI>();
+            }
+
             // Button 컴포넌트 추가
             var button = cardUI.GetComponent<Button>();
             if (button == null)
@@ -508,7 +522,7 @@ namespace Maglin.Battle
 
         #region Animation Execution
         /// <summary>
-        /// 카드 드로우 애니메이션 실행 (최종 위치로 바로 뽑기)
+        /// 카드 드로우 애니메이션 실행 (한 지점으로 드로우)
         /// </summary>
         private IEnumerator ExecuteCardDrawAnimation(List<Card> cards)
         {
@@ -540,78 +554,109 @@ namespace Maglin.Battle
 
             List<GameObject> cardUIs = new List<GameObject>();
 
-            // 실제 HorizontalLayoutGroup의 spacing 값 가져오기
-            float actualSpacing = cardSpacing; // 기본값
-            if (layoutGroup != null)
-            {
-                actualSpacing = layoutGroup.spacing;
-                if (debugMode)
-                    Debug.Log($"[CardDrawAnimationManager] 실제 HandContent spacing: {actualSpacing}");
-            }
-
-            // 실제 카드 프리팹의 너비 가져오기
-            float actualCardWidth = cardWidth; // 기본값
-            if (prefab != null)
-            {
-                var rectTransform = prefab.GetComponent<RectTransform>();
-                if (rectTransform != null)
-                {
-                    actualCardWidth = rectTransform.sizeDelta.x;
-                    if (debugMode)
-                        Debug.Log($"[CardDrawAnimationManager] 실제 카드 너비: {actualCardWidth}");
-                }
-            }
-
-            // 최종 위치들을 미리 계산 (전체 카드 수 기준, 실제 값들 사용)
-            float totalWidth = (cards.Count - 1) * (actualCardWidth + actualSpacing);
-            float startX = -totalWidth * 0.5f;
+            // 손패 중앙 위치 계산 (모든 카드가 여기로 드로우됨)
+            Vector3 handCenterPosition = Vector3.zero;
 
             for (int i = 0; i < cards.Count; i++)
             {
-                // 카드 UI 생성
-                GameObject cardUI = CreateCardUI(cards[i], prefab, handTransform);
+                // 임시 부모 생성 (애니메이션 동안 사용)
+                GameObject tempParent = new GameObject($"TempCardParent_{i}");
+                tempParent.transform.SetParent(handTransform, false);
+
+                var tempRect = tempParent.AddComponent<RectTransform>();
+                tempRect.anchoredPosition = Vector2.zero;
+                tempRect.localScale = Vector3.one;
+
+                // 카드 UI 생성 (임시 부모 하위에)
+                GameObject cardUI = CreateCardUI(cards[i], prefab, tempParent.transform);
                 cardUIs.Add(cardUI);
                 animatingCards.Add(cardUI);
+
+                // 나중에 드로우되는 카드가 위에 오도록 sibling index 설정
+                tempParent.transform.SetAsLastSibling();
+
+                // Canvas가 있으면 sortingOrder 조정하여 위에 렌더링되도록
+                var canvas = cardUI.GetComponent<Canvas>();
+                if (canvas == null)
+                {
+                    canvas = cardUI.AddComponent<Canvas>();
+                    canvas.overrideSorting = true;
+                }
+                canvas.sortingOrder = 1000 + i; // 나중에 드로우되는 카드일수록 높은 sortingOrder
+
+                // GraphicRaycaster 추가 (클릭 이벤트를 위해)
+                if (cardUI.GetComponent<GraphicRaycaster>() == null)
+                {
+                    cardUI.AddComponent<GraphicRaycaster>();
+                }
 
                 // 덱 위치에서 시작
                 cardUI.transform.position = deckTransform.position;
                 cardUI.transform.localScale = Vector3.one * cardSpawnScale;
 
-                // 최종 위치 계산 (i번째 카드 위치, 실제 값들 사용)
-                Vector3 finalLocalPosition = new Vector3(startX + i * (actualCardWidth + actualSpacing), 0, 0);
-
-                // 바로 최종 위치로 이동하는 애니메이션
+                // 손패 중앙으로 이동하는 애니메이션
                 var moveSequence = DOTween.Sequence();
-                moveSequence.Append(cardUI.transform.DOLocalMove(finalLocalPosition, cardDrawDuration).SetEase(cardMoveEase));
+                moveSequence.Append(cardUI.transform.DOMove(handTransform.position, cardDrawDuration).SetEase(cardMoveEase));
                 moveSequence.Join(cardUI.transform.DOScale(Vector3.one, cardDrawDuration).SetEase(Ease.OutBack));
 
                 // 개별 카드 완료 이벤트
-                int index = i;
+                int cardIndex = i;
                 moveSequence.OnComplete(() =>
                 {
-                    OnCardDrawAnimationCompleted?.Invoke(cards[index], cardUIs[index]);
+                    // 실제 손패 영역으로 이동
+                    cardUI.transform.SetParent(handTransform, false);
+
+                    // GraphicRaycaster를 먼저 제거한 후 Canvas 제거 (의존성 해결)
+                    var animRaycaster = cardUI.GetComponent<GraphicRaycaster>();
+                    if (animRaycaster != null)
+                    {
+                        Destroy(animRaycaster);
+                    }
+
+                    var animCanvas = cardUI.GetComponent<Canvas>();
+                    if (animCanvas != null)
+                    {
+                        Destroy(animCanvas);
+                    }
+
+                    // 임시 부모 제거
+                    if (tempParent != null)
+                    {
+                        Destroy(tempParent);
+                    }
+
+                    // 레이아웃 강제 업데이트 (새 카드가 올바른 위치로 배치되도록)
+                    if (layoutGroup != null)
+                    {
+                        LayoutRebuilder.ForceRebuildLayoutImmediate(handTransform.GetComponent<RectTransform>());
+                    }
+
+                    // 완료 이벤트 발생
+                    OnCardDrawAnimationCompleted?.Invoke(cards[cardIndex], cardUIs[cardIndex]);
                 });
 
                 OnCardDrawAnimationStarted?.Invoke(cards[i]);
 
                 if (debugMode)
-                    Debug.Log($"[CardDrawAnimationManager] 카드 {i + 1}/{cards.Count} 뽑기: {cards[i].CardName} → 위치 {finalLocalPosition}");
+                    Debug.Log($"[CardDrawAnimationManager] 카드 {i + 1}/{cards.Count} 드로우: {cards[i].CardName} → 손패 중앙");
 
-                // 다음 카드 뽑기 전 딜레이
+                // 다음 카드 드로우 전 딜레이
                 yield return new WaitForSeconds(cardInterval);
             }
 
             // 마지막 카드 애니메이션 완료까지 대기
             yield return new WaitForSeconds(cardDrawDuration);
 
-            // 레이아웃 그룹 복원
+            // 모든 카드가 손패에 정착한 후 최종 레이아웃 정리
             if (layoutGroup != null)
             {
                 layoutGroup.enabled = wasLayoutActive;
                 if (wasLayoutActive)
                 {
-                    // 레이아웃 강제 업데이트 (정확한 위치 조정)
                     LayoutRebuilder.ForceRebuildLayoutImmediate(handTransform.GetComponent<RectTransform>());
+
+                    if (debugMode)
+                        Debug.Log("[CardDrawAnimationManager] 최종 레이아웃 정리 완료");
                 }
             }
 
@@ -621,7 +666,7 @@ namespace Maglin.Battle
             OnAllCardDrawAnimationsCompleted?.Invoke(cards);
 
             if (debugMode)
-                Debug.Log($"[CardDrawAnimationManager] 모든 카드 드로우 애니메이션 완료: {cards.Count}장");
+                Debug.Log($"[CardDrawAnimationManager] 카드 드로우 애니메이션 완료: {cards.Count}장");
 
             // 대기 중인 애니메이션 처리
             ProcessDrawQueue();
@@ -739,10 +784,28 @@ namespace Maglin.Battle
                 GameObject tempParent = new GameObject("TempCardParent");
                 tempParent.transform.SetParent(handTransform.parent, false);
 
+                // 나중에 드로우되는 카드가 위에 오도록 sibling index 설정
+                tempParent.transform.SetAsLastSibling();
+
                 // 새로운 카드 UI 생성 (임시 부모에)
                 GameObject cardUI = CreateCardUI(newCard, prefab, tempParent.transform);
                 newCardUIs.Add(cardUI);
                 animatingCards.Add(cardUI);
+
+                // Canvas가 있으면 sortingOrder 조정하여 위에 렌더링되도록
+                var canvas = cardUI.GetComponent<Canvas>();
+                if (canvas == null)
+                {
+                    canvas = cardUI.AddComponent<Canvas>();
+                    canvas.overrideSorting = true;
+                }
+                canvas.sortingOrder = 1000 + i; // 나중에 드로우되는 카드일수록 높은 sortingOrder
+
+                // GraphicRaycaster 추가 (클릭 이벤트를 위해)
+                if (cardUI.GetComponent<GraphicRaycaster>() == null)
+                {
+                    cardUI.AddComponent<GraphicRaycaster>();
+                }
 
                 // 덱 위치에서 시작
                 cardUI.transform.position = deckTransform.position;
@@ -768,6 +831,19 @@ namespace Maglin.Battle
                 {
                     // 실제 손패 영역으로 이동
                     cardUI.transform.SetParent(handTransform, false);
+
+                    // GraphicRaycaster를 먼저 제거한 후 Canvas 제거 (의존성 해결)
+                    var animRaycaster = cardUI.GetComponent<GraphicRaycaster>();
+                    if (animRaycaster != null)
+                    {
+                        Destroy(animRaycaster);
+                    }
+
+                    var animCanvas = cardUI.GetComponent<Canvas>();
+                    if (animCanvas != null)
+                    {
+                        Destroy(animCanvas);
+                    }
 
                     // 임시 부모 제거
                     if (tempParent != null)
