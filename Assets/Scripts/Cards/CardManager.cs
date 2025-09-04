@@ -262,9 +262,9 @@ namespace Maglin.Cards
                 BattleManager.OnBattleEnded += OnBattleEnded;
             }
 
-            if (GameManager.Instance != null)
+            if (FloorManager.Instance != null)
             {
-                GameManager.OnGameInitialized += OnGameInitialized;
+                FloorManager.OnGameInitialized += OnGameInitialized;
             }
 
             // 기본 상태 초기화

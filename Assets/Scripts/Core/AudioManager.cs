@@ -362,10 +362,10 @@ namespace Maglin.Audio
             if (debugMode)
                 Debug.Log("[AudioManager] 매니저 간 연결 설정 시작");
 
-            // GameManager 이벤트 구독
-            if (GameManager.Instance != null)
+            // FloorManager 이벤트 구독
+            if (FloorManager.Instance != null)
             {
-                GameManager.OnGameStateChanged += OnGameStateChanged;
+                FloorManager.OnGameStateChanged += OnGameStateChanged;
             }
 
             // BattleManager 이벤트 구독

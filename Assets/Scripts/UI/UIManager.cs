@@ -226,10 +226,10 @@ namespace Maglin.UI
             BuildPanelLookup();
 
             // 이벤트 구독
-            if (GameManager.Instance != null)
+            if (FloorManager.Instance != null)
             {
-                GameManager.OnGameStateChanged += OnGameStateChanged;
-                GameManager.OnGameInitialized += OnGameInitialized;
+                FloorManager.OnGameStateChanged += OnGameStateChanged;
+                FloorManager.OnGameInitialized += OnGameInitialized;
             }
 
             // 로딩 UI 초기화

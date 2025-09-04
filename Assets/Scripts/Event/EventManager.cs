@@ -69,18 +69,8 @@ namespace Maglin.Event
                 return false;
             }
 
-            // 현재 층에서 등장 가능한 이벤트가 있는지 확인
-            EventSO selectedEvent = SelectRandomEvent(currentFloor);
-            if (selectedEvent == null)
-            {
-                Debug.LogWarning($"[EventManager] {currentFloor}층에서 등장 가능한 이벤트가 없습니다.");
-                return false;
-            }
-
-            Debug.Log($"[EventManager] {currentFloor}층에서 이벤트 '{selectedEvent.EventName}' 발생 결정");
-
-            // 이벤트 발생 예정으로 저장 (실제 시작은 StartSelectedEvent에서)
-            currentEvent = selectedEvent;
+            // FloorManager에서 이벤트 선택이 이미 처리되므로 단순히 확률만 체크
+            Debug.Log($"[EventManager] {currentFloor}층에서 이벤트 발생 결정 (확률: {eventChance:P})");
             return true;
         }
 
@@ -89,13 +79,16 @@ namespace Maglin.Event
         /// </summary>
         public void StartSelectedEvent()
         {
-            if (currentEvent == null)
+            // FloorManager에서 선택된 이벤트 가져오기
+            if (FloorManager.Instance != null && FloorManager.Instance.CurrentEvent != null)
             {
-                Debug.LogError("[EventManager] 시작할 이벤트가 없습니다!");
-                return;
+                currentEvent = FloorManager.Instance.CurrentEvent;
+                StartEvent(currentEvent);
             }
-
-            StartEvent(currentEvent);
+            else
+            {
+                Debug.LogError("[EventManager] FloorManager에서 선택된 이벤트가 없습니다!");
+            }
         }
 
         /// <summary>

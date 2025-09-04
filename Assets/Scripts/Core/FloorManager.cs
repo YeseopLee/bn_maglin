@@ -1,11 +1,27 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using System;
 using Maglin.Event;
 using Maglin.Shop;
 using Maglin.Battle;
 
 namespace Maglin.Core
 {
+    /// <summary>
+    /// 게임 상태 열거형
+    /// </summary>
+    public enum GameState
+    {
+        MainMenu,       // 메인 메뉴
+        Battle,         // 전투
+        Shop,           // 상점
+        Event,          // 이벤트
+        GameOver,       // 게임 오버
+        Victory,        // 승리
+        Loading         // 로딩
+    }
+
     /// <summary>
     /// 층 타입 enum
     /// </summary>
@@ -56,14 +72,19 @@ namespace Maglin.Core
     }
 
     /// <summary>
-    /// 층 진행 및 게임 플로우를 관리하는 매니저 클래스
+    /// 층 진행 및 게임 플로우를 관리하는 매니저 클래스 (게임 상태 관리 포함)
     /// </summary>
     public class FloorManager : MonoBehaviour
     {
+        [Header("게임 상태")]
+        [SerializeField] private GameState currentState = GameState.MainMenu;
+        [SerializeField] private GameState previousState = GameState.MainMenu;
+        [SerializeField] private bool debugMode = false;
+        [SerializeField] private float transitionDelay = 0.5f;
+
         [Header("층 설정")]
         [SerializeField] private int currentFloor = 1;
         [SerializeField] private int maxFloor = 100;
-
 
         [Header("층별 규칙 설정")]
         [SerializeField] private int eliteFloorInterval = 5;    // 5층마다 엘리트
@@ -74,6 +95,17 @@ namespace Maglin.Core
         [SerializeField] private BattleStageSO[] normalBattleStages;
         [SerializeField] private BattleStageSO[] eliteBattleStages;
         [SerializeField] private BattleStageSO[] bossBattleStages;
+
+        [Header("Event 설정")]
+        [SerializeField] private EventSO[] availableEvents;
+
+        [Header("현재 진행중인 SO 정보 (읽기 전용)")]
+        [Tooltip("현재 층에서 사용 중인 배틀 스테이지를 표시합니다.")]
+        [SerializeField] private BattleStageSO currentBattleStageDisplay;
+        [Tooltip("현재 층에서 선택된 실제 전투 데이터를 표시합니다.")]
+        [SerializeField] private BattleSO currentBattleDisplay;
+        [Tooltip("현재 층에서 진행 중인 이벤트를 표시합니다.")]
+        [SerializeField] private EventSO currentEventDisplay;
 
         [Header("Scene 설정")]
         [SerializeField] private string battleSceneName = "TestBattleScene";
@@ -87,10 +119,19 @@ namespace Maglin.Core
         public string EventSceneName => eventSceneName;
         public string MainGameSceneName => mainGameSceneName;
 
+        // 게임 상태 프로퍼티들
+        public GameState CurrentState => currentState;
+        public GameState PreviousState => previousState;
+        public bool DebugMode => debugMode;
+
         // 싱글톤
         public static FloorManager Instance { get; private set; }
 
-        // 이벤트
+        // 게임 상태 이벤트
+        public static event Action<GameState, GameState> OnGameStateChanged;
+        public static event Action OnGameInitialized;
+
+        // 층 이벤트
         public System.Action<int> OnFloorChanged;
         public System.Action<FloorType> OnFloorTypeChanged;
         public System.Action<FloorInfo> OnFloorStarted;
@@ -106,6 +147,22 @@ namespace Maglin.Core
         private List<FloorInfo> floorHistory = new List<FloorInfo>();
         private bool isProcessingFloor = false;
         private bool isCurrentFloorEvent = false; // 현재 층이 이벤트인지 추적
+        private bool isGameInitialized = false;
+        private bool isTransitioning = false;
+
+        // 현재 층에서 사용 중인 SO들
+        private BattleStageSO currentBattleStage;
+        private BattleSO currentBattle;
+        private EventSO currentEvent;
+
+        // 현재 SO 정보 프로퍼티들
+        public BattleStageSO CurrentBattleStage => currentBattleStage;
+        public BattleSO CurrentBattle => currentBattle;
+        public EventSO CurrentEvent => currentEvent;
+
+        // 게임 초기화 완료 여부
+        public bool IsGameInitialized => isGameInitialized;
+        public bool IsTransitioning => isTransitioning;
 
         private void Awake()
         {
@@ -113,12 +170,45 @@ namespace Maglin.Core
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeFloorSystem();
+                InitializeGame();
             }
             else
             {
                 Destroy(gameObject);
             }
+        }
+
+        private void Start()
+        {
+            if (Instance == this)
+            {
+                // 게임 시작 시 초기 상태 설정
+                ChangeGameState(GameState.MainMenu);
+            }
+        }
+
+        /// <summary>
+        /// 게임 초기화
+        /// </summary>
+        private void InitializeGame()
+        {
+            if (debugMode)
+                Debug.Log("[FloorManager] 게임 초기화 시작");
+
+            // 층 시스템 초기화
+            InitializeFloorSystem();
+
+            // 게임 상태 초기화
+            currentState = GameState.Loading;
+            previousState = GameState.Loading;
+            isTransitioning = false;
+
+            // 초기화 완료 표시
+            isGameInitialized = true;
+            OnGameInitialized?.Invoke();
+
+            if (debugMode)
+                Debug.Log("[FloorManager] 게임 초기화 완료");
         }
 
         /// <summary>
@@ -133,8 +223,230 @@ namespace Maglin.Core
             FloorInfo startFloor = new FloorInfo(1, FloorType.Start) { isCurrent = true };
             floorHistory.Add(startFloor);
 
-            Debug.Log($"Floor system initialized. Starting at floor {currentFloor}");
+            // 현재 SO들 초기화
+            currentBattleStage = null;
+            currentBattle = null;
+            currentEvent = null;
+
+            // 인스펙터 디스플레이도 초기화
+            currentBattleStageDisplay = null;
+            currentBattleDisplay = null;
+            currentEventDisplay = null;
+
+            Debug.Log($"[FloorManager] Floor system initialized. Starting at floor {currentFloor}");
         }
+
+        #region Game State Management
+        /// <summary>
+        /// 게임 상태 변경
+        /// </summary>
+        public void ChangeGameState(GameState newState)
+        {
+            if (isTransitioning)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[FloorManager] 이미 화면 전환 중입니다.");
+                return;
+            }
+
+            if (currentState == newState)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[FloorManager] 이미 {newState} 상태입니다.");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[FloorManager] 게임 상태 변경: {currentState} -> {newState}");
+
+            // 이전 상태 저장
+            previousState = currentState;
+
+            // 화면 전환 시작
+            StartCoroutine(TransitionToState(newState));
+        }
+
+        /// <summary>
+        /// 상태 전환 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator TransitionToState(GameState newState)
+        {
+            isTransitioning = true;
+
+            // 이전 상태 종료 처리
+            OnExitState(currentState);
+
+            // 전환 딜레이
+            if (transitionDelay > 0)
+            {
+                yield return new WaitForSeconds(transitionDelay);
+            }
+
+            // 새 상태로 변경
+            currentState = newState;
+
+            // 새 상태 진입 처리
+            OnEnterState(newState);
+
+            // 상태 변경 이벤트 발생
+            OnGameStateChanged?.Invoke(previousState, currentState);
+
+            isTransitioning = false;
+
+            if (debugMode)
+                Debug.Log($"[FloorManager] 상태 전환 완료: {newState}");
+        }
+
+        /// <summary>
+        /// 상태 진입 시 처리
+        /// </summary>
+        private void OnEnterState(GameState state)
+        {
+            switch (state)
+            {
+                case GameState.MainMenu:
+                    // TODO: 메인 메뉴 UI 활성화
+                    break;
+
+                case GameState.Battle:
+                    // TODO: 전투 시스템 초기화
+                    break;
+
+                case GameState.Shop:
+                    // TODO: 상점 UI 활성화
+                    break;
+
+                case GameState.Event:
+                    // TODO: 이벤트 시스템 활성화
+                    break;
+
+                case GameState.GameOver:
+                    // TODO: 게임 오버 처리
+                    break;
+
+                case GameState.Victory:
+                    // TODO: 승리 처리
+                    break;
+
+                case GameState.Loading:
+                    // TODO: 로딩 화면 표시
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 상태 종료 시 처리
+        /// </summary>
+        private void OnExitState(GameState state)
+        {
+            switch (state)
+            {
+                case GameState.MainMenu:
+                    // TODO: 메인 메뉴 UI 비활성화
+                    break;
+
+                case GameState.Battle:
+                    // TODO: 전투 시스템 정리
+                    break;
+
+                case GameState.Shop:
+                    // TODO: 상점 UI 비활성화
+                    break;
+
+                case GameState.Event:
+                    // TODO: 이벤트 시스템 정리
+                    break;
+
+                case GameState.Loading:
+                    // TODO: 로딩 화면 숨김
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 새 게임 시작
+        /// </summary>
+        public void StartNewGame()
+        {
+            if (debugMode)
+                Debug.Log("[FloorManager] 새 게임 시작");
+
+            // 게임 상태 초기화
+            ResetToFloor(1);
+            StartCurrentFloor();
+        }
+
+        /// <summary>
+        /// 게임 재시작 (로그라이크 특성 - 모든 진행상황 초기화)
+        /// </summary>
+        public void RestartGame()
+        {
+            if (debugMode)
+                Debug.Log("[FloorManager] 게임 재시작 (로그라이크)");
+
+            // 모든 진행상황 초기화
+            ResetToFloor(1);
+
+            // 새 게임 시작
+            StartNewGame();
+        }
+
+        /// <summary>
+        /// 게임 오버 처리
+        /// </summary>
+        public void GameOver()
+        {
+            if (debugMode)
+                Debug.Log("[FloorManager] 게임 오버");
+
+            ChangeGameState(GameState.GameOver);
+        }
+
+        /// <summary>
+        /// 게임 승리 처리
+        /// </summary>
+        public void Victory()
+        {
+            if (debugMode)
+                Debug.Log("[FloorManager] 게임 승리");
+
+            ChangeGameState(GameState.Victory);
+        }
+
+        /// <summary>
+        /// 메인 메뉴로 돌아가기
+        /// </summary>
+        public void ReturnToMainMenu()
+        {
+            if (debugMode)
+                Debug.Log("[FloorManager] 메인 메뉴로 돌아가기");
+
+            ChangeGameState(GameState.MainMenu);
+        }
+
+        /// <summary>
+        /// 특정 층으로 이동 (디버그용)
+        /// </summary>
+        public void SetFloor(int targetFloor)
+        {
+            if (!debugMode)
+            {
+                Debug.LogWarning("[FloorManager] SetFloor는 디버그 모드에서만 사용 가능합니다.");
+                return;
+            }
+
+            if (targetFloor < 1 || targetFloor > maxFloor)
+            {
+                Debug.LogError($"[FloorManager] 잘못된 층 번호: {targetFloor}");
+                return;
+            }
+
+            currentFloor = targetFloor;
+            OnFloorChanged?.Invoke(currentFloor);
+
+            Debug.Log($"[FloorManager] 디버그: {currentFloor}층으로 이동");
+        }
+        #endregion
 
         /// <summary>
         /// 게임 시작 (1층부터 시작)
@@ -346,6 +658,9 @@ namespace Maglin.Core
             isProcessingFloor = false;
             isCurrentFloorEvent = false; // 이벤트 플래그 리셋
 
+            // 현재 층 완료 시 SO들 초기화 (다음 층 준비)
+            ClearCurrentSOs();
+
             // 다음 층으로 진행
             if (currentFloor < maxFloor)
             {
@@ -353,7 +668,7 @@ namespace Maglin.Core
             }
             else
             {
-                Debug.Log("Game completed! Reached max floor.");
+                Debug.Log("[FloorManager] Game completed! Reached max floor.");
             }
         }
 
@@ -364,13 +679,10 @@ namespace Maglin.Core
         {
             if (currentFloor >= maxFloor)
             {
-                Debug.Log("Maximum floor reached! Game completed.");
+                Debug.Log("[FloorManager] Maximum floor reached! Game completed.");
 
                 // 게임 승리 처리
-                if (GameManager.Instance != null)
-                {
-                    GameManager.Instance.Victory();
-                }
+                Victory();
 
                 OnGameReset?.Invoke();
                 return;
@@ -414,11 +726,14 @@ namespace Maglin.Core
             floorHistory.Clear();
             isProcessingFloor = false;
 
+            // 현재 SO들 초기화 (새로운 층 시작)
+            ClearCurrentSOs();
+
             // 리셋된 층 정보 추가
             FloorInfo resetFloor = new FloorInfo(currentFloor, GetFloorType(currentFloor)) { isCurrent = true };
             floorHistory.Add(resetFloor);
 
-            Debug.Log($"Game reset to floor {currentFloor}");
+            Debug.Log($"[FloorManager] Game reset to floor {currentFloor}");
             OnGameReset?.Invoke();
             OnFloorChanged?.Invoke(currentFloor);
             OnFloorTypeChanged?.Invoke(CurrentFloorType);
@@ -459,20 +774,21 @@ namespace Maglin.Core
 
             if (selectedStage != null)
             {
-                Debug.Log($"Starting battle on floor {currentFloor}: {selectedStage.name} ({CurrentFloorType})");
-
-                // GameManager에게 전투 상태로 전환 요청
-                if (GameManager.Instance != null)
+                if (debugMode)
                 {
-                    GameManager.Instance.ChangeGameState(GameState.Battle);
+                    Debug.Log($"[FloorManager] Starting battle on floor {currentFloor}: {selectedStage.name} ({CurrentFloorType})");
+                    Debug.Log($"[FloorManager] BattleTestController will handle BattleSO selection");
                 }
+
+                // 전투 상태로 전환
+                ChangeGameState(GameState.Battle);
 
                 // 전투 씬으로 전환
                 StartCoroutine(LoadBattleScene(selectedStage));
             }
             else
             {
-                Debug.LogError($"No battle stage found for floor {currentFloor} type: {CurrentFloorType}");
+                Debug.LogError($"[FloorManager] No battle stage found for floor {currentFloor} type: {CurrentFloorType}");
                 CompleteCurrentFloor();
             }
         }
@@ -482,13 +798,11 @@ namespace Maglin.Core
         /// </summary>
         private void StartShop()
         {
-            Debug.Log($"Starting shop on floor {currentFloor}");
+            if (debugMode)
+                Debug.Log($"[FloorManager] Starting shop on floor {currentFloor}");
 
-            // GameManager에게 상점 상태로 전환 요청
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.ChangeGameState(GameState.Shop);
-            }
+            // 상점 상태로 전환
+            ChangeGameState(GameState.Shop);
 
             // 상점 씬으로 전환
             StartCoroutine(LoadShopScene());
@@ -499,16 +813,97 @@ namespace Maglin.Core
         /// </summary>
         private void StartEvent()
         {
-            Debug.Log($"[FloorManager] Starting event on floor {currentFloor}");
+            // 현재 층에서 등장 가능한 이벤트 선택
+            EventSO selectedEvent = SelectRandomEvent(currentFloor);
 
-            // GameManager에게 이벤트 상태로 전환 요청
-            if (GameManager.Instance != null)
+            if (selectedEvent != null)
             {
-                GameManager.Instance.ChangeGameState(GameState.Event);
+                // 선택된 Event 저장
+                currentEvent = selectedEvent;
+                currentEventDisplay = selectedEvent; // 인스펙터 디스플레이 업데이트
+
+                if (debugMode)
+                {
+                    Debug.Log($"[FloorManager] Starting event on floor {currentFloor}");
+                    Debug.Log($"[FloorManager] Selected event: {selectedEvent.EventName}");
+                }
+
+                // 이벤트 상태로 전환
+                ChangeGameState(GameState.Event);
+
+                // 이벤트 씬으로 전환
+                StartCoroutine(LoadEventScene());
+            }
+            else
+            {
+                Debug.LogWarning($"[FloorManager] No available events for floor {currentFloor}, falling back to battle");
+                StartBattle(); // 이벤트가 없으면 일반 전투로 폴백
+            }
+        }
+
+        /// <summary>
+        /// 현재 층에서 등장 가능한 이벤트 중 랜덤 선택
+        /// </summary>
+        private EventSO SelectRandomEvent(int currentFloor)
+        {
+            if (availableEvents == null || availableEvents.Length == 0)
+            {
+                Debug.LogWarning("[FloorManager] 등록된 이벤트가 없습니다!");
+                return null;
             }
 
-            // 이벤트 씬으로 전환
-            StartCoroutine(LoadEventScene());
+            // 현재 층에서 등장 가능하고 유효한 이벤트들 필터링
+            var validEvents = new List<EventSO>();
+            foreach (var eventSO in availableEvents)
+            {
+                if (eventSO != null &&
+                    eventSO.IsValid() &&
+                    eventSO.CanAppearOnFloor(currentFloor))
+                {
+                    validEvents.Add(eventSO);
+                }
+            }
+
+            if (validEvents.Count == 0)
+            {
+                Debug.LogWarning($"[FloorManager] {currentFloor}층에서 등장 가능한 이벤트가 없습니다. " +
+                    $"전체 이벤트 수: {availableEvents.Length}");
+                return null;
+            }
+
+            if (debugMode)
+                Debug.Log($"[FloorManager] {currentFloor}층에서 등장 가능한 이벤트 수: {validEvents.Count}");
+
+            // 가중치 기반 선택
+            float totalWeight = 0f;
+            foreach (var eventData in validEvents)
+            {
+                totalWeight += eventData.SpawnWeight;
+            }
+
+            if (totalWeight <= 0f)
+            {
+                Debug.LogWarning("[FloorManager] 이벤트 가중치 합이 0 이하입니다. 첫 번째 이벤트를 선택합니다.");
+                return validEvents[0];
+            }
+
+            float randomValue = UnityEngine.Random.Range(0f, totalWeight);
+            float currentWeight = 0f;
+
+            foreach (var eventData in validEvents)
+            {
+                currentWeight += eventData.SpawnWeight;
+                if (randomValue <= currentWeight)
+                {
+                    if (debugMode)
+                        Debug.Log($"[FloorManager] 선택된 이벤트: {eventData.EventName} (가중치: {eventData.SpawnWeight})");
+                    return eventData;
+                }
+            }
+
+            // 안전장치 - 이론적으로는 여기까지 오면 안됨
+            Debug.LogWarning("[FloorManager] 가중치 계산 오류로 마지막 이벤트를 선택합니다.");
+            return validEvents[validEvents.Count - 1];
         }
 
         /// <summary>
@@ -536,7 +931,7 @@ namespace Maglin.Core
             }
 
             // 첫 번째로 매칭되는 스테이지 반환 (추후 가중치 로직 추가 가능)
-            var selectedStage = validStages[Random.Range(0, validStages.Length)];
+            var selectedStage = validStages[UnityEngine.Random.Range(0, validStages.Length)];
             Debug.Log($"[FloorManager] Selected battle stage for floor {floor}: {selectedStage.name}");
             return selectedStage;
         }
@@ -595,10 +990,7 @@ namespace Maglin.Core
                 Debug.LogError($"[FloorManager] 씬을 로드할 수 없습니다: {battleSceneName}. Build Settings에 씬이 추가되었는지 확인하세요.");
 
                 // 오류 발생 시 메인 메뉴로 복귀
-                if (GameManager.Instance != null)
-                {
-                    GameManager.Instance.ReturnToMainMenu();
-                }
+                ReturnToMainMenu();
                 yield break;
             }
 
@@ -613,10 +1005,7 @@ namespace Maglin.Core
                 Debug.LogError($"[FloorManager] 씬 로딩에 실패했습니다: {battleSceneName}");
 
                 // 오류 발생 시 메인 메뉴로 복귀
-                if (GameManager.Instance != null)
-                {
-                    GameManager.Instance.ReturnToMainMenu();
-                }
+                ReturnToMainMenu();
                 yield break;
             }
 
@@ -674,15 +1063,6 @@ namespace Maglin.Core
             Debug.Log($"[FloorManager] Main game scene loaded successfully");
         }
 
-        /// <summary>
-        /// 현재 배틀 스테이지 설정 (전역 접근용)
-        /// </summary>
-        private BattleStageSO currentBattleStage;
-
-        private void SetCurrentBattleStage(BattleStageSO battleStage)
-        {
-            currentBattleStage = battleStage;
-        }
 
         /// <summary>
         /// 현재 배틀 스테이지 가져오기 (BattleTestController에서 사용)
@@ -690,6 +1070,73 @@ namespace Maglin.Core
         public BattleStageSO GetCurrentBattleStage()
         {
             return currentBattleStage;
+        }
+
+        /// <summary>
+        /// 현재 배틀 스테이지 설정 (전역 접근용)
+        /// </summary>
+        public void SetCurrentBattleStage(BattleStageSO battleStage)
+        {
+            currentBattleStage = battleStage;
+            currentBattleStageDisplay = battleStage; // 인스펙터 디스플레이 업데이트
+            if (debugMode)
+                Debug.Log($"[FloorManager] Current BattleStage set: {battleStage?.name ?? "null"}");
+        }
+
+        /// <summary>
+        /// 현재 이벤트 가져오기 (이벤트 시스템에서 사용)
+        /// </summary>
+        public EventSO GetCurrentEvent()
+        {
+            return currentEvent;
+        }
+
+        /// <summary>
+        /// 현재 이벤트 설정
+        /// </summary>
+        public void SetCurrentEvent(EventSO eventSO)
+        {
+            currentEvent = eventSO;
+            currentEventDisplay = eventSO; // 인스펙터 디스플레이 업데이트
+            if (debugMode)
+                Debug.Log($"[FloorManager] Current Event set: {eventSO?.EventName ?? "null"}");
+        }
+
+        /// <summary>
+        /// 현재 전투 가져오기
+        /// </summary>
+        public BattleSO GetCurrentBattle()
+        {
+            return currentBattle;
+        }
+
+        /// <summary>
+        /// 현재 전투 설정
+        /// </summary>
+        public void SetCurrentBattle(BattleSO battleSO)
+        {
+            currentBattle = battleSO;
+            currentBattleDisplay = battleSO; // 인스펙터 디스플레이 업데이트
+            if (debugMode)
+                Debug.Log($"[FloorManager] Current Battle set: {battleSO?.BattleName ?? "null"}");
+        }
+
+        /// <summary>
+        /// 현재 층 SO 정보 모두 초기화
+        /// </summary>
+        public void ClearCurrentSOs()
+        {
+            currentBattleStage = null;
+            currentBattle = null;
+            currentEvent = null;
+
+            // 인스펙터 디스플레이도 초기화
+            currentBattleStageDisplay = null;
+            currentBattleDisplay = null;
+            currentEventDisplay = null;
+
+            if (debugMode)
+                Debug.Log("[FloorManager] All current SOs cleared");
         }
         #endregion
 
@@ -766,5 +1213,26 @@ namespace Maglin.Core
             // 잠시 대기 (FinishFloorCompletion에서 ProceedToNextFloor가 호출됨)
             yield return new WaitForSeconds(0.5f);
         }
+
+        #region Debug
+        /// <summary>
+        /// 디버그 정보 출력
+        /// </summary>
+        [ContextMenu("Debug Floor Manager Info")]
+        public void PrintDebugInfo()
+        {
+            Debug.Log($"=== FloorManager Debug Info ===");
+            Debug.Log($"Game State: {currentState}");
+            Debug.Log($"Previous State: {previousState}");
+            Debug.Log($"Current Floor: {currentFloor} ({CurrentFloorType})");
+            Debug.Log($"Is Initialized: {isGameInitialized}");
+            Debug.Log($"Is Transitioning: {isTransitioning}");
+            Debug.Log($"Is Processing Floor: {isProcessingFloor}");
+            Debug.Log($"Debug Mode: {debugMode}");
+            Debug.Log($"Current BattleStage: {currentBattleStage?.name ?? "null"}");
+            Debug.Log($"Current Battle: {currentBattle?.BattleName ?? "null"}");
+            Debug.Log($"Current Event: {currentEvent?.EventName ?? "null"}");
+        }
+        #endregion
     }
 }

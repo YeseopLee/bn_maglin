@@ -170,14 +170,14 @@ namespace Maglin.Cards
 
         private void Start()
         {
-            // GameManager 초기화 완료 대기 후 캐시 로드
-            if (GameManager.Instance != null && GameManager.Instance.IsGameInitialized)
+            // FloorManager 초기화 완료 대기 후 캐시 로드
+            if (FloorManager.Instance != null && FloorManager.Instance.IsGameInitialized)
             {
                 LoadCombinationCache();
             }
             else
             {
-                GameManager.OnGameInitialized += LoadCombinationCache;
+                FloorManager.OnGameInitialized += LoadCombinationCache;
             }
         }
 

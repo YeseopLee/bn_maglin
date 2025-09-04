@@ -261,8 +261,8 @@ namespace Maglin.Player
             // 기본 스탯으로 초기화
             ResetToDefault();
 
-            // GameManager 이벤트 구독
-            GameManager.OnGameInitialized += OnGameInitialized;
+            // FloorManager 이벤트 구독
+            FloorManager.OnGameInitialized += OnGameInitialized;
 
             isInitialized = true;
 
@@ -502,10 +502,10 @@ namespace Maglin.Player
 
             OnPlayerDeath?.Invoke();
 
-            // GameManager에게 게임 오버 알림
-            if (GameManager.Instance != null)
+            // FloorManager에게 게임 오버 알림
+            if (FloorManager.Instance != null)
             {
-                GameManager.Instance.GameOver();
+                FloorManager.Instance.GameOver();
             }
         }
         #endregion

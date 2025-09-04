@@ -267,7 +267,7 @@ namespace Maglin.Shop
                 else if (debugMode)
                 {
                     Debug.LogWarning($"[ShopUIManager] 슬롯 {i} 찾을 수 없음: {slotName}");
-                }
+            }
             }
 
             // 찾은 슬롯 수 확인

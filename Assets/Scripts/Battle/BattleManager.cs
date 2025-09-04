@@ -208,9 +208,9 @@ namespace Maglin.Battle
             isProcessingTurn = false;
 
             // 이벤트 구독
-            if (GameManager.Instance != null)
+            if (FloorManager.Instance != null)
             {
-                GameManager.OnGameStateChanged += OnGameStateChanged;
+                FloorManager.OnGameStateChanged += OnGameStateChanged;
             }
 
             // 플레이어 이벤트 구독
@@ -407,11 +407,6 @@ namespace Maglin.Battle
                 if (FloorManager.Instance != null)
                 {
                     FloorManager.Instance.OnContentCompleted();
-                }
-                // 기존 GameManager 연동도 유지
-                else if (GameManager.Instance != null)
-                {
-                    GameManager.Instance.AdvanceToNextFloor();
                 }
             }
             else

@@ -1525,6 +1525,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 857d71e8b94f2426684e006e318bb219, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  currentState: 0
+  previousState: 0
+  debugMode: 0
+  transitionDelay: 0.5
   currentFloor: 1
   maxFloor: 6
   eliteFloorInterval: 5
@@ -1537,6 +1541,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7ec7afc4e312c449ca8050e3fe995d37, type: 2}
   eliteBattleStages: []
   bossBattleStages: []
+  availableEvents:
+  - {fileID: 11400000, guid: cdfdc153c95d141b7a51b42d206f49c9, type: 2}
+  - {fileID: 11400000, guid: e34dedf1851754958b2bf2c4e9b2fc4e, type: 2}
   battleSceneName: TestBattleScene
   shopSceneName: TestShopScene
   eventSceneName: TestEventScene
@@ -1817,10 +1824,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   currentState: 1
   previousState: 0
-  currentFloor: 2
-  maxFloor: 4
+  currentFloor: 1
+  maxFloor: 6
   debugMode: 0
   transitionDelay: 0.5
+  isGameInitialized: 0
+  isTransitioning: 0
 --- !u!4 &871694730
 Transform:
   m_ObjectHideFlags: 0

@@ -124,24 +124,20 @@ namespace Maglin.Core
         /// </summary>
         private void InitializeCoreManagers()
         {
-            // GameManager 초기화 (가장 먼저)
-            if (GameManager.Instance == null)
+            // FloorManager 초기화 (가장 먼저)
+            if (FloorManager.Instance == null)
             {
-                if (gameManagerPrefab != null)
+                // FloorManager는 씬에 이미 있어야 함
+                var floorManager = FindObjectOfType<FloorManager>();
+                if (floorManager == null)
                 {
-                    var gameManagerObj = Instantiate(gameManagerPrefab);
-                    gameManagerObj.name = "GameManager";
-                    DontDestroyOnLoad(gameManagerObj);
+                    Debug.LogError("[MainGameController] FloorManager를 찾을 수 없습니다!");
                 }
                 else
                 {
-                    var gameManagerObj = new GameObject("GameManager");
-                    gameManagerObj.AddComponent<GameManager>();
-                    DontDestroyOnLoad(gameManagerObj);
+                    if (debugMode)
+                        Debug.Log("[MainGameController] FloorManager 확인됨");
                 }
-
-                if (debugMode)
-                    Debug.Log("[MainGameController] GameManager 생성 완료");
             }
 
             // FloorManager 초기화
@@ -292,10 +288,10 @@ namespace Maglin.Core
 
                 await Task.Delay(300); // 짧은 로딩 시간
 
-                // 2. GameManager 확인 및 게임 시작 준비
-                if (GameManager.Instance == null)
+                // 2. FloorManager 확인 및 게임 시작 준비
+                if (FloorManager.Instance == null)
                 {
-                    Debug.LogError("[MainGameController] GameManager가 없어서 게임을 시작할 수 없습니다!");
+                    Debug.LogError("[MainGameController] FloorManager가 없어서 게임을 시작할 수 없습니다!");
 
                     if (LoadingManager.Instance != null)
                     {
@@ -314,7 +310,7 @@ namespace Maglin.Core
                 // 3. 디버그 설정 적용
                 if (skipToFloor && debugMode)
                 {
-                    GameManager.Instance.SetFloor(skipFloorNumber);
+                    FloorManager.Instance.SetFloor(skipFloorNumber);
                 }
 
                 await Task.Delay(400);
@@ -349,7 +345,7 @@ namespace Maglin.Core
                 else
                 {
                     // 기존 방식으로 게임 시작 (백업)
-                    GameManager.Instance.StartNewGame();
+                    FloorManager.Instance.StartNewGame();
                 }
             }
             catch (System.Exception e)
@@ -398,7 +394,6 @@ namespace Maglin.Core
         public void PrintManagerStatus()
         {
             Debug.Log("=== Manager Status ===");
-            Debug.Log($"GameManager: {(GameManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"FloorManager: {(FloorManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"PlayerManager: {(PlayerManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"CardManager: {(CardManager.Instance != null ? "✓" : "✗")}");

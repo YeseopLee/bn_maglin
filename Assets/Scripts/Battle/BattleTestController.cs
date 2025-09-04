@@ -2052,8 +2052,16 @@ namespace Maglin.Battle
 
                 if (battleStage == null)
                 {
-                    // FloorManager의 GetBattleStageForFloor 메서드 사용
+                    // FloorManager의 GetBattleStageForFloor 메서드 사용하여 BattleStage 선택
                     battleStage = FloorManager.Instance.GetBattleStageForFloor(floor, floorType);
+
+                    // FloorManager에서 선택된 BattleStage를 즉시 설정
+                    if (battleStage != null)
+                    {
+                        FloorManager.Instance.SetCurrentBattleStage(battleStage);
+                        if (debugMode)
+                            Debug.Log($"[BattleTestController] FloorManager에서 BattleStage 선택 및 설정: {battleStage.name}");
+                    }
                 }
             }
 
@@ -2068,11 +2076,32 @@ namespace Maglin.Battle
                     stageResourcePath = $"F{floor:D2}";
                     battleStage = Resources.Load<BattleStageSO>(stageResourcePath);
                 }
+
+                // 리소스에서 로드한 경우에도 FloorManager에 설정
+                if (battleStage != null && FloorManager.Instance != null)
+                {
+                    FloorManager.Instance.SetCurrentBattleStage(battleStage);
+                    if (debugMode)
+                        Debug.Log($"[BattleTestController] 리소스에서 로드한 BattleStage FloorManager에 설정: {battleStage.name}");
+                }
             }
 
             if (battleStage != null)
             {
                 currentBattleStage = battleStage;
+
+                // BattleStage에서 실제 BattleSO 선택 (FloorManager에 BattleStage가 설정되지 않은 경우만)
+                if (FloorManager.Instance != null && FloorManager.Instance.GetCurrentBattle() == null)
+                {
+                    BattleSO selectedBattle = battleStage.GetRandomBattle(floor);
+                    if (selectedBattle != null)
+                    {
+                        FloorManager.Instance.SetCurrentBattle(selectedBattle);
+                        if (debugMode)
+                            Debug.Log($"[BattleTestController] 선택된 Battle: {selectedBattle.BattleName}");
+                    }
+                }
+
                 if (debugMode)
                     Debug.Log($"[BattleTestController] {floor}층 배틀 스테이지 로드 성공: {battleStage.name}");
             }
@@ -2084,6 +2113,22 @@ namespace Maglin.Battle
                 if (testBattleStage != null)
                 {
                     currentBattleStage = testBattleStage;
+
+                    // FloorManager에 테스트 BattleStage 정보 업데이트
+                    if (FloorManager.Instance != null)
+                    {
+                        FloorManager.Instance.SetCurrentBattleStage(testBattleStage);
+
+                        // 테스트 BattleStage에서도 실제 BattleSO 선택
+                        BattleSO selectedBattle = testBattleStage.GetRandomBattle(floor);
+                        if (selectedBattle != null)
+                        {
+                            FloorManager.Instance.SetCurrentBattle(selectedBattle);
+                            if (debugMode)
+                                Debug.Log($"[BattleTestController] 테스트에서 선택된 Battle: {selectedBattle.BattleName}");
+                        }
+                    }
+
                     if (debugMode)
                         Debug.Log($"[BattleTestController] 테스트 배틀 스테이지 사용: {testBattleStage.name}");
                 }
@@ -2125,6 +2170,14 @@ namespace Maglin.Battle
             }
 
             currentBattleStage = tempStage;
+
+            // FloorManager에 기본 생성된 BattleStage 정보 업데이트
+            if (FloorManager.Instance != null)
+            {
+                FloorManager.Instance.SetCurrentBattleStage(tempStage);
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] FloorManager에 기본 스테이지 설정됨");
+            }
 
             if (debugMode)
                 Debug.Log($"[BattleTestController] 기본 배틀 스테이지 생성: {floor}층 {floorType}");
@@ -2249,7 +2302,7 @@ namespace Maglin.Battle
         {
             var missingManagers = new List<string>();
 
-            if (GameManager.Instance == null) missingManagers.Add("GameManager");
+            // GameManager는 더 이상 필요하지 않음 (FloorManager로 통합됨)
             if (FloorManager.Instance == null) missingManagers.Add("FloorManager");
             if (PlayerManager.Instance == null) missingManagers.Add("PlayerManager");
             if (CardManager.Instance == null) missingManagers.Add("CardManager");

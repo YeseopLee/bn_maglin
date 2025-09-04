@@ -502,9 +502,9 @@ namespace Maglin.UI
             HideBattleResult();
 
             // 메인 메뉴로 이동
-            if (GameManager.Instance != null)
+            if (FloorManager.Instance != null)
             {
-                GameManager.Instance.ReturnToMainMenu();
+                FloorManager.Instance.ReturnToMainMenu();
             }
         }
         #endregion
