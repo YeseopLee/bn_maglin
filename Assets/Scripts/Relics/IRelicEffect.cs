@@ -38,125 +38,98 @@ namespace Maglin.Relics
         public bool IsApplying { get; set; } = true;  // true: 적용, false: 제거
         public float BaseValue { get; set; } = 0f;    // 기본값 (데미지, 체력 등)
         public object AdditionalData { get; set; }    // 추가 데이터
+        public bool DebugMode { get; set; } = false;  // 디버그 모드 여부
 
-        public RelicEffectContext(bool isApplying = true, float baseValue = 0f, object additionalData = null)
+        public RelicEffectContext(bool isApplying = true, float baseValue = 0f, object additionalData = null, bool debugMode = false)
         {
             IsApplying = isApplying;
             BaseValue = baseValue;
             AdditionalData = additionalData;
+            DebugMode = debugMode;
         }
     }
 
     /// <summary>
-    /// 스탯 수정 효과 (체력, 마나, 데미지 등)
+    /// 스탯 수정 효과 (향후 확장용)
     /// </summary>
     public class StatModifierEffect : IRelicEffect
     {
         public void ApplyEffect(RelicSO relic, RelicEffectContext context)
         {
-            switch (relic.EffectType)
-            {
-                case RelicEffectType.DamageModifier:
-                    ApplyDamageModifier(relic, context);
-                    break;
-                case RelicEffectType.HealthModifier:
-                    ApplyHealthModifier(relic, context);
-                    break;
-                case RelicEffectType.ManaModifier:
-                    ApplyManaModifier(relic, context);
-                    break;
-            }
+            // 향후 스탯 관련 유물 효과가 추가되면 여기에 구현
+            Debug.Log($"[StatModifierEffect] {relic.RelicName} 스탯 효과 적용 (향후 구현 예정)");
         }
 
         public void RemoveEffect(RelicSO relic, RelicEffectContext context)
         {
-            // 스탯 효과는 제거 시에는 재계산으로 처리
-            if (PlayerManager.Instance != null)
-            {
-                PlayerManager.Instance.RecalculateStatsPublic();
-            }
+            // 향후 스탯 효과 제거 로직 구현 예정
+            Debug.Log($"[StatModifierEffect] {relic.RelicName} 스탯 효과 제거 (향후 구현 예정)");
         }
 
         public bool SupportsEffectType(RelicEffectType effectType)
         {
-            return effectType == RelicEffectType.DamageModifier ||
-                   effectType == RelicEffectType.HealthModifier ||
-                   effectType == RelicEffectType.ManaModifier;
-        }
-
-        private void ApplyDamageModifier(RelicSO relic, RelicEffectContext context)
-        {
-            // 데미지 수정자는 Card 클래스에서 실시간으로 계산됨
-            if (RelicManager.Instance != null)
-            {
-                RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
-            }
-        }
-
-        private void ApplyHealthModifier(RelicSO relic, RelicEffectContext context)
-        {
-            // 체력 수정자는 PlayerManager의 RecalculateStats에서 처리됨
-            if (RelicManager.Instance != null)
-            {
-                RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
-            }
-        }
-
-        private void ApplyManaModifier(RelicSO relic, RelicEffectContext context)
-        {
-            // 마나 수정자는 PlayerManager의 RecalculateStats에서 처리됨
-            if (RelicManager.Instance != null)
-            {
-                RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
-            }
+            // 현재는 지원하지 않음 (향후 확장시 추가)
+            return false;
         }
     }
 
     /// <summary>
-    /// 경제 효과 (골드, 상점 가격 등)
+    /// 경제 효과 (향후 확장용)
     /// </summary>
     public class EconomicEffect : IRelicEffect
     {
         public void ApplyEffect(RelicSO relic, RelicEffectContext context)
         {
+            // 향후 경제 관련 유물 효과가 추가되면 여기에 구현
+            Debug.Log($"[EconomicEffect] {relic.RelicName} 경제 효과 적용 (향후 구현 예정)");
+        }
+
+        public void RemoveEffect(RelicSO relic, RelicEffectContext context)
+        {
+            // 향후 경제 효과 제거 로직 구현 예정
+            Debug.Log($"[EconomicEffect] {relic.RelicName} 경제 효과 제거 (향후 구현 예정)");
+        }
+
+        public bool SupportsEffectType(RelicEffectType effectType)
+        {
+            // 현재는 지원하지 않음 (향후 확장시 추가)
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// 드로우 관련 특수 효과 처리
+    /// </summary>
+    public class DrawRelicEffect : IRelicEffect
+    {
+        public void ApplyEffect(RelicSO relic, RelicEffectContext context)
+        {
             switch (relic.EffectType)
             {
-                case RelicEffectType.GoldModifier:
-                    ApplyGoldModifier(relic, context);
-                    break;
-                case RelicEffectType.ShopPriceModifier:
-                    ApplyShopPriceModifier(relic, context);
+                case RelicEffectType.DrawCostReduction:
+                case RelicEffectType.FirstDrawFree:
+                case RelicEffectType.DrawWithHealth:
+                case RelicEffectType.DrawCountAttack:
+                    // 드로우 관련 효과는 실시간으로 적용되므로 여기서는 등록만
+                    if (RelicManager.Instance != null)
+                    {
+                        RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
+                    }
                     break;
             }
         }
 
         public void RemoveEffect(RelicSO relic, RelicEffectContext context)
         {
-            // 경제 효과는 실시간 계산이므로 특별한 제거 처리 불필요
+            // 드로우 효과는 실시간 계산이므로 특별한 제거 처리 불필요
         }
 
         public bool SupportsEffectType(RelicEffectType effectType)
         {
-            return effectType == RelicEffectType.GoldModifier ||
-                   effectType == RelicEffectType.ShopPriceModifier;
-        }
-
-        private void ApplyGoldModifier(RelicSO relic, RelicEffectContext context)
-        {
-            // 골드 수정자는 골드 획득 시점에 적용됨
-            if (RelicManager.Instance != null)
-            {
-                RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
-            }
-        }
-
-        private void ApplyShopPriceModifier(RelicSO relic, RelicEffectContext context)
-        {
-            // 상점 가격 수정자는 상점 진입 시 적용됨
-            if (RelicManager.Instance != null)
-            {
-                RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
-            }
+            return effectType == RelicEffectType.DrawCostReduction ||
+                   effectType == RelicEffectType.FirstDrawFree ||
+                   effectType == RelicEffectType.DrawWithHealth ||
+                   effectType == RelicEffectType.DrawCountAttack;
         }
     }
 
@@ -187,6 +160,66 @@ namespace Maglin.Relics
         public bool SupportsEffectType(RelicEffectType effectType)
         {
             return effectType == RelicEffectType.CustomEffect;
+        }
+    }
+
+    /// <summary>
+    /// 반격 효과 핸들러
+    /// </summary>
+    public class CounterAttackEffect : IRelicEffect
+    {
+        public void ApplyEffect(RelicSO relic, RelicEffectContext context)
+        {
+            // 반격 효과는 PlayerManager에서 TakeDamage 시점에 처리되므로 여기서는 로그만
+            if (context.DebugMode)
+            {
+                string effectDescription = relic.EffectType == RelicEffectType.CounterAttackSingle
+                    ? "단일 반격"
+                    : "전체 반격";
+                Debug.Log($"[CounterAttackEffect] {relic.RelicName} {effectDescription} 효과 활성화 (피해 시 자동 발동)");
+            }
+        }
+
+        public void RemoveEffect(RelicSO relic, RelicEffectContext context)
+        {
+            if (context.DebugMode)
+            {
+                Debug.Log($"[CounterAttackEffect] {relic.RelicName} 반격 효과 제거");
+            }
+        }
+
+        public bool SupportsEffectType(RelicEffectType effectType)
+        {
+            return effectType == RelicEffectType.CounterAttackSingle ||
+                   effectType == RelicEffectType.CounterAttackAll;
+        }
+    }
+
+    /// <summary>
+    /// 카드 사용 카운트 공격 효과 핸들러
+    /// </summary>
+    public class CardUseCountAttackEffect : IRelicEffect
+    {
+        public void ApplyEffect(RelicSO relic, RelicEffectContext context)
+        {
+            // 카드 사용 카운트 공격 효과는 PlayerManager에서 OnCardUsed 시점에 처리되므로 여기서는 로그만
+            if (context.DebugMode)
+            {
+                Debug.Log($"[CardUseCountAttackEffect] {relic.RelicName} 카드 사용 카운트 공격 효과 활성화 (카드 사용 시 자동 발동)");
+            }
+        }
+
+        public void RemoveEffect(RelicSO relic, RelicEffectContext context)
+        {
+            if (context.DebugMode)
+            {
+                Debug.Log($"[CardUseCountAttackEffect] {relic.RelicName} 카드 사용 카운트 공격 효과 제거");
+            }
+        }
+
+        public bool SupportsEffectType(RelicEffectType effectType)
+        {
+            return effectType == RelicEffectType.CardUseCountAttack;
         }
     }
 }

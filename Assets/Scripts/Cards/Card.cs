@@ -218,11 +218,7 @@ namespace Maglin.Cards
             // PlayerManager가 있고 데미지가 0보다 큰 경우에만 유물 효과 적용
             if (PlayerManager.Instance != null && damage > 0)
             {
-                // 데미지 수정자 유물 효과 적용
-                float damageModifier = PlayerManager.Instance.GetRelicModifier(RelicEffectType.DamageModifier, true);
-                damage *= damageModifier;
-
-                // 속성별 데미지 보너스 등 추가 로직이 있다면 여기에 구현
+                // 향후 데미지 관련 유물 효과가 추가되면 여기에 구현
                 // 예: 특정 속성 데미지 증가 유물 등
             }
 
@@ -260,9 +256,8 @@ namespace Maglin.Cards
             // PlayerManager가 있는 경우 유물 효과 적용
             if (PlayerManager.Instance != null)
             {
-                // 상점 가격 할인 유물 효과 적용
-                float priceModifier = PlayerManager.Instance.GetRelicModifier(RelicEffectType.ShopPriceModifier, true);
-                price *= priceModifier;
+                // 향후 카드 가격 관련 유물 효과가 추가되면 여기에 구현
+                // 예: 상점 카드 가격 할인 유물 등
             }
 
             return Mathf.Max(0, Mathf.RoundToInt(price));

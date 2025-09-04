@@ -10,15 +10,15 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d698c2e18c93e4c6b89fd0afb1eee1d2, type: 3}
-  m_Name: Relic 01
+  m_Name: Relic 04
   m_EditorClassIdentifier: 
-  relicName: Relic01
+  relicName: Relic03
   relicType: 0
-  relicDescription: Relic01 Description
+  relicDescription: Relic03 Description
   relicImage: {fileID: 0}
-  effectType: 0
-  effectValue: 5
+  effectType: 2
+  effectValue: 1
   isPercentage: 0
   canStack: 0
-  relicPrice: 10
+  relicPrice: 30
   customEffectDescription: 

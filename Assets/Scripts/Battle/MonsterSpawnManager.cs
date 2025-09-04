@@ -79,6 +79,28 @@ namespace Maglin.Battle
         /// 살아있는 몬스터 수
         /// </summary>
         public int AliveMonsterCount => spawnedMonsters.Count(m => m != null && m.activeInHierarchy && m.GetComponent<Maglin.Enemy.Enemy>()?.IsAlive == true);
+
+        /// <summary>
+        /// 모든 몬스터 컴포넌트 가져오기
+        /// </summary>
+        public List<Maglin.Enemy.Enemy> GetAllMonsters()
+        {
+            var monsters = new List<Maglin.Enemy.Enemy>();
+
+            foreach (var monsterObj in spawnedMonsters)
+            {
+                if (monsterObj != null)
+                {
+                    var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+                    if (enemy != null)
+                    {
+                        monsters.Add(enemy);
+                    }
+                }
+            }
+
+            return monsters;
+        }
         #endregion
 
         #region Unity Lifecycle
@@ -1555,10 +1577,10 @@ namespace Maglin.Battle
                     yield return StartCoroutine(PerformSpecialAttack(monster, playerGridPosition));
                 }
 
-                // 플레이어에게 데미지
+                // 플레이어에게 데미지 (공격자 정보 포함)
                 if (PlayerManager.Instance != null)
                 {
-                    PlayerManager.Instance.TakeDamage(damage);
+                    PlayerManager.Instance.TakeDamage(damage, monster);
                 }
 
                 // 공격 후 잠시 대기

@@ -104,7 +104,7 @@ namespace Maglin.Player
         [SerializeField] private float deathFrameRate = 10f;
 
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true; // 애니메이션 디버그를 위해 활성화
+        [SerializeField] private bool debugMode = true; // 유물 디버그를 위해 활성화
 
         // 계산된 스탯 (유물 효과 적용)
         private int calculatedMaxHealth;
@@ -117,6 +117,9 @@ namespace Maglin.Player
 
         // 애니메이션 상태
         private PlayerAnimationState currentAnimationState = PlayerAnimationState.Idle;
+
+        // 카드 사용 횟수 추적 (전투별)
+        private int cardUseCountThisBattle = 0;
         private int currentFrameIndex = 0;
         private Coroutine animationCoroutine = null;
         private bool isPlayingAnimation = false;
@@ -208,6 +211,26 @@ namespace Maglin.Player
         /// 현재 애니메이션 상태
         /// </summary>
         public PlayerAnimationState CurrentAnimationState => currentAnimationState;
+
+        /// <summary>
+        /// 기본 최대 체력 (유물 효과 제외)
+        /// </summary>
+        public int BaseMaxHealth => maxHealth;
+
+        /// <summary>
+        /// 기본 최대 마나 (유물 효과 제외)
+        /// </summary>
+        public int BaseMaxMana => maxMana;
+
+        /// <summary>
+        /// 기본 마나 회복량 (유물 효과 제외)
+        /// </summary>
+        public int BaseManaRecoveryPerTurn => manaRecoveryPerTurn;
+
+        /// <summary>
+        /// 기본 최대 손패 수 (유물 효과 제외)
+        /// </summary>
+        public int BaseMaxHandSize => maxHandSize;
         #endregion
 
         #region Unity Lifecycle
@@ -476,6 +499,14 @@ namespace Maglin.Player
         /// </summary>
         public void TakeDamage(int damage)
         {
+            TakeDamage(damage, null);
+        }
+
+        /// <summary>
+        /// 피해를 받고 반격 효과 처리
+        /// </summary>
+        public void TakeDamage(int damage, Maglin.Enemy.Enemy attacker)
+        {
             if (damage <= 0) return;
 
             int oldHealth = currentHealth;
@@ -484,7 +515,16 @@ namespace Maglin.Player
             OnHealthChanged?.Invoke(currentHealth, calculatedMaxHealth);
 
             if (debugMode)
-                Debug.Log($"[PlayerManager] 데미지: {oldHealth} -> {currentHealth} (-{damage})");
+            {
+                string attackerName = attacker != null ? attacker.EnemyName : "Unknown";
+                Debug.Log($"[PlayerManager] 데미지: {oldHealth} -> {currentHealth} (-{damage}) 공격자: {attackerName}");
+            }
+
+            // 반격 효과 처리 (공격자가 있고 살아있을 때만)
+            if (attacker != null && attacker.IsAlive)
+            {
+                ProcessCounterAttackEffects(attacker);
+            }
 
             // 피격 애니메이션 실행
             if (currentHealth > 0)
@@ -496,6 +536,122 @@ namespace Maglin.Player
             if (currentHealth <= 0 && oldHealth > 0)
             {
                 HandlePlayerDeath();
+            }
+        }
+
+        /// <summary>
+        /// 반격 효과 처리
+        /// </summary>
+        private void ProcessCounterAttackEffects(Maglin.Enemy.Enemy attacker)
+        {
+            if (currentRelics == null || currentRelics.Count == 0) return;
+
+            foreach (var relic in currentRelics)
+            {
+                if (relic == null) continue;
+
+                switch (relic.EffectType)
+                {
+                    case RelicEffectType.CounterAttackSingle:
+                        // 공격한 몬스터에게만 반격
+                        if (attacker != null && attacker.IsAlive)
+                        {
+                            int counterDamage = Mathf.RoundToInt(relic.EffectValue);
+                            attacker.TakeDamage(counterDamage, Maglin.Cards.ElementType.None);
+
+                            if (debugMode)
+                                Debug.Log($"[PlayerManager] 단일 반격: {attacker.EnemyName}에게 {counterDamage} 피해");
+                        }
+                        break;
+
+                    case RelicEffectType.CounterAttackAll:
+                        // 모든 몬스터에게 반격
+                        var allMonsters = FindAllAliveMonsters();
+                        int aoeCounterDamage = Mathf.RoundToInt(relic.EffectValue);
+
+                        foreach (var monster in allMonsters)
+                        {
+                            if (monster != null && monster.IsAlive)
+                            {
+                                monster.TakeDamage(aoeCounterDamage, Maglin.Cards.ElementType.None);
+                            }
+                        }
+
+                        if (debugMode)
+                            Debug.Log($"[PlayerManager] 전체 반격: 모든 몬스터({allMonsters.Count}마리)에게 {aoeCounterDamage} 피해");
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 살아있는 모든 몬스터 찾기
+        /// </summary>
+        private List<Maglin.Enemy.Enemy> FindAllAliveMonsters()
+        {
+            var aliveMonsters = new List<Maglin.Enemy.Enemy>();
+
+            // MonsterSpawnManager를 통해 몬스터 찾기
+            var monsterSpawnManager = FindObjectOfType<MonsterSpawnManager>();
+            if (monsterSpawnManager != null)
+            {
+                var allMonsters = monsterSpawnManager.GetAllMonsters();
+                foreach (var monster in allMonsters)
+                {
+                    if (monster != null && monster.IsAlive && !monster.IsNeutralObject)
+                    {
+                        aliveMonsters.Add(monster);
+                    }
+                }
+            }
+
+            return aliveMonsters;
+        }
+
+        /// <summary>
+        /// 카드 사용 시 호출 (카드 효과 발동 시 카운트)
+        /// </summary>
+        public void OnCardUsed()
+        {
+            cardUseCountThisBattle++;
+
+            if (debugMode)
+                Debug.Log($"[PlayerManager] 카드 사용 카운트: {cardUseCountThisBattle}회");
+
+            // 카드 사용 카운트 공격 효과 처리
+            ProcessCardUseCountAttackEffects();
+        }
+
+        /// <summary>
+        /// 카드 사용 카운트 공격 효과 처리
+        /// </summary>
+        private void ProcessCardUseCountAttackEffects()
+        {
+            if (currentRelics == null || currentRelics.Count == 0) return;
+
+            foreach (var relic in currentRelics)
+            {
+                if (relic == null || relic.EffectType != RelicEffectType.CardUseCountAttack) continue;
+
+                int attackInterval = Mathf.Max(1, Mathf.RoundToInt(relic.SecondaryValue));
+                int attackDamage = Mathf.RoundToInt(relic.EffectValue);
+
+                // N회마다 공격
+                if (cardUseCountThisBattle % attackInterval == 0)
+                {
+                    var allMonsters = FindAllAliveMonsters();
+
+                    foreach (var monster in allMonsters)
+                    {
+                        if (monster != null && monster.IsAlive)
+                        {
+                            monster.TakeDamage(attackDamage, Maglin.Cards.ElementType.None);
+                        }
+                    }
+
+                    if (debugMode)
+                        Debug.Log($"[PlayerManager] 카드 사용 카운트 공격: {attackInterval}회마다 모든 몬스터({allMonsters.Count}마리)에게 {attackDamage} 피해");
+                }
             }
         }
 
@@ -851,35 +1007,29 @@ namespace Maglin.Player
         {
             switch (relic.EffectType)
             {
-                case RelicEffectType.HealthModifier:
+                case RelicEffectType.MaxHealthIncrease:
                     if (relic.IsPercentage)
                         calculatedMaxHealth = Mathf.RoundToInt(calculatedMaxHealth * (1f + relic.EffectValue / 100f));
                     else
                         calculatedMaxHealth += Mathf.RoundToInt(relic.EffectValue);
                     break;
 
-                case RelicEffectType.ManaModifier:
+                case RelicEffectType.MaxManaIncrease:
                     if (relic.IsPercentage)
                         calculatedMaxMana = Mathf.RoundToInt(calculatedMaxMana * (1f + relic.EffectValue / 100f));
                     else
                         calculatedMaxMana += Mathf.RoundToInt(relic.EffectValue);
                     break;
 
-                case RelicEffectType.CardDrawModifier:
+                case RelicEffectType.MaxHandSizeIncrease:
                     if (relic.IsPercentage)
                         calculatedMaxHandSize = Mathf.RoundToInt(calculatedMaxHandSize * (1f + relic.EffectValue / 100f));
                     else
                         calculatedMaxHandSize += Mathf.RoundToInt(relic.EffectValue);
                     break;
 
-                // 다른 효과들은 해당 시스템에서 별도로 처리
-                case RelicEffectType.DamageModifier:
-                case RelicEffectType.GoldModifier:
-                case RelicEffectType.ShopPriceModifier:
-                case RelicEffectType.DeckSizeModifier:
-                case RelicEffectType.FieldEffectModifier:
-                case RelicEffectType.CustomEffect:
-                    // 해당 시스템에서 GetRelicModifier 메서드를 통해 처리
+                // 다른 효과들은 GetRelicModifier 메서드를 통해 처리
+                default:
                     break;
             }
         }
@@ -910,6 +1060,51 @@ namespace Maglin.Player
             }
 
             return totalModifier;
+        }
+
+        /// <summary>
+        /// 드로우 비용 감소 효과 계산
+        /// </summary>
+        public int GetDrawCostReduction()
+        {
+            return Mathf.RoundToInt(GetRelicModifier(RelicEffectType.DrawCostReduction));
+        }
+
+        /// <summary>
+        /// 첫 번째 드로우 무료 여부 확인
+        /// </summary>
+        public bool HasFirstDrawFree()
+        {
+            float modifier = GetRelicModifier(RelicEffectType.FirstDrawFree);
+            bool hasEffect = modifier > 0;
+
+            if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] FirstDrawFree 유물 확인: modifier={modifier}, hasEffect={hasEffect}");
+                Debug.Log($"[PlayerManager] 현재 보유 유물 수: {currentRelics.Count}");
+                foreach (var relic in currentRelics)
+                {
+                    Debug.Log($"[PlayerManager] 유물: {relic.RelicName}, 타입: {relic.EffectType}, 값: {relic.EffectValue}");
+                }
+            }
+
+            return hasEffect;
+        }
+
+        /// <summary>
+        /// 체력으로 드로우 가능 여부 및 배수 반환
+        /// </summary>
+        public float GetDrawWithHealthMultiplier()
+        {
+            return GetRelicModifier(RelicEffectType.DrawWithHealth);
+        }
+
+        /// <summary>
+        /// 드로우 횟수당 공격 데미지 계산
+        /// </summary>
+        public int GetDrawCountAttackDamage()
+        {
+            return Mathf.RoundToInt(GetRelicModifier(RelicEffectType.DrawCountAttack));
         }
 
         /// <summary>
@@ -1373,6 +1568,9 @@ namespace Maglin.Player
         {
             if (debugMode)
                 Debug.Log("[PlayerManager] 전투 시작");
+
+            // 카드 사용 횟수 초기화
+            cardUseCountThisBattle = 0;
 
             // 전투 시작 시 필요한 초기화 작업
             RecoverManaForTurn();

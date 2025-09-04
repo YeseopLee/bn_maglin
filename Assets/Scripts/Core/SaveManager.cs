@@ -252,14 +252,14 @@ namespace Maglin.Core
 
             if (PlayerManager.Instance != null)
             {
-                // 기본 스탯
+                // 기본 스탯 (유물 효과 제외)
                 playerData.currentHealth = PlayerManager.Instance.CurrentHealth;
-                playerData.maxHealth = PlayerManager.Instance.MaxHealth;
+                playerData.maxHealth = PlayerManager.Instance.BaseMaxHealth; // 기본값만 저장
                 playerData.currentMana = PlayerManager.Instance.CurrentMana;
-                playerData.maxMana = PlayerManager.Instance.MaxMana;
+                playerData.maxMana = PlayerManager.Instance.BaseMaxMana; // 기본값만 저장
                 playerData.currentGold = PlayerManager.Instance.CurrentGold;
-                playerData.manaRecoveryPerTurn = PlayerManager.Instance.ManaRecoveryPerTurn;
-                playerData.maxHandSize = PlayerManager.Instance.MaxHandSize;
+                playerData.manaRecoveryPerTurn = PlayerManager.Instance.BaseManaRecoveryPerTurn; // 기본값만 저장
+                playerData.maxHandSize = PlayerManager.Instance.BaseMaxHandSize; // 기본값만 저장
 
                 // 애니메이션 상태
                 playerData.currentAnimationState = SaveDataHelper.AnimationStateToString(PlayerManager.Instance.CurrentAnimationState);
@@ -273,9 +273,12 @@ namespace Maglin.Core
                 if (debugMode)
                 {
                     Debug.Log($"[SaveManager] PlayerManager 데이터 수집:");
-                    Debug.Log($"  - 체력: {playerData.currentHealth}/{playerData.maxHealth}");
-                    Debug.Log($"  - 마나: {playerData.currentMana}/{playerData.maxMana}");
+                    Debug.Log($"  - 현재 체력: {playerData.currentHealth}");
+                    Debug.Log($"  - 기본 최대 체력: {playerData.maxHealth} (실제 최대: {PlayerManager.Instance.MaxHealth})");
+                    Debug.Log($"  - 현재 마나: {playerData.currentMana}");
+                    Debug.Log($"  - 기본 최대 마나: {playerData.maxMana} (실제 최대: {PlayerManager.Instance.MaxMana})");
                     Debug.Log($"  - 골드: {playerData.currentGold}");
+                    Debug.Log($"  - 기본 손패 크기: {playerData.maxHandSize} (실제: {PlayerManager.Instance.MaxHandSize})");
                     Debug.Log($"  - 덱 카드 수: {playerData.deckCardIds.Count}");
                     Debug.Log($"  - 유물 수: {playerData.relicIds.Count}");
                 }
@@ -473,7 +476,10 @@ namespace Maglin.Core
         {
             if (PlayerManager.Instance != null && playerData != null)
             {
-                // 기본 스탯 설정 (유물 효과 계산도 포함)
+                // 먼저 유물 정보 적용 (기본 스탯 설정 전에)
+                ApplyRelicDataToGame(playerData);
+
+                // 기본 스탯 설정 (유물 효과 자동 계산됨)
                 PlayerManager.Instance.SetBaseStats(
                     playerData.maxHealth,
                     playerData.maxMana,
@@ -493,16 +499,15 @@ namespace Maglin.Core
                 // 덱 정보 적용
                 ApplyDeckDataToGame(playerData);
 
-                // 유물 정보 적용
-                ApplyRelicDataToGame(playerData);
-
                 if (debugMode)
                 {
                     Debug.Log($"[SaveManager] PlayerManager 데이터 적용:");
-                    Debug.Log($"  - 체력: {PlayerManager.Instance.CurrentHealth}/{PlayerManager.Instance.MaxHealth}");
-                    Debug.Log($"  - 마나: {PlayerManager.Instance.CurrentMana}/{PlayerManager.Instance.MaxMana}");
+                    Debug.Log($"  - 현재 체력: {PlayerManager.Instance.CurrentHealth}");
+                    Debug.Log($"  - 기본 최대 체력: {PlayerManager.Instance.BaseMaxHealth} -> 계산된 최대 체력: {PlayerManager.Instance.MaxHealth}");
+                    Debug.Log($"  - 현재 마나: {PlayerManager.Instance.CurrentMana}");
+                    Debug.Log($"  - 기본 최대 마나: {PlayerManager.Instance.BaseMaxMana} -> 계산된 최대 마나: {PlayerManager.Instance.MaxMana}");
                     Debug.Log($"  - 골드: {PlayerManager.Instance.CurrentGold}");
-                    Debug.Log($"  - 손패 크기: {PlayerManager.Instance.MaxHandSize}");
+                    Debug.Log($"  - 기본 손패 크기: {PlayerManager.Instance.BaseMaxHandSize} -> 계산된 손패 크기: {PlayerManager.Instance.MaxHandSize}");
                 }
             }
         }

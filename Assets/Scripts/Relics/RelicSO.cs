@@ -16,21 +16,40 @@ namespace Maglin.Relics
     /// </summary>
     public enum RelicEffectType
     {
-        // 전투 관련
-        DamageModifier,         // 데미지 증감
-        HealthModifier,         // 체력 관련
-        ManaModifier,           // 마나 관련
+        // 드로우 관련 효과들
+        DrawCostReduction,      // 드로우 비용 감소
+        FirstDrawFree,          // 첫 번째 드로우 무료
+        DrawWithHealth,         // 체력으로 드로우
+        DrawCountAttack,        // 드로우 횟수당 광역 공격
 
-        // 경제 관련
-        GoldModifier,           // 골드 획득/소모 증감
-        ShopPriceModifier,      // 상점 가격 증감
+        // 이벤트 및 확률 관련
+        EventChanceIncrease,    // 이벤트 씬 등장 확률 증가
 
-        // 카드 관련
-        CardDrawModifier,       // 카드 드로우 관련
-        DeckSizeModifier,       // 덱 크기 관련
+        // 스탯 증가 효과들
+        MaxHealthIncrease,      // 최대 체력 증가
+        MaxManaIncrease,        // 최대 마나 증가
+        MaxHandSizeIncrease,    // 최대 손패 수 증가
 
-        // 필드 관련
-        FieldEffectModifier,    // 필드 효과 관련
+        // 반격 효과들
+        CounterAttackSingle,    // 공격받을 시 공격한 몬스터에게 반격
+        CounterAttackAll,       // 공격받을 시 모든 몬스터에게 반격
+
+        // 전투 종료 효과들
+        BattleEndHeal,          // 전투 종료 시 체력 회복
+
+        // 방어 효과들
+        DamageNegate,           // 전투당 첫 N회 피해 무효화
+
+        // 추가 공격 효과들
+        CardUseCountAttack,     // 카드 N회 사용 시 광역 공격
+
+        // 상점 관련 효과들
+        ShopHealCostReduction,  // 상점 회복 비용 감소
+        ShopCardCostReduction,  // 상점 카드 구매 비용 감소
+        ShopRemoveCostReduction, // 상점 카드 제거 비용 감소
+
+        // 보상 관련 효과들
+        GoldRewardIncrease,     // 전투 종료 시 골드 획득 증가
 
         // 기타
         CustomEffect           // 커스텀 효과
@@ -47,8 +66,9 @@ namespace Maglin.Relics
 
         [Header("유물 효과")]
         [SerializeField] private RelicEffectType effectType;
-        [SerializeField] private float effectValue;        // 효과 수치 (%, 고정값 등)
-        [SerializeField] private bool isPercentage;        // 효과가 퍼센트인지 고정값인지
+        [SerializeField] private float effectValue;        // 주 효과 수치 (%, 고정값 등)
+        [SerializeField] private float secondaryValue;     // 보조 효과 수치 (횟수, 배수 등)
+        [SerializeField] private bool isPercentage;        // effectValue가 퍼센트인지 고정값인지
         [SerializeField] private bool canStack = false;    // 중첩 가능 여부
 
         [Header("상점 정보")]
@@ -65,6 +85,7 @@ namespace Maglin.Relics
         public Sprite Image => relicImage;
         public RelicEffectType EffectType => effectType;
         public float EffectValue => effectValue;
+        public float SecondaryValue => secondaryValue;
         public bool IsPercentage => isPercentage;
         public bool CanStack => canStack;
         public int Price => relicPrice;
@@ -80,6 +101,30 @@ namespace Maglin.Relics
         /// </summary>
         public string GetEffectValueString()
         {
+            // 두 값이 모두 필요한 효과 타입들
+            if (effectType == RelicEffectType.DrawCountAttack ||
+                effectType == RelicEffectType.CardUseCountAttack)
+            {
+                string primaryStr = isPercentage ? $"{effectValue:F1}%" : effectValue.ToString("F0");
+                string secondaryStr = secondaryValue.ToString("F0");
+
+                if (effectType == RelicEffectType.DrawCountAttack)
+                    return $"{secondaryStr}드로우마다 {primaryStr}데미지";
+                else if (effectType == RelicEffectType.CardUseCountAttack)
+                    return $"{secondaryStr}카드사용마다 모든 몬스터에게 {primaryStr}데미지";
+            }
+
+            // 반격 효과들
+            if (effectType == RelicEffectType.CounterAttackSingle)
+            {
+                return $"공격받을 시 공격자에게 {effectValue:F0} 피해";
+            }
+            else if (effectType == RelicEffectType.CounterAttackAll)
+            {
+                return $"공격받을 시 모든 몬스터에게 {effectValue:F0} 피해";
+            }
+
+            // 단일 값만 필요한 효과들
             if (isPercentage)
             {
                 return $"{effectValue:F1}%";

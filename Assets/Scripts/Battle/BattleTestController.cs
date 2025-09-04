@@ -1251,6 +1251,12 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[BattleTestController] {cardData.CardName} 효과 실행: 데미지={cardData.BaseDamage}, 힐={cardData.BaseHeal}, 대상={cardData.Target}");
 
+            // 카드 사용 카운트 증가 (카드 효과 발동 시)
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.OnCardUsed();
+            }
+
             // 카드 상호작용 차단
             SetCardInteractionEnabled(false);
 
@@ -1289,6 +1295,12 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log($"[BattleTestController] {cardData.CardName} 효과 실행: 데미지={cardData.BaseDamage}, 힐={cardData.BaseHeal}, 대상={cardData.Target}");
+
+            // 카드 사용 카운트 증가 (카드 효과 발동 시)
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.OnCardUsed();
+            }
 
             // 카드 상호작용 차단
             SetCardInteractionEnabled(false);

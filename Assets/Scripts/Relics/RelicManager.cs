@@ -148,21 +148,25 @@ namespace Maglin.Relics
         {
             effectHandlers = new Dictionary<RelicEffectType, IRelicEffect>();
 
-            // 스탯 수정 효과 처리기
+            // 스탯 수정 효과 처리기 (현재 사용되지 않지만 향후 확장용)
             var statModifier = new StatModifierEffect();
-            effectHandlers[RelicEffectType.DamageModifier] = statModifier;
-            effectHandlers[RelicEffectType.HealthModifier] = statModifier;
-            effectHandlers[RelicEffectType.ManaModifier] = statModifier;
 
-            // 경제 효과 처리기
-            var economicEffect = new EconomicEffect();
-            effectHandlers[RelicEffectType.GoldModifier] = economicEffect;
-            effectHandlers[RelicEffectType.ShopPriceModifier] = economicEffect;
+            // 드로우 관련 특수 효과 처리기
+            var drawEffect = new DrawRelicEffect();
+            effectHandlers[RelicEffectType.DrawCostReduction] = drawEffect;
+            effectHandlers[RelicEffectType.FirstDrawFree] = drawEffect;
+            effectHandlers[RelicEffectType.DrawWithHealth] = drawEffect;
+            effectHandlers[RelicEffectType.DrawCountAttack] = drawEffect;
 
-            // 기타 효과들
-            effectHandlers[RelicEffectType.CardDrawModifier] = statModifier;
-            effectHandlers[RelicEffectType.DeckSizeModifier] = statModifier;
-            effectHandlers[RelicEffectType.FieldEffectModifier] = new CustomEffect();
+            // 반격 효과 처리기
+            var counterAttackEffect = new CounterAttackEffect();
+            effectHandlers[RelicEffectType.CounterAttackSingle] = counterAttackEffect;
+            effectHandlers[RelicEffectType.CounterAttackAll] = counterAttackEffect;
+
+            // 카드 사용 카운트 공격 효과 처리기
+            effectHandlers[RelicEffectType.CardUseCountAttack] = new CardUseCountAttackEffect();
+
+            // 커스텀 효과
             effectHandlers[RelicEffectType.CustomEffect] = new CustomEffect();
 
             if (debugMode)

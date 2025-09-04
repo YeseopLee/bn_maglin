@@ -7447,7 +7447,9 @@ MonoBehaviour:
   drawCostIncrease: 10
   currentDrawCost: 10
   additionalDrawsThisTurn: 0
-  debugMode: 0
+  drawCountThisBattle: 0
+  additionalDrawsThisBattle: 0
+  debugMode: 1
 --- !u!4 &1322891915
 Transform:
   m_ObjectHideFlags: 0

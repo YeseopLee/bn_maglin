@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Maglin.Core;
 using Maglin.Player;
+using Maglin.Relics;
 using Maglin.Battle;
 
 namespace Maglin.Cards
@@ -100,8 +101,12 @@ namespace Maglin.Cards
         [SerializeField] private int currentDrawCost = 10; // 현재 드로우 비용
         [SerializeField] private int additionalDrawsThisTurn = 0; // 이번 턴 추가 드로우 횟수
 
+        [Header("드로우 효과 추적")]
+        [SerializeField] private int drawCountThisBattle = 0; // 이번 전투에서 드로우 횟수 (유물 효과용)
+        [SerializeField] private int additionalDrawsThisBattle = 0; // 이번 전투에서 추가 드로우 횟수 (첫 드로우 무료 효과용)
+
         [Header("디버그")]
-        [SerializeField] private bool debugMode = false;
+        [SerializeField] private bool debugMode = true; // 드로우 디버그를 위해 활성화
 
         // 초기화 관련
         private bool isInitialized = false;
@@ -417,6 +422,10 @@ namespace Maglin.Cards
             if (debugMode)
                 Debug.Log("[CardManager] 전투 시작 - 덱 준비 (드로우는 몬스터 스폰 완료 후 진행)");
 
+            // 전투별 드로우 횟수 초기화
+            drawCountThisBattle = 0;
+            additionalDrawsThisBattle = 0; // 전투별 추가 드로우 횟수도 초기화
+
             // 전투 시작 시 손패와 임시무덤 모두 덱으로 되돌리고 셔플 (Card 인스턴스)
             ReturnAllCardInstancesToDeck();
 
@@ -596,33 +605,98 @@ namespace Maglin.Cards
                 return false;
             }
 
-            // 마나 확인
-            if (!PlayerManager.Instance.SpendMana(currentDrawCost))
+            // 첫 번째 드로우 무료 효과 확인
+            bool hasFirstDrawFree = PlayerManager.Instance.HasFirstDrawFree();
+            bool isFirstDraw = additionalDrawsThisBattle == 0;
+            bool shouldPayCost = !(hasFirstDrawFree && isFirstDraw);
+
+            // 실제 지불할 비용 계산
+            int actualCostToPay = shouldPayCost ? currentDrawCost : 0;
+
+            // 체력으로 드로우 가능한 배수 확인
+            float healthMultiplier = PlayerManager.Instance.GetDrawWithHealthMultiplier();
+            bool drewWithHealth = false;
+
+            if (debugMode)
             {
-                if (debugMode)
-                    Debug.Log($"[CardManager] 추가 드로우 실패 - 마나 부족 (필요: {currentDrawCost})");
-                return false;
+                Debug.Log($"[CardManager] 드로우 시도:");
+                Debug.Log($"  - 첫 드로우 무료: {hasFirstDrawFree}");
+                Debug.Log($"  - 첫 번째 드로우: {isFirstDraw}");
+                Debug.Log($"  - 비용 지불 필요: {shouldPayCost}");
+                Debug.Log($"  - 표시 비용: {currentDrawCost}, 실제 지불 비용: {actualCostToPay}");
+            }
+
+            // 비용 지불 처리
+            if (actualCostToPay > 0)
+            {
+                // 마나 확인
+                bool canPayWithMana = PlayerManager.Instance.SpendMana(actualCostToPay);
+
+                if (!canPayWithMana && healthMultiplier > 0)
+                {
+                    // 마나가 부족하지만 체력으로 드로우 가능한 유물이 있는 경우
+                    int healthCost = Mathf.RoundToInt(actualCostToPay * healthMultiplier);
+
+                    if (PlayerManager.Instance.CurrentHealth > healthCost)
+                    {
+                        PlayerManager.Instance.TakeDamage(healthCost);
+                        drewWithHealth = true;
+
+                        if (debugMode)
+                            Debug.Log($"[CardManager] 체력으로 드로우 시도 - 체력 소모: {healthCost} (배수: {healthMultiplier})");
+                    }
+                    else
+                    {
+                        if (debugMode)
+                            Debug.Log($"[CardManager] 추가 드로우 실패 - 마나와 체력 모두 부족 (필요 마나: {actualCostToPay}, 필요 체력: {healthCost})");
+                        return false;
+                    }
+                }
+                else if (!canPayWithMana)
+                {
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 추가 드로우 실패 - 마나 부족 (필요: {actualCostToPay})");
+                    return false;
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[CardManager] 첫 번째 드로우 무료 효과 적용 - 비용 면제");
             }
 
             // 추가 드로우 실행
             if (DrawSingleCard())
             {
-                // 드로우 성공 시 비용 증가
+                // 드로우 성공 시 비용 증가 및 전투 내 드로우 횟수 증가
                 additionalDrawsThisTurn++;
-                currentDrawCost += drawCostIncrease;
+                additionalDrawsThisBattle++;
+                drawCountThisBattle++;
+
+                // 다음 드로우 비용 계산 (항상 증가 패턴 유지)
+                int nextBaseCost = baseDrawCost + (drawCostIncrease * additionalDrawsThisTurn);
+                currentDrawCost = CalculateActualDrawCost(nextBaseCost);
 
                 OnHandChanged?.Invoke(hand);
                 OnDrawCostChanged?.Invoke(currentDrawCost);
 
+                // 드로우 횟수당 공격 효과 처리
+                ProcessDrawCountAttack();
+
                 if (debugMode)
-                    Debug.Log($"[CardManager] 추가 드로우 성공 - 다음 비용: {currentDrawCost}");
+                {
+                    string paymentMethod = actualCostToPay == 0 ? "무료" : (drewWithHealth ? "체력" : "마나");
+                    Debug.Log($"[CardManager] 추가 드로우 성공 ({paymentMethod}로 지불) - 다음 비용: {currentDrawCost}, 전투 드로우 횟수: {drawCountThisBattle}");
+                }
 
                 return true;
             }
             else
             {
-                // 드로우 실패 시 마나 환불
-                PlayerManager.Instance.RestoreMana(currentDrawCost);
+                // 드로우 실패 시 지불한 자원 환불
+                if (actualCostToPay > 0 && !drewWithHealth)
+                {
+                    PlayerManager.Instance.RestoreMana(actualCostToPay);
+                }
 
                 if (debugMode)
                     Debug.Log("[CardManager] 추가 드로우 실패 - 드로우할 카드 없음");
@@ -636,12 +710,89 @@ namespace Maglin.Cards
         /// </summary>
         private void ResetDrawCosts()
         {
-            currentDrawCost = baseDrawCost;
-            additionalDrawsThisTurn = 0;
+            // 기본 드로우 비용 계산 (항상 additionalDrawsThisTurn 기준으로)
+            currentDrawCost = CalculateActualDrawCost(baseDrawCost + (drawCostIncrease * additionalDrawsThisTurn));
+
+            additionalDrawsThisTurn = 0; // 턴별 드로우 횟수만 초기화
             OnDrawCostChanged?.Invoke(currentDrawCost);
 
             if (debugMode)
-                Debug.Log($"[CardManager] 드로우 비용 초기화: {currentDrawCost}");
+                Debug.Log($"[CardManager] 드로우 비용 초기화 완료: {currentDrawCost}");
+        }
+
+        /// <summary>
+        /// 유물 효과를 적용한 실제 드로우 비용 계산
+        /// </summary>
+        private int CalculateActualDrawCost(int baseCost)
+        {
+            if (PlayerManager.Instance == null) return baseCost;
+
+            // 드로우 비용 감소 효과 적용
+            int reduction = PlayerManager.Instance.GetDrawCostReduction();
+            int actualCost = Mathf.Max(0, baseCost - reduction);
+
+            if (debugMode && reduction > 0)
+                Debug.Log($"[CardManager] 드로우 비용 감소 적용: {baseCost} -> {actualCost} (-{reduction})");
+
+            return actualCost;
+        }
+
+        /// <summary>
+        /// 드로우 횟수당 공격 효과 처리
+        /// </summary>
+        private void ProcessDrawCountAttack()
+        {
+            if (PlayerManager.Instance == null) return;
+
+            int attackDamage = PlayerManager.Instance.GetDrawCountAttackDamage();
+            if (attackDamage <= 0) return;
+
+            // 유물에서 설정된 드로우 횟수 간격 확인 (예: 3드로우마다 공격)
+            // 현재는 간단히 매 드로우마다 체크하고, 나중에 유물 설정에 따라 조정 가능
+            int drawInterval = GetDrawAttackInterval(); // 기본값 3으로 설정
+
+            if (drawCountThisBattle > 0 && drawCountThisBattle % drawInterval == 0)
+            {
+                // 모든 몬스터에게 광역 공격
+                ExecuteDrawCountAttack(attackDamage);
+
+                if (debugMode)
+                    Debug.Log($"[CardManager] 드로우 {drawInterval}회 달성 - 모든 몬스터에게 {attackDamage} 데미지");
+            }
+        }
+
+        /// <summary>
+        /// 드로우 공격 간격 반환 (유물에서 설정)
+        /// </summary>
+        private int GetDrawAttackInterval()
+        {
+            if (PlayerManager.Instance == null) return 3;
+
+            // DrawCountAttack 유물에서 SecondaryValue(드로우 간격) 가져오기
+            foreach (var relic in PlayerManager.Instance.CurrentRelics)
+            {
+                if (relic.EffectType == RelicEffectType.DrawCountAttack)
+                {
+                    return Mathf.Max(1, Mathf.RoundToInt(relic.SecondaryValue)); // 최소 1로 보장
+                }
+            }
+
+            return 3; // 기본값: 3드로우마다 공격
+        }
+
+        /// <summary>
+        /// 드로우 횟수 달성 시 모든 몬스터에게 공격
+        /// </summary>
+        private void ExecuteDrawCountAttack(int damage)
+        {
+            // TargetManager를 통해 모든 살아있는 적에게 데미지
+            if (TargetManager.Instance != null)
+            {
+                TargetManager.Instance.DamageAllEnemies(damage);
+
+                if (debugMode)
+                    Debug.Log($"[CardManager] 드로우 횟수 달성 광역 공격 실행: {damage} 데미지");
+            }
         }
         #endregion
 
@@ -1562,34 +1713,99 @@ namespace Maglin.Cards
                 return null;
             }
 
-            // 마나 확인
-            if (!PlayerManager.Instance.SpendMana(currentDrawCost))
+            // 첫 번째 드로우 무료 효과 확인
+            bool hasFirstDrawFree = PlayerManager.Instance.HasFirstDrawFree();
+            bool isFirstDraw = additionalDrawsThisBattle == 0;
+            bool shouldPayCost = !(hasFirstDrawFree && isFirstDraw);
+
+            // 실제 지불할 비용 계산
+            int actualCostToPay = shouldPayCost ? currentDrawCost : 0;
+
+            // 체력으로 드로우 가능한 배수 확인
+            float healthMultiplier = PlayerManager.Instance.GetDrawWithHealthMultiplier();
+            bool drewWithHealth = false;
+
+            if (debugMode)
             {
-                if (debugMode)
-                    Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 마나 부족 (필요: {currentDrawCost})");
-                return null;
+                Debug.Log($"[CardManager] Card 인스턴스 드로우 시도:");
+                Debug.Log($"  - 첫 드로우 무료: {hasFirstDrawFree}");
+                Debug.Log($"  - 첫 번째 드로우: {isFirstDraw}");
+                Debug.Log($"  - 비용 지불 필요: {shouldPayCost}");
+                Debug.Log($"  - 표시 비용: {currentDrawCost}, 실제 지불 비용: {actualCostToPay}");
+            }
+
+            // 비용 지불 처리
+            if (actualCostToPay > 0)
+            {
+                // 마나 확인
+                bool canPayWithMana = PlayerManager.Instance.SpendMana(actualCostToPay);
+
+                if (!canPayWithMana && healthMultiplier > 0)
+                {
+                    // 마나가 부족하지만 체력으로 드로우 가능한 유물이 있는 경우
+                    int healthCost = Mathf.RoundToInt(actualCostToPay * healthMultiplier);
+
+                    if (PlayerManager.Instance.CurrentHealth > healthCost)
+                    {
+                        PlayerManager.Instance.TakeDamage(healthCost);
+                        drewWithHealth = true;
+
+                        if (debugMode)
+                            Debug.Log($"[CardManager] Card 인스턴스 체력으로 드로우 시도 - 체력 소모: {healthCost} (배수: {healthMultiplier})");
+                    }
+                    else
+                    {
+                        if (debugMode)
+                            Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 마나와 체력 모두 부족 (필요 마나: {actualCostToPay}, 필요 체력: {healthCost})");
+                        return null;
+                    }
+                }
+                else if (!canPayWithMana)
+                {
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 마나 부족 (필요: {actualCostToPay})");
+                    return null;
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[CardManager] 첫 번째 드로우 무료 효과 적용 - 비용 면제");
             }
 
             // 추가 드로우 실행
             var drawnCard = DrawSingleCardInstance();
             if (drawnCard != null)
             {
-                // 드로우 성공 시 비용 증가
+                // 드로우 성공 시 비용 증가 및 전투 내 드로우 횟수 증가
                 additionalDrawsThisTurn++;
-                currentDrawCost += drawCostIncrease;
+                additionalDrawsThisBattle++;
+                drawCountThisBattle++;
+
+                // 다음 드로우 비용 계산 (항상 증가 패턴 유지)
+                int nextBaseCost = baseDrawCost + (drawCostIncrease * additionalDrawsThisTurn);
+                currentDrawCost = CalculateActualDrawCost(nextBaseCost);
 
                 OnHandCardsChanged?.Invoke(handCards);
                 OnDrawCostChanged?.Invoke(currentDrawCost);
 
+                // 드로우 횟수당 공격 효과 처리
+                ProcessDrawCountAttack();
+
                 if (debugMode)
-                    Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 성공 - 다음 비용: {currentDrawCost}");
+                {
+                    string paymentMethod = actualCostToPay == 0 ? "무료" : (drewWithHealth ? "체력" : "마나");
+                    Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 성공 ({paymentMethod}로 지불) - 다음 비용: {currentDrawCost}, 전투 드로우 횟수: {drawCountThisBattle}");
+                }
 
                 return drawnCard;
             }
             else
             {
-                // 드로우 실패 시 마나 환불
-                PlayerManager.Instance.RestoreMana(currentDrawCost);
+                // 드로우 실패 시 지불한 자원 환불
+                if (actualCostToPay > 0 && !drewWithHealth)
+                {
+                    PlayerManager.Instance.RestoreMana(actualCostToPay);
+                }
 
                 if (debugMode)
                     Debug.Log("[CardManager] 추가 Card 인스턴스 드로우 실패 - 드로우할 카드 없음");
