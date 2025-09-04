@@ -258,8 +258,25 @@ namespace Maglin.Player
             // 기본 스프라이트 로드/생성
             LoadDefaultSprites();
 
-            // 기본 스탯으로 초기화
-            ResetToDefault();
+            // 세이브 파일 존재 여부 확인
+            bool hasSaveFile = SaveManager.Instance != null && SaveManager.Instance.HasSaveFile;
+
+            if (hasSaveFile)
+            {
+                if (debugMode)
+                    Debug.Log("[PlayerManager] 세이브 파일 발견 - 기본값 초기화 건너뛰기");
+
+                // 최소한의 초기화만 수행 (애니메이션 등)
+                InitializeMinimal();
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log("[PlayerManager] 세이브 파일 없음 - 기본값으로 초기화");
+
+                // 기본 스탯으로 초기화
+                ResetToDefault();
+            }
 
             // FloorManager 이벤트 구독
             FloorManager.OnGameInitialized += OnGameInitialized;
@@ -379,6 +396,30 @@ namespace Maglin.Player
         }
 
         /// <summary>
+        /// 최소한의 초기화 (세이브 로드 시)
+        /// </summary>
+        private void InitializeMinimal()
+        {
+            if (debugMode)
+                Debug.Log("[PlayerManager] 최소한의 초기화 (세이브 로드 대기)");
+
+            // 기본 계산된 스탯을 기본값으로 먼저 설정 (나중에 세이브 데이터로 덮어씀)
+            calculatedMaxHealth = maxHealth;
+            calculatedMaxMana = maxMana;
+            calculatedManaRecovery = manaRecoveryPerTurn;
+            calculatedMaxHandSize = maxHandSize;
+
+            // 유물 리스트만 초기화 (나중에 세이브 데이터로 설정됨)
+            currentRelics.Clear();
+
+            // 애니메이션 상태만 설정 (세이브 데이터에서 덮어씀)
+            SetAnimationState(PlayerAnimationState.Idle);
+
+            if (debugMode)
+                Debug.Log("[PlayerManager] 최소 초기화 완료 - 세이브 데이터 적용 대기");
+        }
+
+        /// <summary>
         /// 기본값으로 리셋 (새 게임 시작 시)
         /// </summary>
         public void ResetToDefault()
@@ -490,6 +531,20 @@ namespace Maglin.Player
         }
 
         /// <summary>
+        /// 현재 체력 직접 설정 (세이브 로드용)
+        /// </summary>
+        public void SetCurrentHealth(int health)
+        {
+            int oldHealth = currentHealth;
+            currentHealth = Mathf.Clamp(health, 0, calculatedMaxHealth);
+
+            OnHealthChanged?.Invoke(currentHealth, calculatedMaxHealth);
+
+            if (debugMode)
+                Debug.Log($"[PlayerManager] 체력 직접 설정: {oldHealth} -> {currentHealth}");
+        }
+
+        /// <summary>
         /// 플레이어 사망 처리
         /// </summary>
         private void HandlePlayerDeath()
@@ -581,6 +636,43 @@ namespace Maglin.Player
             if (debugMode)
                 Debug.Log($"[PlayerManager] 최대 마나 변경: {newMaxMana}");
         }
+
+        /// <summary>
+        /// 현재 마나 직접 설정 (세이브 로드용)
+        /// </summary>
+        public void SetCurrentMana(int mana)
+        {
+            int oldMana = currentMana;
+            currentMana = Mathf.Clamp(mana, 0, calculatedMaxMana);
+
+            OnManaChanged?.Invoke(currentMana, calculatedMaxMana);
+
+            if (debugMode)
+                Debug.Log($"[PlayerManager] 마나 직접 설정: {oldMana} -> {currentMana}");
+        }
+
+        /// <summary>
+        /// 기본 스탯 직접 설정 (세이브 로드용)
+        /// </summary>
+        public void SetBaseStats(int baseMaxHealth, int baseMaxMana, int baseManaRecovery, int baseMaxHandSize)
+        {
+            maxHealth = Mathf.Max(1, baseMaxHealth);
+            maxMana = Mathf.Max(0, baseMaxMana);
+            manaRecoveryPerTurn = Mathf.Max(0, baseManaRecovery);
+            maxHandSize = Mathf.Max(1, baseMaxHandSize);
+
+            // 스탯 재계산 (유물 효과 포함)
+            RecalculateStats();
+
+            if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] 기본 스탯 설정:");
+                Debug.Log($"  - 기본 체력: {maxHealth} -> 계산된 체력: {calculatedMaxHealth}");
+                Debug.Log($"  - 기본 마나: {maxMana} -> 계산된 마나: {calculatedMaxMana}");
+                Debug.Log($"  - 기본 마나 회복: {manaRecoveryPerTurn} -> 계산된 회복: {calculatedManaRecovery}");
+                Debug.Log($"  - 기본 손패 크기: {maxHandSize} -> 계산된 손패: {calculatedMaxHandSize}");
+            }
+        }
         #endregion
 
         #region Gold Management
@@ -623,6 +715,20 @@ namespace Maglin.Player
                 Debug.Log($"[PlayerManager] 골드 소모: {oldGold} -> {currentGold} (-{amount})");
 
             return true;
+        }
+
+        /// <summary>
+        /// 골드 직접 설정 (세이브 로드용)
+        /// </summary>
+        public void SetGold(int amount)
+        {
+            int oldGold = currentGold;
+            currentGold = Mathf.Max(0, amount);
+
+            OnGoldChanged?.Invoke(currentGold);
+
+            if (debugMode)
+                Debug.Log($"[PlayerManager] 골드 직접 설정: {oldGold} -> {currentGold}");
         }
         #endregion
 

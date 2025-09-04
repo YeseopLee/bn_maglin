@@ -872,6 +872,59 @@ namespace Maglin.Cards
         }
 
         /// <summary>
+        /// 현재 덱의 모든 카드 반환 (세이브 시스템용)
+        /// </summary>
+        public List<CardSO> GetCurrentDeckCards()
+        {
+            return new List<CardSO>(currentDeck);
+        }
+
+        /// <summary>
+        /// 세이브 데이터로부터 스타터 덱 설정 (로드 시스템용)
+        /// </summary>
+        public void SetDeckFromSaveData(List<string> cardIds, List<int> cardCounts)
+        {
+            if (cardIds.Count != cardCounts.Count)
+            {
+                Debug.LogError("[CardManager] 카드 ID와 개수 리스트의 크기가 일치하지 않습니다.");
+                return;
+            }
+
+            // 스타터 덱만 초기화 (currentDeck은 전투 시작 시 설정됨)
+            starterDeck.Clear();
+
+            for (int i = 0; i < cardIds.Count; i++)
+            {
+                string cardId = cardIds[i];
+                int count = cardCounts[i];
+
+                // Resources에서 카드 로드
+                CardSO cardSO = Resources.Load<CardSO>($"Cards/{cardId}");
+                if (cardSO == null)
+                    cardSO = Resources.Load<CardSO>(cardId); // 폴백
+
+                if (cardSO != null)
+                {
+                    for (int j = 0; j < count; j++)
+                    {
+                        // 스타터 덱에만 추가 (플레이어 보유 카드)
+                        starterDeck.Add(cardSO);
+                    }
+
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 스타터 덱에 추가됨: {cardSO.CardName} x{count}");
+                }
+                else
+                {
+                    Debug.LogWarning($"[CardManager] 카드를 찾을 수 없습니다: {cardId}");
+                }
+            }
+
+            if (debugMode)
+                Debug.Log($"[CardManager] 세이브 데이터로부터 스타터 덱 설정 완료: {starterDeck.Count}장");
+        }
+
+        /// <summary>
         /// 임시무덤을 덱으로 셔플하여 되돌리기
         /// </summary>
         private void ReshuffleDiscardPile()

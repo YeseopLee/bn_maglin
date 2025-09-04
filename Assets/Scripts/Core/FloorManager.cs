@@ -150,6 +150,9 @@ namespace Maglin.Core
         private bool isGameInitialized = false;
         private bool isTransitioning = false;
 
+        // 세이브 시스템
+        private bool autoSaveEnabled = true;
+
         // 현재 층에서 사용 중인 SO들
         private BattleStageSO currentBattleStage;
         private BattleSO currentBattle;
@@ -170,7 +173,20 @@ namespace Maglin.Core
             {
                 Instance = this;
                 DontDestroyOnLoad(gameObject);
-                InitializeGame();
+
+                // 세이브 파일 존재 여부 확인하여 초기화 방식 결정
+                bool hasSaveFile = SaveManager.Instance != null && SaveManager.Instance.HasSaveFile;
+
+                if (hasSaveFile)
+                {
+                    // 세이브 파일이 있으면 기본 초기화만 수행 (층 정보는 나중에 로드)
+                    InitializeGameWithoutFloorReset();
+                }
+                else
+                {
+                    // 세이브 파일이 없으면 전체 초기화 수행
+                    InitializeGame();
+                }
             }
             else
             {
@@ -209,6 +225,41 @@ namespace Maglin.Core
 
             if (debugMode)
                 Debug.Log("[FloorManager] 게임 초기화 완료");
+        }
+
+        /// <summary>
+        /// 세이브 파일이 있을 때 사용하는 초기화 (층 정보 리셋 없음)
+        /// </summary>
+        private void InitializeGameWithoutFloorReset()
+        {
+            if (debugMode)
+                Debug.Log("[FloorManager] 세이브 로드용 게임 초기화 시작");
+
+            // 층 정보는 건드리지 않고 기본 상태만 초기화
+            floorHistory.Clear();
+            isProcessingFloor = false;
+
+            // 현재 SO들 초기화
+            currentBattleStage = null;
+            currentBattle = null;
+            currentEvent = null;
+
+            // 인스펙터 디스플레이도 초기화
+            currentBattleStageDisplay = null;
+            currentBattleDisplay = null;
+            currentEventDisplay = null;
+
+            // 게임 상태 초기화
+            currentState = GameState.Loading;
+            previousState = GameState.Loading;
+            isTransitioning = false;
+
+            // 초기화 완료 표시
+            isGameInitialized = true;
+            OnGameInitialized?.Invoke();
+
+            if (debugMode)
+                Debug.Log("[FloorManager] 세이브 로드용 게임 초기화 완료");
         }
 
         /// <summary>
@@ -445,6 +496,23 @@ namespace Maglin.Core
             OnFloorChanged?.Invoke(currentFloor);
 
             Debug.Log($"[FloorManager] 디버그: {currentFloor}층으로 이동");
+        }
+
+        /// <summary>
+        /// 세이브 로드 시 현재 층 설정 (내부 사용)
+        /// </summary>
+        public void SetCurrentFloorFromSave(int targetFloor)
+        {
+            if (targetFloor < 1 || targetFloor > maxFloor)
+            {
+                Debug.LogError($"[FloorManager] 잘못된 층 번호: {targetFloor}, 1층으로 리셋");
+                targetFloor = 1;
+            }
+
+            currentFloor = targetFloor;
+
+            if (debugMode)
+                Debug.Log($"[FloorManager] 세이브에서 {currentFloor}층으로 설정");
         }
         #endregion
 
@@ -783,6 +851,8 @@ namespace Maglin.Core
                 // 전투 상태로 전환
                 ChangeGameState(GameState.Battle);
 
+                // 모든 전투 데이터 로드 완료 후 자동 세이브 (BattleTestController에서 SO 설정 후 호출됨)
+
                 // 전투 씬으로 전환
                 StartCoroutine(LoadBattleScene(selectedStage));
             }
@@ -803,6 +873,9 @@ namespace Maglin.Core
 
             // 상점 상태로 전환
             ChangeGameState(GameState.Shop);
+
+            // 상점 데이터 로드 완료 후 자동 세이브
+            OnFloorDataLoadCompleted();
 
             // 상점 씬으로 전환
             StartCoroutine(LoadShopScene());
@@ -830,6 +903,9 @@ namespace Maglin.Core
 
                 // 이벤트 상태로 전환
                 ChangeGameState(GameState.Event);
+
+                // 이벤트 데이터 로드 완료 후 자동 세이브
+                OnFloorDataLoadCompleted();
 
                 // 이벤트 씬으로 전환
                 StartCoroutine(LoadEventScene());
@@ -1119,6 +1195,13 @@ namespace Maglin.Core
             currentBattleDisplay = battleSO; // 인스펙터 디스플레이 업데이트
             if (debugMode)
                 Debug.Log($"[FloorManager] Current Battle set: {battleSO?.BattleName ?? "null"}");
+
+            // 전투 데이터 설정 완료 후 자동 세이브 (전투층인 경우에만)
+            if (CurrentFloorType == FloorType.Normal || CurrentFloorType == FloorType.Elite ||
+                CurrentFloorType == FloorType.Boss || CurrentFloorType == FloorType.Start)
+            {
+                OnFloorDataLoadCompleted();
+            }
         }
 
         /// <summary>
@@ -1137,6 +1220,61 @@ namespace Maglin.Core
 
             if (debugMode)
                 Debug.Log("[FloorManager] All current SOs cleared");
+        }
+        #endregion
+
+        #region Save System Integration
+        /// <summary>
+        /// 자동 세이브 활성화/비활성화
+        /// </summary>
+        public void SetAutoSaveEnabled(bool enabled)
+        {
+            autoSaveEnabled = enabled;
+
+            if (debugMode)
+                Debug.Log($"[FloorManager] 자동 세이브: {(enabled ? "활성화" : "비활성화")}");
+        }
+
+        /// <summary>
+        /// 현재 층 데이터가 모두 로드된 후 자동 세이브 실행
+        /// </summary>
+        private void TriggerAutoSave()
+        {
+            if (!autoSaveEnabled)
+            {
+                if (debugMode)
+                    Debug.Log("[FloorManager] 자동 세이브가 비활성화되어 있습니다.");
+                return;
+            }
+
+            if (SaveManager.Instance != null)
+            {
+                bool saveResult = SaveManager.Instance.SaveGame();
+
+                if (debugMode)
+                {
+                    if (saveResult)
+                        Debug.Log($"[FloorManager] 자동 세이브 완료: {currentFloor}층 ({CurrentFloorType})");
+                    else
+                        Debug.LogWarning("[FloorManager] 자동 세이브 실패");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("[FloorManager] SaveManager.Instance가 null입니다. 자동 세이브를 건너뜁니다.");
+            }
+        }
+
+        /// <summary>
+        /// 층 시작 시 모든 SO 데이터 로드 완료 후 호출
+        /// </summary>
+        private void OnFloorDataLoadCompleted()
+        {
+            if (debugMode)
+                Debug.Log($"[FloorManager] {currentFloor}층 데이터 로드 완료 - 자동 세이브 실행");
+
+            // 모든 층 데이터가 로드된 후 자동 세이브
+            TriggerAutoSave();
         }
         #endregion
 

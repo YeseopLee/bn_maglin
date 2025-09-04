@@ -124,7 +124,18 @@ namespace Maglin.Core
         /// </summary>
         private void InitializeCoreManagers()
         {
-            // FloorManager 초기화 (가장 먼저)
+            // SaveManager 초기화 (가장 먼저)
+            if (SaveManager.Instance == null)
+            {
+                var saveManagerObj = new GameObject("SaveManager");
+                saveManagerObj.AddComponent<SaveManager>();
+                DontDestroyOnLoad(saveManagerObj);
+
+                if (debugMode)
+                    Debug.Log("[MainGameController] SaveManager 생성 완료");
+            }
+
+            // FloorManager 초기화
             if (FloorManager.Instance == null)
             {
                 // FloorManager는 씬에 이미 있어야 함
@@ -288,10 +299,23 @@ namespace Maglin.Core
 
                 await Task.Delay(300); // 짧은 로딩 시간
 
-                // 2. FloorManager 확인 및 게임 시작 준비
+                // 2. FloorManager와 SaveManager 확인
                 if (FloorManager.Instance == null)
                 {
                     Debug.LogError("[MainGameController] FloorManager가 없어서 게임을 시작할 수 없습니다!");
+
+                    if (LoadingManager.Instance != null)
+                    {
+                        await LoadingManager.Instance.HideLoading();
+                    }
+
+                    startButton.interactable = true;
+                    return;
+                }
+
+                if (SaveManager.Instance == null)
+                {
+                    Debug.LogError("[MainGameController] SaveManager가 없어서 게임을 시작할 수 없습니다!");
 
                     if (LoadingManager.Instance != null)
                     {
@@ -307,10 +331,43 @@ namespace Maglin.Core
                     LoadingManager.Instance.UpdateToGameDataInit();
                 }
 
-                // 3. 디버그 설정 적용
+                // 3. 세이브 데이터 처리
+                bool hasExistingSave = SaveManager.Instance.HasSaveFile;
+                GameSaveData saveData = null;
+
+                if (hasExistingSave && !skipToFloor)
+                {
+                    // 기존 세이브 파일 로드
+                    saveData = SaveManager.Instance.LoadGame();
+
+                    if (saveData != null)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[MainGameController] 기존 세이브 로드: {saveData.currentFloor}층");
+
+                        // 세이브 데이터를 게임에 적용
+                        SaveManager.Instance.ApplySaveDataToGame(saveData);
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[MainGameController] 세이브 로드 실패, 새 게임 시작");
+                        hasExistingSave = false;
+                    }
+                }
+                else if (!hasExistingSave)
+                {
+                    // 새 세이브 파일 생성
+                    SaveManager.Instance.CreateNewSaveFile();
+                    if (debugMode)
+                        Debug.Log("[MainGameController] 새 세이브 파일 생성");
+                }
+
+                // 4. 디버그 설정 적용 (세이브보다 우선)
                 if (skipToFloor && debugMode)
                 {
                     FloorManager.Instance.SetFloor(skipFloorNumber);
+                    if (debugMode)
+                        Debug.Log($"[MainGameController] 디버그 모드: {skipFloorNumber}층으로 건너뜀");
                 }
 
                 await Task.Delay(400);
@@ -329,23 +386,38 @@ namespace Maglin.Core
 
                 await Task.Delay(200);
 
-                // 4. 로딩 화면 숨기기
+                // 5. 로딩 화면 숨기기
                 if (LoadingManager.Instance != null)
                 {
                     await LoadingManager.Instance.HideLoading();
                 }
 
-                // 5. 씬 전환과 함께 게임 시작
-                if (SceneTransitionManager.Instance != null)
+                // 6. 게임 시작 방식 결정
+                if (hasExistingSave && saveData != null && !skipToFloor)
                 {
-                    // 페이드 효과와 함께 전투 씬으로 전환
-                    string battleSceneName = FloorManager.Instance?.BattleSceneName ?? "TestBattleScene";
-                    await SceneTransitionManager.Instance.TransitionToScene(battleSceneName, 0.8f, 1.0f);
+                    // 세이브된 층에서 이어서 시작
+                    if (debugMode)
+                        Debug.Log($"[MainGameController] 저장된 게임 이어하기: {saveData.currentFloor}층");
+
+                    FloorManager.Instance.StartCurrentFloor();
                 }
                 else
                 {
-                    // 기존 방식으로 게임 시작 (백업)
-                    FloorManager.Instance.StartNewGame();
+                    // 새 게임 시작
+                    if (debugMode)
+                        Debug.Log("[MainGameController] 새 게임 시작");
+
+                    if (SceneTransitionManager.Instance != null)
+                    {
+                        // 페이드 효과와 함께 전투 씬으로 전환
+                        string battleSceneName = FloorManager.Instance?.BattleSceneName ?? "TestBattleScene";
+                        await SceneTransitionManager.Instance.TransitionToScene(battleSceneName, 0.8f, 1.0f);
+                    }
+                    else
+                    {
+                        // 기존 방식으로 게임 시작 (백업)
+                        FloorManager.Instance.StartNewGame();
+                    }
                 }
             }
             catch (System.Exception e)
@@ -394,11 +466,17 @@ namespace Maglin.Core
         public void PrintManagerStatus()
         {
             Debug.Log("=== Manager Status ===");
+            Debug.Log($"SaveManager: {(SaveManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"FloorManager: {(FloorManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"PlayerManager: {(PlayerManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"CardManager: {(CardManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"AudioManager: {(AudioManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"RelicManager: {(RelicManager.Instance != null ? "✓" : "✗")}");
+
+            if (SaveManager.Instance != null)
+            {
+                Debug.Log($"Save File Exists: {SaveManager.Instance.HasSaveFile}");
+            }
         }
         #endregion
     }

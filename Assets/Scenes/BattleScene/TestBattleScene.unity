@@ -1486,7 +1486,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53088569d052245a4961e6d07d4d9eeb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugMode: 1
+  debugMode: 0
   enableSpawnAnimations: 1
   useSequentialSpawn: 1
 --- !u!4 &340597818
@@ -1533,7 +1533,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5817b1c5711b34617893464438106619, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugMode: 1
+  debugMode: 0
 --- !u!4 &349089489
 Transform:
   m_ObjectHideFlags: 0
@@ -3165,7 +3165,7 @@ MonoBehaviour:
   useScaleEffect: 1
   useRotationEffect: 1
   useGlowEffect: 1
-  debugMode: 1
+  debugMode: 0
 --- !u!4 &658120348
 Transform:
   m_ObjectHideFlags: 0
@@ -3494,7 +3494,7 @@ MonoBehaviour:
   - {fileID: 805159052}
   - {fileID: 450451973}
   skipRewardButton: {fileID: 275697070}
-  debugMode: 1
+  debugMode: 0
 --- !u!1 &734061672
 GameObject:
   m_ObjectHideFlags: 0
@@ -4587,7 +4587,7 @@ MonoBehaviour:
   cardRewardPool: {fileID: 0}
   relicRewardPool: {fileID: 0}
   rewardConfig: {fileID: 11400000, guid: da4fcb9f4762948ad92e4d0c7ac1a1ca, type: 2}
-  debugMode: 1
+  debugMode: 0
 --- !u!4 &986430283
 Transform:
   m_ObjectHideFlags: 0
@@ -4726,7 +4726,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   playerGridPosition: {x: 0, y: 0}
-  debugMode: 1
+  debugMode: 0
   isBattleReady: 0
 --- !u!1 &1014133939
 GameObject:
@@ -6103,7 +6103,7 @@ MonoBehaviour:
   testCards: []
   testBattleStage: {fileID: 0}
   useTestMode: 0
-  debugMode: 1
+  debugMode: 0
 --- !u!4 &1098374817
 Transform:
   m_ObjectHideFlags: 0
