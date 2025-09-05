@@ -17,7 +17,7 @@ MonoBehaviour:
   eventImage: {fileID: 0}
   minFloor: 1
   maxFloor: 999
-  spawnWeight: 1
+  spawnWeight: 0.1
   isOneTimeOnly: 0
   choices:
   - choiceText: choice 1
@@ -27,6 +27,7 @@ MonoBehaviour:
       amount: 5
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -38,6 +39,7 @@ MonoBehaviour:
       amount: -1
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -48,6 +50,7 @@ MonoBehaviour:
       amount: 10
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -59,6 +62,7 @@ MonoBehaviour:
       amount: -1
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -69,6 +73,7 @@ MonoBehaviour:
       amount: 10
       cardData: {fileID: 11400000, guid: 3c2f27f5a520449bca484d621b5efd7b, type: 2}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -77,6 +82,7 @@ MonoBehaviour:
       amount: 10
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -87,16 +93,18 @@ MonoBehaviour:
       amount: -1
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
-  - choiceText: choice 3
+  - choiceText: choice 3 battle
     resultText: choice 3 selected
     rewards:
-    - rewardType: 2
-      amount: 10
-      cardData: {fileID: 11400000, guid: 3c2f27f5a520449bca484d621b5efd7b, type: 2}
+    - rewardType: 7
+      amount: 0
+      cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 11400000, guid: a04d41da3094d4652979a72820083345, type: 2}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -105,6 +113,7 @@ MonoBehaviour:
       amount: 10
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -115,6 +124,7 @@ MonoBehaviour:
       amount: -1
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0

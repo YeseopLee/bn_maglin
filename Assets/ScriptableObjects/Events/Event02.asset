@@ -27,6 +27,7 @@ MonoBehaviour:
       amount: 5
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -38,6 +39,7 @@ MonoBehaviour:
       amount: -1
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -48,6 +50,7 @@ MonoBehaviour:
       amount: 8
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
@@ -59,6 +62,30 @@ MonoBehaviour:
       amount: -1
       cardData: {fileID: 0}
       relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+  - choiceText: choice 3
+    resultText: choice 3 selected
+    rewards:
+    - rewardType: 7
+      amount: 0
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 11400000, guid: a04d41da3094d4652979a72820083345, type: 2}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+    penalties: []
+    successRate: 1
+    failureText: Failed
+    failurePenalties:
+    - rewardType: 0
+      amount: -1
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0

@@ -19,7 +19,6 @@ namespace Maglin.UI
         Event,          // 이벤트 UI
         GameOver,       // 게임 오버 UI
         Victory,        // 승리 UI
-        Loading,        // 로딩 UI
         Pause,          // 일시정지 UI
         Settings        // 설정 UI
     }
@@ -73,13 +72,7 @@ namespace Maglin.UI
                 if (_instance == null)
                 {
                     _instance = FindObjectOfType<UIManager>();
-
-                    if (_instance == null)
-                    {
-                        GameObject uiManagerObject = new GameObject("UIManager");
-                        _instance = uiManagerObject.AddComponent<UIManager>();
-                        DontDestroyOnLoad(uiManagerObject);
-                    }
+                    // 자동 생성 제거됨 - 수동으로 씬에 배치해야 함
                 }
                 return _instance;
             }
@@ -102,26 +95,14 @@ namespace Maglin.UI
         /// </summary>
         public static event Action<UIPanel> OnTransitionCompleted;
 
-        /// <summary>
-        /// 로딩 시작 이벤트
-        /// </summary>
-        public static event Action OnLoadingStarted;
-
-        /// <summary>
-        /// 로딩 완료 이벤트
-        /// </summary>
-        public static event Action OnLoadingCompleted;
+        // 로딩 이벤트 제거됨 (AdditiveSceneLoader 사용)
         #endregion
 
         #region Fields
         [Header("UI 패널들")]
         [SerializeField] private List<UIPanelInfo> panels = new List<UIPanelInfo>();
 
-        [Header("로딩 설정")]
-        [SerializeField] private GameObject loadingOverlay;
-        [SerializeField] private CanvasGroup loadingCanvasGroup;
-        [SerializeField] private Slider loadingProgressBar;
-        [SerializeField] private Text loadingText;
+        // 로딩 관련 필드 제거됨 (새로운 AdditiveSceneLoader 사용)
 
         [Header("전환 설정")]
         [SerializeField] private float defaultTransitionDuration = 0.3f;
@@ -140,9 +121,7 @@ namespace Maglin.UI
         private bool isTransitioning = false;
         private Coroutine currentTransition;
 
-        // 로딩 관련
-        private bool isLoading = false;
-        private Coroutine loadingCoroutine;
+        // 로딩 관련 변수 제거됨
 
         // 패널 검색 캐시
         private Dictionary<UIPanel, UIPanelInfo> panelLookup = new Dictionary<UIPanel, UIPanelInfo>();
@@ -167,10 +146,7 @@ namespace Maglin.UI
         /// </summary>
         public bool IsTransitioning => isTransitioning;
 
-        /// <summary>
-        /// 로딩 중인지 여부
-        /// </summary>
-        public bool IsLoading => isLoading;
+        // IsLoading 프로퍼티 제거됨
 
         /// <summary>
         /// 패널 히스토리 깊이
@@ -232,8 +208,7 @@ namespace Maglin.UI
                 FloorManager.OnGameInitialized += OnGameInitialized;
             }
 
-            // 로딩 UI 초기화
-            InitializeLoadingUI();
+            // 로딩 UI 초기화 제거됨
 
             isInitialized = true;
 
@@ -276,27 +251,7 @@ namespace Maglin.UI
                 Debug.Log($"[UIManager] 패널 캐시 구축 완료: {panelLookup.Count}개");
         }
 
-        /// <summary>
-        /// 로딩 UI 초기화
-        /// </summary>
-        private void InitializeLoadingUI()
-        {
-            if (loadingOverlay != null)
-            {
-                if (loadingCanvasGroup == null)
-                {
-                    loadingCanvasGroup = loadingOverlay.GetComponent<CanvasGroup>();
-                    if (loadingCanvasGroup == null)
-                    {
-                        loadingCanvasGroup = loadingOverlay.AddComponent<CanvasGroup>();
-                    }
-                }
-
-                // 로딩 UI 초기 숨김
-                loadingOverlay.SetActive(false);
-                loadingCanvasGroup.alpha = 0f;
-            }
-        }
+        // InitializeLoadingUI 메서드 제거됨
 
         /// <summary>
         /// 게임 초기화 완료 시 호출
@@ -360,8 +315,6 @@ namespace Maglin.UI
                     return UIPanel.GameOver;
                 case GameState.Victory:
                     return UIPanel.Victory;
-                case GameState.Loading:
-                    return UIPanel.Loading;
                 default:
                     return UIPanel.None;
             }
@@ -588,153 +541,7 @@ namespace Maglin.UI
         }
         #endregion
 
-        #region Loading System
-        /// <summary>
-        /// 로딩 시작
-        /// </summary>
-        public void StartLoading(string loadingMessage = "로딩 중...")
-        {
-            if (isLoading)
-            {
-                if (debugMode)
-                    Debug.LogWarning("[UIManager] 이미 로딩 중입니다.");
-                return;
-            }
-
-            if (loadingOverlay == null)
-            {
-                Debug.LogError("[UIManager] 로딩 오버레이가 설정되지 않았습니다.");
-                return;
-            }
-
-            if (debugMode)
-                Debug.Log($"[UIManager] 로딩 시작: {loadingMessage}");
-
-            isLoading = true;
-
-            if (loadingText != null)
-            {
-                loadingText.text = loadingMessage;
-            }
-
-            if (loadingProgressBar != null)
-            {
-                loadingProgressBar.value = 0f;
-            }
-
-            loadingOverlay.SetActive(true);
-
-            if (loadingCoroutine != null)
-            {
-                StopCoroutine(loadingCoroutine);
-            }
-
-            loadingCoroutine = StartCoroutine(FadeInLoading());
-            OnLoadingStarted?.Invoke();
-        }
-
-        /// <summary>
-        /// 로딩 진행도 업데이트
-        /// </summary>
-        public void UpdateLoadingProgress(float progress, string message = null)
-        {
-            if (!isLoading) return;
-
-            if (loadingProgressBar != null)
-            {
-                loadingProgressBar.value = Mathf.Clamp01(progress);
-            }
-
-            if (!string.IsNullOrEmpty(message) && loadingText != null)
-            {
-                loadingText.text = message;
-            }
-        }
-
-        /// <summary>
-        /// 로딩 종료
-        /// </summary>
-        public void StopLoading()
-        {
-            if (!isLoading)
-            {
-                if (debugMode)
-                    Debug.LogWarning("[UIManager] 로딩 중이 아닙니다.");
-                return;
-            }
-
-            if (debugMode)
-                Debug.Log("[UIManager] 로딩 종료");
-
-            if (loadingCoroutine != null)
-            {
-                StopCoroutine(loadingCoroutine);
-            }
-
-            loadingCoroutine = StartCoroutine(FadeOutLoading());
-        }
-
-        /// <summary>
-        /// 로딩 UI 페이드 인
-        /// </summary>
-        private IEnumerator FadeInLoading()
-        {
-            if (loadingCanvasGroup == null) yield break;
-
-            float duration = 0.3f;
-            float elapsed = 0f;
-
-            loadingCanvasGroup.alpha = 0f;
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                loadingCanvasGroup.alpha = elapsed / duration;
-                yield return null;
-            }
-
-            loadingCanvasGroup.alpha = 1f;
-        }
-
-        /// <summary>
-        /// 로딩 UI 페이드 아웃
-        /// </summary>
-        private IEnumerator FadeOutLoading()
-        {
-            if (loadingCanvasGroup == null)
-            {
-                CompleteLoadingFadeOut();
-                yield break;
-            }
-
-            float duration = 0.3f;
-            float elapsed = 0f;
-
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                loadingCanvasGroup.alpha = 1f - (elapsed / duration);
-                yield return null;
-            }
-
-            loadingCanvasGroup.alpha = 0f;
-            CompleteLoadingFadeOut();
-        }
-
-        /// <summary>
-        /// 로딩 페이드 아웃 완료 처리
-        /// </summary>
-        private void CompleteLoadingFadeOut()
-        {
-            if (loadingOverlay != null)
-            {
-                loadingOverlay.SetActive(false);
-            }
-
-            isLoading = false;
-            OnLoadingCompleted?.Invoke();
-        }
-        #endregion
+        // Loading System 전체 제거됨 (AdditiveSceneLoader 사용)
 
         #region Utility
         /// <summary>
@@ -776,7 +583,6 @@ namespace Maglin.UI
             Debug.Log($"Current Panel: {currentPanel}");
             Debug.Log($"Previous Panel: {previousPanel}");
             Debug.Log($"Is Transitioning: {isTransitioning}");
-            Debug.Log($"Is Loading: {isLoading}");
             Debug.Log($"History Depth: {panelHistory.Count}");
             Debug.Log($"Registered Panels: {panelLookup.Count}");
             Debug.Log($"Transition Effects: {enableTransitionEffects}");

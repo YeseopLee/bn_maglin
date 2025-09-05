@@ -1110,7 +1110,7 @@ namespace Maglin.Player
         /// <summary>
         /// 모든 스탯 변경 이벤트 발생
         /// </summary>
-        private void NotifyAllStatsChanged()
+        public void NotifyAllStatsChanged()
         {
             OnHealthChanged?.Invoke(currentHealth, calculatedMaxHealth);
             OnManaChanged?.Invoke(currentMana, calculatedMaxMana);
@@ -1198,8 +1198,8 @@ namespace Maglin.Player
 
                 OnPlayerAnimationChanged?.Invoke(currentAnimationState);
 
-                if (debugMode)
-                    Debug.Log($"[PlayerManager] 플레이어 애니메이션 상태 변경: {newState}");
+                // if (debugMode)
+                //     Debug.Log($"[PlayerManager] 플레이어 애니메이션 상태 변경: {newState}");
             }
         }
 

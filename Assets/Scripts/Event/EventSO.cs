@@ -1,6 +1,7 @@
 using UnityEngine;
 using Maglin.Cards;
 using Maglin.Relics;
+using Maglin.Battle;
 
 namespace Maglin.Event
 {
@@ -15,7 +16,8 @@ namespace Maglin.Event
         CardRemoval,    // 카드 제거
         Relic,          // 유물 획득
         MaxHealth,      // 최대 체력 증감
-        DeckUpgrade     // 덱 강화
+        DeckUpgrade,    // 덱 강화
+        Battle          // 전투 발생
     }
 
     /// <summary>
@@ -49,6 +51,7 @@ namespace Maglin.Event
         public int amount;                  // 수량 (골드, 체력 등)
         public CardSO cardData;             // 카드 타입인 경우
         public RelicSO relicData;           // 유물 타입인 경우
+        public BattleSO battleData;         // 전투 타입인 경우
 
         [Header("추가 설정")]
         public bool isRandom = false;       // 랜덤 요소가 있는지

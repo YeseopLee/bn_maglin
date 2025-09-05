@@ -56,6 +56,8 @@ namespace Maglin.Battle
         {
             if (_instance == this)
             {
+                // 이벤트 구독 해제
+                PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
                 _instance = null;
             }
         }
@@ -67,15 +69,28 @@ namespace Maglin.Battle
         /// </summary>
         public void InitializePlayerBattleManager()
         {
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 초기화 시작");
+
+            // 같은 씬으로 재진입하는 경우를 위해 기존 상태 초기화
             if (isInitialized)
             {
                 if (debugMode)
-                    Debug.Log("[PlayerBattleManager] 이미 초기화되어 있습니다.");
-                return;
-            }
+                    Debug.Log("[PlayerBattleManager] 재초기화 - 기존 상태 정리 중");
 
-            if (debugMode)
-                Debug.Log("[PlayerBattleManager] 초기화 시작");
+                // 기존 플레이어 게임오브젝트 정리
+                if (playerGameObject != null)
+                {
+                    if (GridFieldManager.Instance != null)
+                    {
+                        GridFieldManager.Instance.RemoveObjectFromGrid(playerGameObject);
+                    }
+                    DestroyImmediate(playerGameObject);
+                    playerGameObject = null;
+                }
+
+                isInitialized = false;
+            }
 
             // GridFieldManager 초기화 대기
             StartCoroutine(InitializeAfterGridReady());
@@ -103,6 +118,13 @@ namespace Maglin.Battle
             {
                 PlayerManager.Instance.OnBattleStart();
 
+                // UI 상태 즉시 업데이트 (첫 번째 전투와 동일하게)
+                PlayerManager.Instance.NotifyAllStatsChanged();
+
+                // 애니메이션 변경 이벤트 구독
+                PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
+                PlayerManager.OnPlayerAnimationChanged += UpdatePlayerSprite;
+
                 // 애니메이션이 시작되도록 강제로 업데이트
                 StartCoroutine(DelayedAnimationStart());
             }
@@ -120,6 +142,9 @@ namespace Maglin.Battle
         {
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 전투 종료 처리");
+
+            // 이벤트 구독 해제
+            PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
 
             // PlayerManager에 전투 종료 알림
             if (PlayerManager.Instance != null)
@@ -270,7 +295,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 플레이어 스프라이트 업데이트 (애니메이션 상태 변경 시 호출)
         /// </summary>
-        public void UpdatePlayerSprite()
+        public void UpdatePlayerSprite(PlayerManager.PlayerAnimationState animationState)
         {
             if (playerGameObject == null)
             {
@@ -325,6 +350,17 @@ namespace Maglin.Battle
             else
             {
                 Debug.LogError("[PlayerBattleManager] 플레이어 게임오브젝트에 SpriteRenderer 컴포넌트가 없습니다!");
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 스프라이트 업데이트 (매개변수 없는 버전 - 호환성 유지)
+        /// </summary>
+        public void UpdatePlayerSprite()
+        {
+            if (PlayerManager.Instance != null)
+            {
+                UpdatePlayerSprite(PlayerManager.Instance.CurrentAnimationState);
             }
         }
 

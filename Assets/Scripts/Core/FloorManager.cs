@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using System;
+using System.Threading.Tasks;
 using Maglin.Event;
 using Maglin.Shop;
 using Maglin.Battle;
@@ -18,8 +19,7 @@ namespace Maglin.Core
         Shop,           // 상점
         Event,          // 이벤트
         GameOver,       // 게임 오버
-        Victory,        // 승리
-        Loading         // 로딩
+        Victory         // 승리
     }
 
     /// <summary>
@@ -96,8 +96,7 @@ namespace Maglin.Core
         [SerializeField] private BattleStageSO[] eliteBattleStages;
         [SerializeField] private BattleStageSO[] bossBattleStages;
 
-        [Header("Event 설정")]
-        [SerializeField] private EventSO[] availableEvents;
+        // Event 설정은 EventManager에서 관리
 
         [Header("현재 진행중인 SO 정보 (읽기 전용)")]
         [Tooltip("현재 층에서 사용 중인 배틀 스테이지를 표시합니다.")]
@@ -158,6 +157,10 @@ namespace Maglin.Core
         private BattleSO currentBattle;
         private EventSO currentEvent;
 
+        // 이벤트 전투 모드 관련
+        private bool isEventBattleMode = false;
+        private EventSO savedEventForBattle = null;
+
         // 현재 SO 정보 프로퍼티들
         public BattleStageSO CurrentBattleStage => currentBattleStage;
         public BattleSO CurrentBattle => currentBattle;
@@ -166,6 +169,9 @@ namespace Maglin.Core
         // 게임 초기화 완료 여부
         public bool IsGameInitialized => isGameInitialized;
         public bool IsTransitioning => isTransitioning;
+
+        // 이벤트 전투 모드 프로퍼티
+        public bool IsEventBattleMode => isEventBattleMode;
 
         private void Awake()
         {
@@ -215,8 +221,8 @@ namespace Maglin.Core
             InitializeFloorSystem();
 
             // 게임 상태 초기화
-            currentState = GameState.Loading;
-            previousState = GameState.Loading;
+            currentState = GameState.MainMenu;
+            previousState = GameState.MainMenu;
             isTransitioning = false;
 
             // 초기화 완료 표시
@@ -250,8 +256,8 @@ namespace Maglin.Core
             currentEventDisplay = null;
 
             // 게임 상태 초기화
-            currentState = GameState.Loading;
-            previousState = GameState.Loading;
+            currentState = GameState.MainMenu;
+            previousState = GameState.MainMenu;
             isTransitioning = false;
 
             // 초기화 완료 표시
@@ -379,9 +385,6 @@ namespace Maglin.Core
                     // TODO: 승리 처리
                     break;
 
-                case GameState.Loading:
-                    // TODO: 로딩 화면 표시
-                    break;
             }
         }
 
@@ -408,9 +411,6 @@ namespace Maglin.Core
                     // TODO: 이벤트 시스템 정리
                     break;
 
-                case GameState.Loading:
-                    // TODO: 로딩 화면 숨김
-                    break;
             }
         }
 
@@ -612,7 +612,14 @@ namespace Maglin.Core
         /// </summary>
         public void CompleteCurrentFloor()
         {
-            Debug.Log($"[FloorManager] CompleteCurrentFloor 호출됨. isProcessingFloor: {isProcessingFloor}");
+            Debug.Log($"[FloorManager] CompleteCurrentFloor 호출됨. isProcessingFloor: {isProcessingFloor}, isEventBattleMode: {isEventBattleMode}");
+
+            // 이벤트 전투 모드인 경우 특별 처리
+            if (isEventBattleMode)
+            {
+                CompleteEventBattle();
+                return;
+            }
 
             if (!isProcessingFloor)
             {
@@ -658,6 +665,76 @@ namespace Maglin.Core
                 Debug.Log($"[FloorManager] 보상 화면 표시하지 않음. 바로 다음 층 진행");
                 FinishFloorCompletion();
             }
+        }
+
+        /// <summary>
+        /// 이벤트 전투 완료 처리
+        /// </summary>
+        private void CompleteEventBattle()
+        {
+            Debug.Log($"[FloorManager] 이벤트 전투 완료 처리 시작");
+
+            // 일반 전투 보상 표시
+            ShowBattleRewards(currentFloor, FloorType.Normal);
+
+            // RewardManager 이벤트 구독 (이벤트 복귀용)
+            if (Battle.RewardManager.Instance != null)
+            {
+                Battle.RewardManager.Instance.OnRewardsCompleted -= OnEventBattleRewardsCompleted;
+                Battle.RewardManager.Instance.OnRewardsCompleted += OnEventBattleRewardsCompleted;
+            }
+        }
+
+        /// <summary>
+        /// 이벤트 전투 보상 완료 시 호출
+        /// </summary>
+        private void OnEventBattleRewardsCompleted()
+        {
+            Debug.Log("[FloorManager] 이벤트 전투 보상 완료 - 원래 이벤트로 복귀");
+
+            // 이벤트 구독 해제
+            if (Battle.RewardManager.Instance != null)
+            {
+                Battle.RewardManager.Instance.OnRewardsCompleted -= OnEventBattleRewardsCompleted;
+            }
+
+            // 원래 이벤트 복원
+            if (savedEventForBattle != null)
+            {
+                currentEvent = savedEventForBattle;
+                currentEventDisplay = savedEventForBattle;
+            }
+
+            // 이벤트 전투 모드 해제
+            isEventBattleMode = false;
+            savedEventForBattle = null;
+
+            // 이벤트 씬으로 복귀
+            ReturnToEventScene();
+        }
+
+        /// <summary>
+        /// 이벤트 씬으로 복귀
+        /// </summary>
+        private async void ReturnToEventScene()
+        {
+            Debug.Log("[FloorManager] 이벤트 씬으로 복귀 시작 (새로운 로딩 시스템)");
+
+            if (AdditiveSceneLoader.Instance != null)
+            {
+                await AdditiveSceneLoader.Instance.LoadSceneWithTransition(eventSceneName);
+            }
+            else
+            {
+                // 폴백: 기존 방식
+                var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(eventSceneName);
+                while (!asyncLoad.isDone)
+                {
+                    await Task.Yield();
+                }
+            }
+
+            Debug.Log("[FloorManager] 이벤트 씬 복귀 완료");
         }
 
         /// <summary>
@@ -767,21 +844,16 @@ namespace Maglin.Core
             OnFloorTypeChanged?.Invoke(CurrentFloorType);
 
             // 메인 게임 씬으로 복귀 후 새로운 층 시작
-            StartCoroutine(ProceedToNextFloorSequence());
+            ProceedToNextFloorSequence();
         }
 
         /// <summary>
-        /// 다음 층 진행 시퀀스
+        /// 다음 층 진행 시퀀스 (새로운 로딩 시스템)
         /// </summary>
-        private System.Collections.IEnumerator ProceedToNextFloorSequence()
+        private void ProceedToNextFloorSequence()
         {
-            // 메인 게임 씬으로 복귀
-            yield return StartCoroutine(ReturnToMainGameScene());
-
-            // 잠시 대기 후 새로운 층 시작
-            yield return new WaitForSeconds(0.5f);
-
-            // 새로운 층 시작
+            // 메인 게임 씬으로 복귀하지 않고 바로 새로운 층 시작
+            // AdditiveSceneLoader가 현재 씬을 자동으로 언로드하고 새로운 씬을 로드할 것임
             StartCurrentFloor();
         }
 
@@ -854,7 +926,7 @@ namespace Maglin.Core
                 // 모든 전투 데이터 로드 완료 후 자동 세이브 (BattleTestController에서 SO 설정 후 호출됨)
 
                 // 전투 씬으로 전환
-                StartCoroutine(LoadBattleScene(selectedStage));
+                LoadBattleScene(selectedStage);
             }
             else
             {
@@ -878,7 +950,7 @@ namespace Maglin.Core
             OnFloorDataLoadCompleted();
 
             // 상점 씬으로 전환
-            StartCoroutine(LoadShopScene());
+            LoadShopScene();
         }
 
         /// <summary>
@@ -886,101 +958,46 @@ namespace Maglin.Core
         /// </summary>
         private void StartEvent()
         {
-            // 현재 층에서 등장 가능한 이벤트 선택
-            EventSO selectedEvent = SelectRandomEvent(currentFloor);
-
-            if (selectedEvent != null)
+            // EventManager에게 이벤트 선택 위임
+            if (Event.EventManager.Instance != null)
             {
-                // 선택된 Event 저장
-                currentEvent = selectedEvent;
-                currentEventDisplay = selectedEvent; // 인스펙터 디스플레이 업데이트
+                EventSO selectedEvent = Event.EventManager.Instance.SelectEventForFloor(currentFloor);
 
-                if (debugMode)
+                if (selectedEvent != null)
                 {
-                    Debug.Log($"[FloorManager] Starting event on floor {currentFloor}");
-                    Debug.Log($"[FloorManager] Selected event: {selectedEvent.EventName}");
+                    // 선택된 Event 저장
+                    currentEvent = selectedEvent;
+                    currentEventDisplay = selectedEvent; // 인스펙터 디스플레이 업데이트
+
+                    if (debugMode)
+                    {
+                        Debug.Log($"[FloorManager] Starting event on floor {currentFloor}");
+                        Debug.Log($"[FloorManager] Selected event: {selectedEvent.EventName}");
+                    }
+
+                    // 이벤트 상태로 전환
+                    ChangeGameState(GameState.Event);
+
+                    // 이벤트 데이터 로드 완료 후 자동 세이브
+                    OnFloorDataLoadCompleted();
+
+                    // 이벤트 씬으로 전환
+                    LoadEventScene();
                 }
-
-                // 이벤트 상태로 전환
-                ChangeGameState(GameState.Event);
-
-                // 이벤트 데이터 로드 완료 후 자동 세이브
-                OnFloorDataLoadCompleted();
-
-                // 이벤트 씬으로 전환
-                StartCoroutine(LoadEventScene());
+                else
+                {
+                    Debug.LogWarning($"[FloorManager] No available events for floor {currentFloor}, falling back to battle");
+                    StartBattle(); // 이벤트가 없으면 일반 전투로 폴백
+                }
             }
             else
             {
-                Debug.LogWarning($"[FloorManager] No available events for floor {currentFloor}, falling back to battle");
-                StartBattle(); // 이벤트가 없으면 일반 전투로 폴백
+                Debug.LogError("[FloorManager] EventManager.Instance가 null입니다. 전투로 폴백합니다.");
+                StartBattle();
             }
         }
 
-        /// <summary>
-        /// 현재 층에서 등장 가능한 이벤트 중 랜덤 선택
-        /// </summary>
-        private EventSO SelectRandomEvent(int currentFloor)
-        {
-            if (availableEvents == null || availableEvents.Length == 0)
-            {
-                Debug.LogWarning("[FloorManager] 등록된 이벤트가 없습니다!");
-                return null;
-            }
-
-            // 현재 층에서 등장 가능하고 유효한 이벤트들 필터링
-            var validEvents = new List<EventSO>();
-            foreach (var eventSO in availableEvents)
-            {
-                if (eventSO != null &&
-                    eventSO.IsValid() &&
-                    eventSO.CanAppearOnFloor(currentFloor))
-                {
-                    validEvents.Add(eventSO);
-                }
-            }
-
-            if (validEvents.Count == 0)
-            {
-                Debug.LogWarning($"[FloorManager] {currentFloor}층에서 등장 가능한 이벤트가 없습니다. " +
-                    $"전체 이벤트 수: {availableEvents.Length}");
-                return null;
-            }
-
-            if (debugMode)
-                Debug.Log($"[FloorManager] {currentFloor}층에서 등장 가능한 이벤트 수: {validEvents.Count}");
-
-            // 가중치 기반 선택
-            float totalWeight = 0f;
-            foreach (var eventData in validEvents)
-            {
-                totalWeight += eventData.SpawnWeight;
-            }
-
-            if (totalWeight <= 0f)
-            {
-                Debug.LogWarning("[FloorManager] 이벤트 가중치 합이 0 이하입니다. 첫 번째 이벤트를 선택합니다.");
-                return validEvents[0];
-            }
-
-            float randomValue = UnityEngine.Random.Range(0f, totalWeight);
-            float currentWeight = 0f;
-
-            foreach (var eventData in validEvents)
-            {
-                currentWeight += eventData.SpawnWeight;
-                if (randomValue <= currentWeight)
-                {
-                    if (debugMode)
-                        Debug.Log($"[FloorManager] 선택된 이벤트: {eventData.EventName} (가중치: {eventData.SpawnWeight})");
-                    return eventData;
-                }
-            }
-
-            // 안전장치 - 이론적으로는 여기까지 오면 안됨
-            Debug.LogWarning("[FloorManager] 가중치 계산 오류로 마지막 이벤트를 선택합니다.");
-            return validEvents[validEvents.Count - 1];
-        }
+        // 이벤트 선택 로직은 EventManager로 이동됨
 
         /// <summary>
         /// 특정 층과 타입에 맞는 배틀 스테이지 가져오기 (BattleTestController에서 호출)
@@ -1050,93 +1067,150 @@ namespace Maglin.Core
 
         #region Scene Loading
         /// <summary>
-        /// 전투 씬 로드
+        /// 전투 씬 로드 (새로운 로딩 시스템)
         /// </summary>
-        private System.Collections.IEnumerator LoadBattleScene(BattleStageSO battleStage)
+        private async void LoadBattleScene(BattleStageSO battleStage)
         {
-            Debug.Log($"[FloorManager] Loading battle scene: {battleSceneName}");
+            Debug.Log($"[FloorManager] Loading battle scene: {battleSceneName} (새로운 로딩 시스템)");
 
             // 전투 스테이지 정보를 전역으로 저장 (BattleTestController가 접근할 수 있도록)
             SetCurrentBattleStage(battleStage);
 
-            var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(battleSceneName);
-
-            if (asyncLoad == null)
+            try
             {
-                Debug.LogError($"[FloorManager] 씬을 로드할 수 없습니다: {battleSceneName}. Build Settings에 씬이 추가되었는지 확인하세요.");
+                if (AdditiveSceneLoader.Instance != null)
+                {
+                    Debug.Log($"[FloorManager] AdditiveSceneLoader를 사용해서 {battleSceneName} 로드 중...");
+                    // 전투 시작 전 추가 대기 시간 (몬스터 스폰 애니메이션 준비)
+                    await AdditiveSceneLoader.Instance.LoadSceneWithTransition(battleSceneName, 0.3f);
+                }
+                else
+                {
+                    Debug.LogWarning("[FloorManager] AdditiveSceneLoader가 없어서 기존 방식으로 로드");
+                    // 폴백: 기존 방식
+                    var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(battleSceneName);
 
-                // 오류 발생 시 메인 메뉴로 복귀
+                    if (asyncLoad == null)
+                    {
+                        Debug.LogError($"[FloorManager] 씬을 로드할 수 없습니다: {battleSceneName}");
+                        ReturnToMainMenu();
+                        return;
+                    }
+
+                    while (!asyncLoad.isDone)
+                    {
+                        await Task.Yield();
+                    }
+
+                    // 씬 로딩 실패 확인
+                    if (asyncLoad.isDone && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != battleSceneName)
+                    {
+                        Debug.LogError($"[FloorManager] 씬 로딩에 실패했습니다: {battleSceneName}");
+                        ReturnToMainMenu();
+                        return;
+                    }
+                }
+
+                Debug.Log($"[FloorManager] Battle scene loaded successfully");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[FloorManager] 전투 씬 로드 중 오류 발생: {e.Message}");
                 ReturnToMainMenu();
-                yield break;
             }
-
-            while (!asyncLoad.isDone)
-            {
-                yield return null;
-            }
-
-            // 씬 로딩이 실패했는지 확인
-            if (asyncLoad.isDone && UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != battleSceneName)
-            {
-                Debug.LogError($"[FloorManager] 씬 로딩에 실패했습니다: {battleSceneName}");
-
-                // 오류 발생 시 메인 메뉴로 복귀
-                ReturnToMainMenu();
-                yield break;
-            }
-
-            Debug.Log($"[FloorManager] Battle scene loaded successfully");
         }
 
         /// <summary>
-        /// 상점 씬 로드
+        /// 상점 씬 로드 (새로운 로딩 시스템)
         /// </summary>
-        private System.Collections.IEnumerator LoadShopScene()
+        private async void LoadShopScene()
         {
-            Debug.Log($"[FloorManager] Loading shop scene: {shopSceneName}");
+            Debug.Log($"[FloorManager] Loading shop scene: {shopSceneName} (새로운 로딩 시스템)");
 
-            var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(shopSceneName);
-
-            while (!asyncLoad.isDone)
+            try
             {
-                yield return null;
-            }
+                if (AdditiveSceneLoader.Instance != null)
+                {
+                    await AdditiveSceneLoader.Instance.LoadSceneWithTransition(shopSceneName);
+                }
+                else
+                {
+                    // 폴백: 기존 방식
+                    var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(shopSceneName);
+                    while (!asyncLoad.isDone)
+                    {
+                        await Task.Yield();
+                    }
+                }
 
-            Debug.Log($"[FloorManager] Shop scene loaded successfully");
+                Debug.Log($"[FloorManager] Shop scene loaded successfully");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[FloorManager] 상점 씬 로드 중 오류 발생: {e.Message}");
+            }
         }
 
         /// <summary>
-        /// 이벤트 씬 로드
+        /// 이벤트 씬 로드 (새로운 로딩 시스템)
         /// </summary>
-        private System.Collections.IEnumerator LoadEventScene()
+        private async void LoadEventScene()
         {
-            Debug.Log($"[FloorManager] Loading event scene: {eventSceneName}");
+            Debug.Log($"[FloorManager] Loading event scene: {eventSceneName} (새로운 로딩 시스템)");
 
-            var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(eventSceneName);
-
-            while (!asyncLoad.isDone)
+            try
             {
-                yield return null;
-            }
+                if (AdditiveSceneLoader.Instance != null)
+                {
+                    await AdditiveSceneLoader.Instance.LoadSceneWithTransition(eventSceneName);
+                }
+                else
+                {
+                    // 폴백: 기존 방식
+                    var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(eventSceneName);
+                    while (!asyncLoad.isDone)
+                    {
+                        await Task.Yield();
+                    }
+                }
 
-            Debug.Log($"[FloorManager] Event scene loaded successfully");
+                Debug.Log($"[FloorManager] Event scene loaded successfully");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[FloorManager] 이벤트 씬 로드 중 오류 발생: {e.Message}");
+            }
         }
 
         /// <summary>
-        /// 메인 게임 씬으로 복귀
+        /// 메인 게임 씬으로 복귀 (새로운 로딩 시스템)
         /// </summary>
-        public System.Collections.IEnumerator ReturnToMainGameScene()
+        public async void ReturnToMainGameScene()
         {
-            Debug.Log($"[FloorManager] Returning to main game scene: {mainGameSceneName}");
+            Debug.Log($"[FloorManager] Returning to main game scene: {mainGameSceneName} (새로운 로딩 시스템)");
 
-            var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(mainGameSceneName);
-
-            while (!asyncLoad.isDone)
+            try
             {
-                yield return null;
-            }
+                if (AdditiveSceneLoader.Instance != null)
+                {
+                    await AdditiveSceneLoader.Instance.LoadSceneWithTransition(mainGameSceneName);
+                }
+                else
+                {
+                    // 폴백: 기존 방식
+                    var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(mainGameSceneName);
+                    while (!asyncLoad.isDone)
+                    {
+                        await Task.Yield();
+                    }
+                }
 
-            Debug.Log($"[FloorManager] Main game scene loaded successfully");
+                Debug.Log($"[FloorManager] Main game scene loaded successfully");
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[FloorManager] 메인 게임 씬 복귀 중 오류 발생: {e.Message}");
+            }
         }
 
 
@@ -1218,8 +1292,24 @@ namespace Maglin.Core
             currentBattleDisplay = null;
             currentEventDisplay = null;
 
+            // 이벤트 전투 모드 초기화
+            isEventBattleMode = false;
+            savedEventForBattle = null;
+
             if (debugMode)
                 Debug.Log("[FloorManager] All current SOs cleared");
+        }
+
+        /// <summary>
+        /// 이벤트 전투 모드 설정
+        /// </summary>
+        public void SetEventBattleMode(bool isEventBattle, EventSO eventToSave = null)
+        {
+            isEventBattleMode = isEventBattle;
+            savedEventForBattle = eventToSave;
+
+            if (debugMode)
+                Debug.Log($"[FloorManager] 이벤트 전투 모드: {(isEventBattle ? "활성화" : "비활성화")}");
         }
         #endregion
 

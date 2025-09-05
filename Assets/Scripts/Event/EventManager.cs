@@ -1,10 +1,12 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Maglin.Core;
 using Maglin.Cards;
 using Maglin.Relics;
 using Maglin.Player;
+using Maglin.Battle;
 
 namespace Maglin.Event
 {
@@ -33,6 +35,7 @@ namespace Maglin.Event
         // 현재 이벤트 정보
         public EventSO CurrentEvent => currentEvent;
         public bool IsEventActive => isEventActive;
+        public bool HasPendingBattle => pendingBattleData != null;
 
         // 한 번만 등장하는 이벤트 추적
         private HashSet<string> usedOneTimeEvents = new HashSet<string>();
@@ -103,6 +106,14 @@ namespace Maglin.Event
             }
 
             StartEvent(eventData);
+        }
+
+        /// <summary>
+        /// 외부에서 호출 가능한 이벤트 선택 메서드 (FloorManager에서 사용)
+        /// </summary>
+        public EventSO SelectEventForFloor(int currentFloor)
+        {
+            return SelectRandomEvent(currentFloor);
         }
 
         /// <summary>
@@ -257,6 +268,9 @@ namespace Maglin.Event
             OnRewardsApplied?.Invoke(penalties, isSuccess);
         }
 
+        // 대기 중인 전투 데이터
+        private BattleSO pendingBattleData = null;
+
         /// <summary>
         /// 개별 보상/페널티 적용
         /// </summary>
@@ -341,6 +355,15 @@ namespace Maglin.Event
                         Debug.Log("Deck upgrade activated");
                     }
                     break;
+
+                case EventRewardType.Battle:
+                    if (reward.battleData != null && !isPenalty)
+                    {
+                        // 전투를 즉시 시작하지 않고 대기 상태로 설정
+                        pendingBattleData = reward.battleData;
+                        Debug.Log($"Event battle queued: {reward.battleData.BattleName}");
+                    }
+                    break;
             }
         }
 
@@ -353,6 +376,23 @@ namespace Maglin.Event
                 return;
 
             Debug.Log($"Event ended: {currentEvent?.EventName}");
+
+            // 대기 중인 전투가 있는지 확인
+            if (pendingBattleData != null)
+            {
+                Debug.Log($"Starting pending battle: {pendingBattleData.BattleName}");
+                var battleToStart = pendingBattleData;
+                pendingBattleData = null; // 대기 상태 해제
+
+                // 이벤트를 먼저 종료하고 전투 시작
+                currentEvent = null;
+                isEventActive = false;
+                OnEventEnded?.Invoke();
+
+                // 전투 시작
+                StartEventBattle(battleToStart);
+                return;
+            }
 
             currentEvent = null;
             isEventActive = false;
@@ -396,6 +436,88 @@ namespace Maglin.Event
         public EventSO[] GetAvailableEvents()
         {
             return availableEvents;
+        }
+
+        /// <summary>
+        /// 이벤트에서 발생하는 전투 시작
+        /// </summary>
+        private void StartEventBattle(BattleSO battleData)
+        {
+            if (battleData == null)
+            {
+                Debug.LogError("[EventManager] BattleSO가 null입니다!");
+                return;
+            }
+
+            Debug.Log($"[EventManager] 이벤트 전투 시작: {battleData.BattleName}");
+
+            // FloorManager에 이벤트 전투 정보 설정
+            if (FloorManager.Instance != null)
+            {
+                // 현재 이벤트를 일시적으로 저장
+                var savedEvent = currentEvent;
+
+                // 게임 상태를 전투로 변경 (중요!)
+                FloorManager.Instance.ChangeGameState(GameState.Battle);
+
+                // FloorManager에 이벤트 전투 설정
+                FloorManager.Instance.SetCurrentBattle(battleData);
+                FloorManager.Instance.SetEventBattleMode(true, savedEvent);
+
+                // 전투 씬으로 전환
+                _ = LoadEventBattleSceneAsync();
+            }
+            else
+            {
+                Debug.LogError("[EventManager] FloorManager가 없습니다!");
+            }
+        }
+
+        /// <summary>
+        /// 이벤트 전투 씬 로드 (비동기)
+        /// </summary>
+        private async Task LoadEventBattleSceneAsync()
+        {
+            Debug.Log("[EventManager] 이벤트 전투 씬 로딩 시작");
+
+            try
+            {
+                // AdditiveSceneLoader를 사용한 전투 씬 전환
+                if (AdditiveSceneLoader.Instance != null)
+                {
+                    await AdditiveSceneLoader.Instance.LoadSceneWithTransition("TestBattleScene");
+                    Debug.Log("[EventManager] AdditiveSceneLoader를 통한 이벤트 전투 씬 로딩 완료");
+                }
+                else
+                {
+                    Debug.LogWarning("[EventManager] AdditiveSceneLoader가 없어서 기존 방식으로 로딩합니다.");
+                    await LoadEventBattleSceneFallbackAsync();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[EventManager] 이벤트 전투 씬 로딩 중 오류 발생: {ex.Message}");
+                // 폴백으로 기존 방식 시도
+                await LoadEventBattleSceneFallbackAsync();
+            }
+        }
+
+        /// <summary>
+        /// 폴백: 기존 방식으로 이벤트 전투 씬 로드 (비동기)
+        /// </summary>
+        private async Task LoadEventBattleSceneFallbackAsync()
+        {
+            Debug.Log("[EventManager] 기존 방식으로 이벤트 전투 씬 로딩");
+
+            // 전투 씬으로 전환
+            var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync("TestBattleScene");
+
+            while (!asyncLoad.isDone)
+            {
+                await Task.Yield();
+            }
+
+            Debug.Log("[EventManager] 기존 방식 이벤트 전투 씬 로딩 완료");
         }
     }
 }

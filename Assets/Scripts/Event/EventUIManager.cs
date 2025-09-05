@@ -377,6 +377,12 @@ namespace Maglin.Event
             if (string.IsNullOrEmpty(resultMessage))
                 resultMessage = isSuccess ? "성공했습니다!" : "실패했습니다...";
 
+            // 대기 중인 전투가 있다면 메시지에 추가
+            if (EventManager.Instance != null && EventManager.Instance.HasPendingBattle)
+            {
+                resultMessage += "\n\n전투가 시작됩니다!";
+            }
+
             ShowResult(resultMessage);
         }
 
@@ -685,6 +691,9 @@ namespace Maglin.Event
                     Debug.LogWarning("[EventUIManager] resultText가 null입니다!");
             }
 
+            // 계속 버튼 텍스트 업데이트
+            UpdateContinueButtonText();
+
             if (resultCanvasGroup != null)
             {
                 resultCanvasGroup.alpha = 1f;
@@ -697,6 +706,30 @@ namespace Maglin.Event
             {
                 if (debugMode)
                     Debug.LogError("[EventUIManager] resultCanvasGroup이 null입니다! 결과 UI를 표시할 수 없습니다.");
+            }
+        }
+
+        /// <summary>
+        /// 계속 버튼 텍스트 업데이트
+        /// </summary>
+        private void UpdateContinueButtonText()
+        {
+            if (continueButton == null) return;
+
+            var buttonText = continueButton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+            if (buttonText != null)
+            {
+                if (EventManager.Instance != null && EventManager.Instance.HasPendingBattle)
+                {
+                    buttonText.text = "전투 시작";
+                }
+                else
+                {
+                    buttonText.text = "계속";
+                }
+
+                if (debugMode)
+                    Debug.Log($"[EventUIManager] 계속 버튼 텍스트 업데이트: {buttonText.text}");
             }
         }
 

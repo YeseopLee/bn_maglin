@@ -4,12 +4,11 @@ using Maglin.Player;
 namespace Maglin.Event
 {
     /// <summary>
-    /// 이벤트 테스트를 위한 컨트롤러
+    /// 이벤트 테스트를 위한 컨트롤러 - EventManager의 실제 설정을 사용
     /// </summary>
     public class EventTestController : MonoBehaviour
     {
-        [Header("테스트 이벤트")]
-        [SerializeField] private EventSO[] testEvents;
+        [Header("테스트 설정")]
         [SerializeField] private int testFloor = 1;
 
         [Header("디버그")]
@@ -26,7 +25,7 @@ namespace Maglin.Event
         }
 
         /// <summary>
-        /// 테스트용 랜덤 이벤트 시작
+        /// EventManager의 실제 설정을 사용한 이벤트 시작
         /// </summary>
         private void StartRandomEventForTest()
         {
@@ -36,60 +35,74 @@ namespace Maglin.Event
                 return;
             }
 
-            if (testEvents == null || testEvents.Length == 0)
-            {
-                Debug.LogError("[EventTestController] 테스트 이벤트가 설정되지 않았습니다!");
-                return;
-            }
-
             if (debugMode)
             {
-                Debug.Log($"[EventTestController] {testFloor}층에서 이벤트 테스트 시작");
+                Debug.Log($"[EventTestController] {testFloor}층에서 실제 이벤트 시스템 테스트 시작");
                 LogCurrentStatus(); // 시작 시 현재 상태 출력
+                LogAvailableEvents(); // 사용 가능한 이벤트 로그
             }
 
-            // 랜덤 이벤트 선택
-            EventSO selectedEvent = testEvents[Random.Range(0, testEvents.Length)];
+            // EventManager에서 실제 이벤트 선택 로직 사용
+            EventSO selectedEvent = EventManager.Instance.SelectEventForFloor(testFloor);
 
-            if (debugMode)
-                Debug.Log($"[EventTestController] 선택된 이벤트: {selectedEvent.EventName}");
+            if (selectedEvent != null)
+            {
+                if (debugMode)
+                    Debug.Log($"[EventTestController] 선택된 이벤트: {selectedEvent.EventName} (가중치: {selectedEvent.SpawnWeight})");
 
-            EventManager.Instance.ForceStartEvent(selectedEvent);
+                EventManager.Instance.ForceStartEvent(selectedEvent);
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[EventTestController] {testFloor}층에서 사용 가능한 이벤트가 없습니다!");
+            }
         }
 
         /// <summary>
-        /// 특정 이벤트 강제 시작 (UI 버튼용)
+        /// 특정 이벤트 강제 시작 (UI 버튼용) - EventManager의 availableEvents에서 선택
         /// </summary>
         public void ForceStartEvent(int eventIndex)
         {
-            if (testEvents == null || eventIndex < 0 || eventIndex >= testEvents.Length)
+            if (EventManager.Instance == null)
             {
-                Debug.LogError($"[EventTestController] 잘못된 이벤트 인덱스: {eventIndex}");
+                Debug.LogError("[EventTestController] EventManager.Instance가 null입니다!");
                 return;
             }
 
-            if (EventManager.Instance != null)
+            var availableEvents = EventManager.Instance.GetAvailableEvents();
+            if (availableEvents == null || eventIndex < 0 || eventIndex >= availableEvents.Length)
             {
-                EventSO selectedEvent = testEvents[eventIndex];
+                Debug.LogError($"[EventTestController] 잘못된 이벤트 인덱스: {eventIndex} (사용 가능한 이벤트 수: {availableEvents?.Length ?? 0})");
+                return;
+            }
+
+            EventSO selectedEvent = availableEvents[eventIndex];
+            if (selectedEvent != null)
+            {
                 if (debugMode)
                     Debug.Log($"[EventTestController] 강제 이벤트 시작: {selectedEvent.EventName}");
 
                 EventManager.Instance.ForceStartEvent(selectedEvent);
             }
+            else
+            {
+                Debug.LogError($"[EventTestController] {eventIndex}번 이벤트가 null입니다!");
+            }
         }
 
         /// <summary>
-        /// Event01 시작 (UI 버튼용)
+        /// 첫 번째 이벤트 시작 (UI 버튼용)
         /// </summary>
-        public void StartEvent01()
+        public void StartFirstEvent()
         {
             ForceStartEvent(0);
         }
 
         /// <summary>
-        /// Event02 시작 (UI 버튼용)
+        /// 두 번째 이벤트 시작 (UI 버튼용)
         /// </summary>
-        public void StartEvent02()
+        public void StartSecondEvent()
         {
             ForceStartEvent(1);
         }
@@ -219,15 +232,34 @@ namespace Maglin.Event
                 Debug.LogWarning("  - EventManager.Instance가 null입니다!");
             }
 
-            if (testEvents != null)
+            LogAvailableEvents();
+        }
+
+        /// <summary>
+        /// EventManager의 사용 가능한 이벤트 로그 출력
+        /// </summary>
+        private void LogAvailableEvents()
+        {
+            if (EventManager.Instance != null)
             {
-                Debug.Log($"  - 사용 가능한 테스트 이벤트: {testEvents.Length}개");
-                for (int i = 0; i < testEvents.Length; i++)
+                var availableEvents = EventManager.Instance.GetAvailableEvents();
+                if (availableEvents != null && availableEvents.Length > 0)
                 {
-                    if (testEvents[i] != null)
+                    Debug.Log($"  - EventManager 사용 가능한 이벤트: {availableEvents.Length}개");
+                    for (int i = 0; i < availableEvents.Length; i++)
                     {
-                        Debug.Log($"    {i}: {testEvents[i].EventName} (층 {testEvents[i].MinFloor}-{testEvents[i].MaxFloor})");
+                        if (availableEvents[i] != null)
+                        {
+                            var eventSO = availableEvents[i];
+                            bool canAppear = eventSO.CanAppearOnFloor(testFloor);
+                            Debug.Log($"    {i}: {eventSO.EventName} (층 {eventSO.MinFloor}-{eventSO.MaxFloor}, 가중치 {eventSO.SpawnWeight}) " +
+                                    $"[{testFloor}층 출현 가능: {(canAppear ? "O" : "X")}]");
+                        }
                     }
+                }
+                else
+                {
+                    Debug.LogWarning("  - EventManager에 설정된 이벤트가 없습니다!");
                 }
             }
         }
@@ -265,21 +297,6 @@ namespace Maglin.Event
                 Debug.Log($"[EventTestController] 자동 시작: {autoStartEvent}");
         }
 
-        private void OnValidate()
-        {
-            // 에디터에서 testEvents 배열이 비어있다면 자동으로 찾아서 설정
-            if (testEvents == null || testEvents.Length == 0)
-            {
-                var events = Resources.FindObjectsOfTypeAll<EventSO>();
-                if (events.Length > 0)
-                {
-                    testEvents = new EventSO[Mathf.Min(events.Length, 10)]; // 최대 10개까지
-                    for (int i = 0; i < testEvents.Length; i++)
-                    {
-                        testEvents[i] = events[i];
-                    }
-                }
-            }
-        }
+        // OnValidate 제거 - 이제 EventManager의 availableEvents를 직접 사용
     }
 }

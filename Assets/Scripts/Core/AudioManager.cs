@@ -382,11 +382,7 @@ namespace Maglin.Audio
                 Player.PlayerManager.OnPlayerDeath += OnPlayerDeath;
             }
 
-            // UIManager 이벤트 구독
-            if (UI.UIManager.Instance != null)
-            {
-                UI.UIManager.OnPanelChanged += OnUIChanged;
-            }
+            // UIManager 연결 제거됨 (사용하지 않음)
 
             if (debugMode)
                 Debug.Log("[AudioManager] 매니저 간 연결 설정 완료");
@@ -456,13 +452,7 @@ namespace Maglin.Audio
             PlaySFX("PlayerDeath");
         }
 
-        /// <summary>
-        /// UI 변경 시 호출
-        /// </summary>
-        private void OnUIChanged(UI.UIPanel previousPanel, UI.UIPanel newPanel)
-        {
-            PlaySFX("UITransition");
-        }
+        // OnUIChanged 메서드 제거됨 (UIManager 미사용)
 
         /// <summary>
         /// 게임 상태에 따른 BGM 반환

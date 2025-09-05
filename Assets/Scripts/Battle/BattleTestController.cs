@@ -342,13 +342,6 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[BattleTestController] 매니저 초기화 시작");
 
-            // 새로운 전투를 위한 블랙스크린 생성 (씬 전환 시)
-            if (BattleUIManager.Instance != null)
-            {
-                BattleUIManager.Instance.CreateBlackScreenForNewBattle();
-                if (debugMode)
-                    Debug.Log("[BattleTestController] 새로운 전투용 블랙스크린 생성 완료");
-            }
 
             // GridFieldManager 초기화 (가장 먼저)
             if (GridFieldManager.Instance != null)
@@ -756,18 +749,142 @@ namespace Maglin.Battle
                 PlayerBattleManager.Instance.SetPlayerGridPosition(new Vector2Int(0, 0));
             }
 
-            // 몬스터 스폰 후 타겟 설정
-            StartCoroutine(SpawnMonstersAndSetTarget());
+            // BattleInitializationSequence 시작
+            StartCoroutine(ExecuteBattleInitialization());
+        }
+
+        /// <summary>
+        /// 전투 초기화 시퀀스 실행
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteBattleInitialization()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 전투 초기화 시퀀스 시작");
+
+            // 1단계: 먼저 몬스터 스폰 (애니메이션 없이 생성만)
+            yield return StartCoroutine(SpawnMonstersOnly());
+
+            // 2단계: BattleInitializationSequence 실행 (몬스터 애니메이션 처리)
+            if (BattleInitializationSequence.Instance != null)
+            {
+                // 초기화 시퀀스 실행
+                var initTask = BattleInitializationSequence.Instance.InitializeBattleSequence();
+
+                // Task 완료까지 대기
+                while (!initTask.IsCompleted)
+                {
+                    yield return null;
+                }
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] BattleInitializationSequence 완료");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] BattleInitializationSequence가 없음 - 직접 초기화 진행");
+
+                // 애니메이션 직접 처리
+                if (MonsterSpawnManager.Instance != null)
+                {
+                    MonsterSpawnManager.Instance.ProcessPendingAnimations();
+                    yield return new WaitForSeconds(1f);
+                }
+            }
+
+            // 3단계: 타겟 설정 및 전투 준비
+            SetupTargetsAndBattleReady();
 
             // 플레이어 턴 시작
             StartPlayerTurn();
 
             // UI 업데이트
             BattleUIManager.Instance?.UpdateAllUI();
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] 전투 초기화 및 시작 완료");
         }
 
         /// <summary>
-        /// 몬스터 스폰 후 타겟 설정 코루틴
+        /// 몬스터 스폰만 실행 (애니메이션 없이)
+        /// </summary>
+        private IEnumerator SpawnMonstersOnly()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 몬스터 스폰만 실행 시작");
+
+            // 사용할 배틀 스테이지 결정 (프로덕션 vs 테스트 모드)
+            BattleStageSO battleStageToUse = useTestMode ? testBattleStage : currentBattleStage;
+
+            if (debugMode)
+            {
+                Debug.Log($"[BattleTestController] 사용할 배틀스테이지: {battleStageToUse?.name ?? "null"}");
+                Debug.Log($"[BattleTestController] 모드: {(useTestMode ? "테스트" : "프로덕션")}");
+                Debug.Log($"[BattleTestController] MonsterSpawnManager 상태: {(MonsterSpawnManager.Instance != null ? "존재함" : "null")}");
+            }
+
+            // MonsterSpawnManager를 통해 몬스터 스폰
+            if (MonsterSpawnManager.Instance != null && battleStageToUse != null)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 몬스터 스폰 실행 중...");
+
+                // BattleStage에 SpawnMonstersFromBattleStage 메서드가 있다면 사용
+                var spawnMethod = typeof(MonsterSpawnManager).GetMethod("SpawnMonstersFromBattleStage");
+                if (spawnMethod != null && !useTestMode)
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 프로덕션 몬스터 스폰 메서드 사용");
+                    spawnMethod.Invoke(MonsterSpawnManager.Instance, new object[] { battleStageToUse });
+                }
+                else
+                {
+                    // 폴백: 테스트 몬스터 스폰 메서드 사용
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 테스트 몬스터 스폰 메서드 사용");
+                    MonsterSpawnManager.Instance.SpawnTestMonsters(battleStageToUse);
+                }
+            }
+            else
+            {
+                Debug.LogError($"[BattleTestController] 몬스터 스폰 실패! MonsterSpawnManager: {(MonsterSpawnManager.Instance != null ? "OK" : "NULL")}, BattleStage: {(battleStageToUse != null ? "OK" : "NULL")}");
+            }
+
+            // 스폰 완료까지 잠시 대기
+            yield return new WaitForSeconds(0.1f);
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] 몬스터 스폰만 실행 완료");
+        }
+
+        /// <summary>
+        /// 타겟 설정 및 전투 준비
+        /// </summary>
+        private void SetupTargetsAndBattleReady()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 타겟 설정 및 전투 준비");
+
+            // 타겟 설정
+            if (TargetManager.Instance != null)
+            {
+                if (TargetManager.Instance.CurrentTarget == null)
+                {
+                    TargetManager.Instance.SetTargetToClosest();
+                }
+
+                if (debugMode && TargetManager.Instance.CurrentTarget != null)
+                {
+                    Debug.Log($"[BattleTestController] 타겟 설정됨: {TargetManager.Instance.CurrentTarget.EnemyName}");
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] 타겟 설정 및 전투 준비 완료");
+        }
+
+        /// <summary>
+        /// 몬스터 스폰 후 타겟 설정 코루틴 (기존 메서드)
         /// </summary>
         private IEnumerator SpawnMonstersAndSetTarget()
         {
@@ -866,8 +983,27 @@ namespace Maglin.Battle
             // 매니저들에 턴 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
-            // 첫 번째 턴이 아닐 때만 카드 드로우 (초기 카드 드로우는 BattleInitializationSequence에서 처리)
-            if (currentTurn > 1 && CardManager.Instance != null)
+            // 첫 번째 턴 처리
+            if (currentTurn == 1)
+            {
+                // 이벤트 전투인 경우 초기화 시퀀스 실행
+                bool isEventBattle = FloorManager.Instance != null && FloorManager.Instance.IsEventBattleMode;
+                if (isEventBattle && BattleInitializationSequence.Instance != null)
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 이벤트 전투 첫 턴 - 초기화 시퀀스 실행");
+
+                    // 초기화 시퀀스를 실행 (몬스터 스폰 애니메이션 + 카드 드로우)
+                    _ = BattleInitializationSequence.Instance.InitializeBattleSequence();
+                    return; // 초기화 시퀀스가 완료되면 자동으로 턴이 계속됨
+                }
+                else if (debugMode)
+                {
+                    Debug.Log("[BattleTestController] 첫 번째 턴이므로 카드 드로우 생략 (초기화 시퀀스에서 처리됨)");
+                }
+            }
+            // 첫 번째 턴이 아닐 때만 카드 드로우
+            else if (CardManager.Instance != null)
             {
                 // PlayerManager의 MaxHandSize까지 드로우
                 var drawnCards = CardManager.Instance.DrawCardsToMax();
@@ -877,10 +1013,6 @@ namespace Maglin.Battle
                     int maxHandSize = PlayerManager.Instance?.MaxHandSize ?? 5;
                     Debug.Log($"[BattleTestController] {drawnCards.Count}장 드로우 완료 (최대 손패: {maxHandSize}장)");
                 }
-            }
-            else if (debugMode)
-            {
-                Debug.Log($"[BattleTestController] 첫 번째 턴이므로 카드 드로우 생략 (초기화 시퀀스에서 처리됨)");
             }
 
             // 조합 슬롯 초기화
@@ -2022,6 +2154,17 @@ namespace Maglin.Battle
         /// </summary>
         private void OnFloorStarted(FloorInfo floorInfo)
         {
+            // 이벤트 전투 모드 확인
+            if (FloorManager.Instance != null && FloorManager.Instance.IsEventBattleMode)
+            {
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 이벤트 전투 모드 감지");
+
+                // 이벤트 전투 처리
+                HandleEventBattle();
+                return;
+            }
+
             // 전투 관련 층만 처리
             if (floorInfo.floorType == FloorType.Normal ||
                 floorInfo.floorType == FloorType.Elite ||
@@ -2361,7 +2504,6 @@ namespace Maglin.Battle
             var cardUIPrefab = Resources.Load<GameObject>("Prefabs/CardUIPrefab");
             var relicPrefab = Resources.Load<GameObject>("Prefabs/RelicPrefab");
             var monsterPrefab = Resources.Load<GameObject>("Prefabs/MonsterPrefab");
-            var loadingUIPrefab = Resources.Load<GameObject>("Prefabs/UI/LoadingUIPrefab");
 
             // BattleUIManager에 참조 전달
             BattleUIManager.Instance.SetUIReferences(
@@ -2370,7 +2512,7 @@ namespace Maglin.Battle
                 elementSlot, active1Slot, active2Slot,
                 executeComboButton, clearComboButton,
                 fieldAreaImage, fieldEffectTurnsText,
-                cardUIPrefab, relicPrefab, monsterPrefab, loadingUIPrefab
+                cardUIPrefab, relicPrefab, monsterPrefab
             );
 
             if (debugMode)
@@ -2462,6 +2604,193 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[BattleTestController] CardDrawAnimationManager UI 참조 재설정 완료");
         }
+
+        /// <summary>
+        /// 이벤트 전투 처리
+        /// </summary>
+        private void HandleEventBattle()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 이벤트 전투 처리 시작");
+
+            // FloorManager에서 현재 전투 데이터 가져오기
+            if (FloorManager.Instance != null && FloorManager.Instance.GetCurrentBattle() != null)
+            {
+                var battleData = FloorManager.Instance.GetCurrentBattle();
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 이벤트 전투 데이터: {battleData.BattleName}");
+
+                // 임시 BattleStage 생성 (이벤트 전투용)
+                var tempStage = CreateEventBattleStage(battleData);
+                currentBattleStage = tempStage;
+
+                // 매니저들 초기화
+                InitializeManagers();
+
+                // 이벤트 전투용 카드 시스템 초기화 (중요!)
+                InitializeEventBattleCardSystem();
+
+                // 이벤트 전투 시작
+                StartEventBattleDirectly(battleData);
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] 이벤트 전투 데이터를 찾을 수 없습니다!");
+            }
+        }
+
+        /// <summary>
+        /// 이벤트 전투용 카드 시스템 초기화
+        /// </summary>
+        private void InitializeEventBattleCardSystem()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 이벤트 전투용 카드 시스템 초기화 시작");
+
+            if (CardManager.Instance != null)
+            {
+                // 스타터 덱을 현재 덱으로 복사하여 초기화 (일반 전투와 동일)
+                CardManager.Instance.InitializeDeckForNewGame();
+
+                // Card 인스턴스 시스템 초기화
+                CardManager.Instance.InitializeCardInstanceSystem();
+
+                if (debugMode)
+                {
+                    Debug.Log("[BattleTestController] 이벤트 전투: CardManager 초기화 완료");
+
+                    // 덱 상태 확인
+                    var deckManagerInfo = CardManager.Instance.GetDeckManagerInfo();
+                    Debug.Log($"[BattleTestController] 이벤트 전투 덱 상태:");
+                    Debug.Log($"  - 메인 덱: {deckManagerInfo.MainDeckCount}장");
+                    Debug.Log($"  - 손패: {deckManagerInfo.HandCardCount}장");
+                    Debug.Log($"  - 임시무덤: {deckManagerInfo.TempGraveyardCount}장");
+                }
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] CardManager.Instance가 null입니다! 이벤트 전투 카드 초기화 실패");
+            }
+        }
+
+        /// <summary>
+        /// 이벤트 전투 직접 시작 (BattleSO 사용)
+        /// </summary>
+        private void StartEventBattleDirectly(BattleSO battleData)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 이벤트 전투 직접 시작: {battleData.BattleName}");
+
+            isBattleActive = true;
+            isPlayerTurn = true;
+            currentTurn = 1;
+            currentFloor = FloorManager.Instance?.CurrentFloor ?? 1;
+            currentFloorType = FloorType.Normal; // 이벤트 전투는 일반 전투로 취급
+
+            // 매니저들에 전투 상태 알림
+            BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
+
+            // 플레이어 위치 설정 (PlayerBattleManager를 통해)
+            if (PlayerBattleManager.Instance != null)
+            {
+                PlayerBattleManager.Instance.SetPlayerGridPosition(new Vector2Int(0, 0));
+            }
+
+            // BattleSO에서 직접 몬스터 스폰
+            StartCoroutine(SpawnEventBattleMonstersAndSetTarget(battleData));
+
+            // 플레이어 턴 시작
+            StartPlayerTurn();
+
+            // UI 업데이트
+            BattleUIManager.Instance?.UpdateAllUI();
+        }
+
+        /// <summary>
+        /// 이벤트 전투 몬스터 스폰 및 타겟 설정
+        /// </summary>
+        private IEnumerator SpawnEventBattleMonstersAndSetTarget(BattleSO battleData)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 이벤트 전투 몬스터 스폰 시작: {battleData.BattleName}");
+
+            // MonsterSpawnAnimationManager의 모든 스폰 완료 이벤트 구독
+            bool spawnCompleted = false;
+            System.Action onSpawnCompleted = () => { spawnCompleted = true; };
+
+            if (MonsterSpawnAnimationManager.Instance != null)
+            {
+                MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted += onSpawnCompleted;
+            }
+
+            // MonsterSpawnManager를 통해 이벤트 전투 몬스터 스폰
+            if (MonsterSpawnManager.Instance != null)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 이벤트 전투 몬스터 스폰 실행 중...");
+
+                // BattleSO에서 직접 몬스터 스폰 (리플렉션 사용)
+                var spawnMethod = typeof(MonsterSpawnManager).GetMethod("SpawnMonstersFromBattle",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                if (spawnMethod != null)
+                {
+                    spawnMethod.Invoke(MonsterSpawnManager.Instance, new object[] { battleData });
+
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 이벤트 전투 몬스터 스폰 완료");
+                }
+                else
+                {
+                    Debug.LogError("[BattleTestController] SpawnMonstersFromBattle 메서드를 찾을 수 없습니다!");
+                }
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] MonsterSpawnManager가 null입니다!");
+            }
+
+            // 몬스터 스폰 애니메이션 완료 대기
+            if (MonsterSpawnAnimationManager.Instance != null)
+            {
+                yield return new WaitUntil(() => spawnCompleted);
+                MonsterSpawnAnimationManager.OnAllSpawnAnimationsCompleted -= onSpawnCompleted;
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 이벤트 전투 몬스터 스폰 애니메이션 완료");
+            }
+            else
+            {
+                // 애니메이션 매니저가 없으면 기본 대기
+                yield return new WaitForSeconds(1f);
+            }
+
+            // 타겟 설정
+            if (TargetManager.Instance != null)
+            {
+                if (TargetManager.Instance.CurrentTarget == null)
+                {
+                    TargetManager.Instance.SetTargetToClosest();
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 이벤트 전투 초기 타겟 설정 완료");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 이벤트 전투용 임시 BattleStage 생성
+        /// </summary>
+        private BattleStageSO CreateEventBattleStage(BattleSO battleData)
+        {
+            var tempStage = ScriptableObject.CreateInstance<BattleStageSO>();
+            tempStage.name = $"EventBattle_{battleData.BattleName}";
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] 이벤트 전투용 임시 BattleStage 생성: {tempStage.name}");
+
+            return tempStage;
+        }
         #endregion
 
         /// <summary>
@@ -2535,13 +2864,13 @@ namespace Maglin.Battle
         private void OnPlayerAnimationChanged(PlayerManager.PlayerAnimationState newState)
         {
             if (debugMode)
-                Debug.Log($"[BattleTestController] 플레이어 애니메이션 변경: {newState}");
+                // Debug.Log($"[BattleTestController] 플레이어 애니메이션 변경: {newState}");
 
-            // PlayerBattleManager에 애니메이션 변경 알림
-            if (PlayerBattleManager.Instance != null)
-            {
-                PlayerBattleManager.Instance.UpdatePlayerSprite();
-            }
+                // PlayerBattleManager에 애니메이션 변경 알림
+                if (PlayerBattleManager.Instance != null)
+                {
+                    PlayerBattleManager.Instance.UpdatePlayerSprite();
+                }
         }
         #endregion
 

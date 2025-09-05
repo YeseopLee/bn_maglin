@@ -22,13 +22,11 @@ namespace Maglin.Core
     {
         [Header("UI References")]
         [SerializeField] private Button startButton;
-        [SerializeField] private GameObject loadingPanel;
         [SerializeField] private Button exitButton;
 
         [Header("Manager Prefabs")]
         [SerializeField] private GameObject gameManagerPrefab;
         [SerializeField] private GameObject floorManagerPrefab;
-        [SerializeField] private GameObject playerManagerPrefab;
         [SerializeField] private GameObject cardManagerPrefab;
         [SerializeField] private GameObject audioManagerPrefab;
 
@@ -89,13 +87,6 @@ namespace Maglin.Core
                     startButton = startButtonObj.GetComponent<Button>();
             }
 
-            // 로딩 패널 자동 찾기
-            if (loadingPanel == null)
-            {
-                var loadingPanelObj = GameObject.Find("LoadingPanel");
-                if (loadingPanelObj != null)
-                    loadingPanel = loadingPanelObj;
-            }
 
             // 버튼 이벤트 연결
             if (startButton != null)
@@ -113,10 +104,6 @@ namespace Maglin.Core
             {
                 exitButton.onClick.AddListener(OnExitGameClicked);
             }
-
-            // 로딩 패널 숨김
-            if (loadingPanel != null)
-                loadingPanel.SetActive(false);
         }
 
         /// <summary>
@@ -171,25 +158,9 @@ namespace Maglin.Core
                     Debug.Log("[MainGameController] FloorManager 생성 완료");
             }
 
-            // PlayerManager 초기화
-            if (PlayerManager.Instance == null)
-            {
-                if (playerManagerPrefab != null)
-                {
-                    var playerManagerObj = Instantiate(playerManagerPrefab);
-                    playerManagerObj.name = "PlayerManager";
-                    DontDestroyOnLoad(playerManagerObj);
-                }
-                else
-                {
-                    var playerManagerObj = new GameObject("PlayerManager");
-                    playerManagerObj.AddComponent<PlayerManager>();
-                    DontDestroyOnLoad(playerManagerObj);
-                }
-
-                if (debugMode)
-                    Debug.Log("[MainGameController] PlayerManager 생성 완료");
-            }
+            // PlayerManager는 씬에 직접 배치되어 있으므로 자동 생성하지 않음
+            if (debugMode && PlayerManager.Instance != null)
+                Debug.Log("[MainGameController] PlayerManager 확인됨 (씬에서 로드)");
 
             // CardManager 초기화
             if (CardManager.Instance == null)
@@ -284,31 +255,16 @@ namespace Maglin.Core
 
         #region Game Flow
         /// <summary>
-        /// 게임 시작 시퀀스 (개선된 로딩 및 전환 효과 포함)
+        /// 게임 시작 시퀀스 (단순 씬 전환으로 변경)
         /// </summary>
         private async Task StartGameSequence()
         {
             try
             {
-                // 1. 로딩 화면 표시
-                if (LoadingManager.Instance != null)
-                {
-                    await LoadingManager.Instance.ShowGamePreparationLoading();
-                    LoadingManager.Instance.UpdateToGameManagerCheck();
-                }
-
-                await Task.Delay(300); // 짧은 로딩 시간
-
-                // 2. FloorManager와 SaveManager 확인
+                // 1. FloorManager와 SaveManager 확인
                 if (FloorManager.Instance == null)
                 {
                     Debug.LogError("[MainGameController] FloorManager가 없어서 게임을 시작할 수 없습니다!");
-
-                    if (LoadingManager.Instance != null)
-                    {
-                        await LoadingManager.Instance.HideLoading();
-                    }
-
                     startButton.interactable = true;
                     return;
                 }
@@ -316,22 +272,11 @@ namespace Maglin.Core
                 if (SaveManager.Instance == null)
                 {
                     Debug.LogError("[MainGameController] SaveManager가 없어서 게임을 시작할 수 없습니다!");
-
-                    if (LoadingManager.Instance != null)
-                    {
-                        await LoadingManager.Instance.HideLoading();
-                    }
-
                     startButton.interactable = true;
                     return;
                 }
 
-                if (LoadingManager.Instance != null)
-                {
-                    LoadingManager.Instance.UpdateToGameDataInit();
-                }
-
-                // 3. 세이브 데이터 처리
+                // 2. 세이브 데이터 처리
                 bool hasExistingSave = SaveManager.Instance.HasSaveFile;
                 GameSaveData saveData = null;
 
@@ -362,7 +307,7 @@ namespace Maglin.Core
                         Debug.Log("[MainGameController] 새 세이브 파일 생성");
                 }
 
-                // 4. 디버그 설정 적용 (세이브보다 우선)
+                // 3. 디버그 설정 적용 (세이브보다 우선)
                 if (skipToFloor && debugMode)
                 {
                     FloorManager.Instance.SetFloor(skipFloorNumber);
@@ -370,29 +315,7 @@ namespace Maglin.Core
                         Debug.Log($"[MainGameController] 디버그 모드: {skipFloorNumber}층으로 건너뜀");
                 }
 
-                await Task.Delay(400);
-
-                if (LoadingManager.Instance != null)
-                {
-                    LoadingManager.Instance.UpdateToBattlePreparation();
-                }
-
-                await Task.Delay(300);
-
-                if (LoadingManager.Instance != null)
-                {
-                    LoadingManager.Instance.UpdateToGameStart();
-                }
-
-                await Task.Delay(200);
-
-                // 5. 로딩 화면 숨기기
-                if (LoadingManager.Instance != null)
-                {
-                    await LoadingManager.Instance.HideLoading();
-                }
-
-                // 6. 게임 시작 방식 결정
+                // 4. 게임 시작 방식 결정
                 if (hasExistingSave && saveData != null && !skipToFloor)
                 {
                     // 세이브된 층에서 이어서 시작
@@ -407,29 +330,12 @@ namespace Maglin.Core
                     if (debugMode)
                         Debug.Log("[MainGameController] 새 게임 시작");
 
-                    if (SceneTransitionManager.Instance != null)
-                    {
-                        // 페이드 효과와 함께 전투 씬으로 전환
-                        string battleSceneName = FloorManager.Instance?.BattleSceneName ?? "TestBattleScene";
-                        await SceneTransitionManager.Instance.TransitionToScene(battleSceneName, 0.8f, 1.0f);
-                    }
-                    else
-                    {
-                        // 기존 방식으로 게임 시작 (백업)
-                        FloorManager.Instance.StartNewGame();
-                    }
+                    FloorManager.Instance.StartNewGame();
                 }
             }
             catch (System.Exception e)
             {
                 Debug.LogError($"[MainGameController] 게임 시작 중 오류 발생: {e.Message}");
-
-                // 로딩 화면 정리
-                if (LoadingManager.Instance != null)
-                {
-                    await LoadingManager.Instance.HideLoading();
-                }
-
                 // 버튼 다시 활성화
                 startButton.interactable = true;
             }

@@ -16,8 +16,9 @@ MonoBehaviour:
   relicType: 0
   relicDescription: Relic02 Description
   relicImage: {fileID: 0}
-  effectType: 1
+  effectType: 9
   effectValue: 1
+  secondaryValue: 0
   isPercentage: 0
   canStack: 0
   relicPrice: 20
