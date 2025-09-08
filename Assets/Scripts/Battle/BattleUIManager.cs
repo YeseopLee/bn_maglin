@@ -82,6 +82,12 @@ namespace Maglin.Battle
         [SerializeField] private Slider healthSlider;
         [SerializeField] private Slider manaSlider;
 
+        [Header("타겟 UI")]
+        [SerializeField] private GameObject targetEnemyPanel;
+        [SerializeField] private Image targetEnemySprite;
+        [SerializeField] private Slider targetEnemyHealthBar;
+        [SerializeField] private TextMeshProUGUI targetEnemyHealthText;
+
         [Header("조합 슬롯 UI")]
         [SerializeField] private Transform elementSlot;
         [SerializeField] private Transform active1Slot;
@@ -150,6 +156,12 @@ namespace Maglin.Battle
             }
         }
 
+        private void Update()
+        {
+            // 타겟 UI 실시간 업데이트 (체력 변화 반영)
+            UpdateTargetUIRealtime();
+        }
+
         private void OnEnable()
         {
             // 이벤트 구독
@@ -172,6 +184,9 @@ namespace Maglin.Battle
                 BattleManager.OnPhaseChanged += OnPhaseChanged;
             }
 
+            // TargetManager 이벤트 구독
+            TargetManager.OnTargetChanged += OnTargetChanged;
+
 
             // CardDrawAnimationManager 이벤트 구독
             if (CardDrawAnimationManager.Instance != null)
@@ -184,17 +199,17 @@ namespace Maglin.Battle
             // 자체 이벤트 구독
             OnCardClicked += HandleCardClicked;
 
-            // 초기 UI 업데이트
-            StartCoroutine(UpdateUIAfterDelay());
+            // 주의: 초기 UI 업데이트는 SetUIReferences에서 ForceUpdatePlayerUI로 즉시 처리됨
         }
 
         /// <summary>
-        /// 지연 후 UI 업데이트 (다른 매니저들이 초기화된 후)
+        /// 지연 후 UI 업데이트 (더 이상 사용하지 않음 - ForceUpdatePlayerUI로 대체됨)
         /// </summary>
         private System.Collections.IEnumerator UpdateUIAfterDelay()
         {
             yield return new WaitForSeconds(0.1f);
-            UpdateAllUI();
+            // 더 이상 사용하지 않음 - SetUIReferences에서 ForceUpdatePlayerUI로 즉시 처리
+            // UpdateAllUI();
         }
 
         private void OnDisable()
@@ -218,6 +233,9 @@ namespace Maglin.Battle
                 BattleManager.OnTurnChanged -= OnTurnChanged;
                 BattleManager.OnPhaseChanged -= OnPhaseChanged;
             }
+
+            // TargetManager 이벤트 구독 해제
+            TargetManager.OnTargetChanged -= OnTargetChanged;
 
 
             // CardDrawAnimationManager 이벤트 구독 해제
@@ -302,7 +320,11 @@ namespace Maglin.Battle
             GameObject relicPrefab = null,
             GameObject monsterPrefab = null,
             Slider healthSlider = null,
-            Slider manaSlider = null)
+            Slider manaSlider = null,
+            GameObject targetEnemyPanel = null,
+            Image targetEnemySprite = null,
+            Slider targetEnemyHealthBar = null,
+            TextMeshProUGUI targetEnemyHealthText = null)
         {
             this.healthText = healthText;
             this.manaText = manaText;
@@ -328,7 +350,6 @@ namespace Maglin.Battle
                 this.relicPrefab = relicPrefab;
             }
 
-
             // 슬라이더 설정 (제공된 경우)
             if (healthSlider != null)
             {
@@ -338,6 +359,29 @@ namespace Maglin.Battle
             if (manaSlider != null)
             {
                 this.manaSlider = manaSlider;
+            }
+
+            // 타겟 UI 설정 (제공된 경우)
+            if (targetEnemyPanel != null)
+            {
+                this.targetEnemyPanel = targetEnemyPanel;
+                // 초기에는 패널을 비활성화
+                this.targetEnemyPanel.SetActive(false);
+            }
+
+            if (targetEnemySprite != null)
+            {
+                this.targetEnemySprite = targetEnemySprite;
+            }
+
+            if (targetEnemyHealthBar != null)
+            {
+                this.targetEnemyHealthBar = targetEnemyHealthBar;
+            }
+
+            if (targetEnemyHealthText != null)
+            {
+                this.targetEnemyHealthText = targetEnemyHealthText;
             }
 
             if (debugMode)
@@ -353,6 +397,9 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log("[BattleUIManager] MonsterSpawnManager에 몬스터 프리팹 전달");
             }
+
+            // ★ 중요: UI 참조 설정 직후 즉시 플레이어 정보 동기화
+            ForceUpdatePlayerUI();
         }
 
         /// <summary>
@@ -1021,6 +1068,62 @@ namespace Maglin.Battle
         }
         #endregion
 
+        #region Force UI Synchronization
+        /// <summary>
+        /// 플레이어 UI 강제 업데이트 (씬 로드 직후 즉시 동기화용)
+        /// </summary>
+        public void ForceUpdatePlayerUI()
+        {
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 플레이어 UI 강제 업데이트 시작");
+
+            // 플레이어 정보 즉시 동기화
+            UpdateHealthUI();
+            UpdateManaUI();
+            UpdateGoldUI();
+            UpdateDeckCountUI();
+            UpdateTurnUI();
+            UpdateButtonStates();
+
+            // 타겟 UI 초기화 (약간의 지연을 두어 TargetManager 초기화 완료 대기)
+            StartCoroutine(DelayedTargetUIUpdate());
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 플레이어 UI 강제 업데이트 완료");
+        }
+
+        /// <summary>
+        /// 지연된 타겟 UI 업데이트 (TargetManager 초기화 완료 대기)
+        /// </summary>
+        private System.Collections.IEnumerator DelayedTargetUIUpdate()
+        {
+            // TargetManager가 전투 준비를 완료할 때까지 대기
+            float maxWaitTime = 2f; // 최대 2초 대기
+            float waitTime = 0f;
+
+            while (waitTime < maxWaitTime)
+            {
+                if (TargetManager.Instance != null && TargetManager.Instance.IsBattleReady && TargetManager.Instance.CurrentTarget != null)
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleUIManager] TargetManager 전투 준비 완료 감지, 타겟 UI 업데이트");
+
+                    UpdateTargetUI();
+                    yield break;
+                }
+
+                yield return new WaitForSeconds(0.1f);
+                waitTime += 0.1f;
+            }
+
+            // 타임아웃된 경우에도 한 번 시도
+            if (debugMode)
+                Debug.LogWarning("[BattleUIManager] DelayedTargetUIUpdate 타임아웃, 최종 시도");
+
+            UpdateTargetUI();
+        }
+        #endregion
+
         #region UI Updates
         /// <summary>
         /// 모든 UI 업데이트
@@ -1065,6 +1168,18 @@ namespace Maglin.Battle
                     }
                 }
             }
+            else
+            {
+                // PlayerManager가 아직 초기화되지 않은 경우 기본값 표시
+                if (healthText != null)
+                {
+                    healthText.text = "100/100"; // 기본값
+                }
+                if (healthSlider != null)
+                {
+                    healthSlider.value = 1f; // 100%
+                }
+            }
         }
 
         /// <summary>
@@ -1097,6 +1212,18 @@ namespace Maglin.Battle
                     }
                 }
             }
+            else
+            {
+                // PlayerManager가 아직 초기화되지 않은 경우 기본값 표시
+                if (manaText != null)
+                {
+                    manaText.text = "3/3"; // 기본값
+                }
+                if (manaSlider != null)
+                {
+                    manaSlider.value = 1f; // 100%
+                }
+            }
         }
 
         /// <summary>
@@ -1104,9 +1231,17 @@ namespace Maglin.Battle
         /// </summary>
         private void UpdateGoldUI()
         {
-            if (goldText != null && PlayerManager.Instance != null)
+            if (goldText != null)
             {
-                goldText.text = $"{PlayerManager.Instance.CurrentGold}";
+                if (PlayerManager.Instance != null)
+                {
+                    goldText.text = $"{PlayerManager.Instance.CurrentGold}";
+                }
+                else
+                {
+                    // PlayerManager가 아직 초기화되지 않은 경우 기본값 표시
+                    goldText.text = "100"; // 기본값
+                }
             }
         }
 
@@ -1115,9 +1250,17 @@ namespace Maglin.Battle
         /// </summary>
         private void UpdateDeckCountUI()
         {
-            if (deckCountText != null && CardManager.Instance != null)
+            if (deckCountText != null)
             {
-                deckCountText.text = $"덱: {CardManager.Instance.MainDeckCount}";
+                if (CardManager.Instance != null)
+                {
+                    deckCountText.text = $"덱: {CardManager.Instance.MainDeckCount}";
+                }
+                else
+                {
+                    // CardManager가 아직 초기화되지 않은 경우 기본값 표시
+                    deckCountText.text = "덱: 30"; // 기본값
+                }
             }
         }
 
@@ -1129,7 +1272,8 @@ namespace Maglin.Battle
             if (turnIndicator != null)
             {
                 string turnText = isPlayerTurn ? "플레이어 턴" : "몬스터 턴";
-                turnIndicator.text = $"{turnText} (턴 {BattleManager.Instance?.TurnNumber ?? 1})";
+                int turnNumber = BattleManager.Instance?.TurnNumber ?? 1;
+                turnIndicator.text = $"{turnText} (턴 {turnNumber})";
                 turnIndicator.color = isPlayerTurn ? Color.green : Color.red;
             }
         }
@@ -1376,6 +1520,107 @@ namespace Maglin.Battle
 
             UpdateComboUI();
         }
+
+        /// <summary>
+        /// 타겟 UI 업데이트
+        /// </summary>
+        private void UpdateTargetUI()
+        {
+            // TargetManager에서 현재 타겟 가져오기
+            var currentTarget = TargetManager.Instance?.CurrentTarget;
+
+            if (currentTarget != null && currentTarget.IsAlive)
+            {
+                // 전체 패널 활성화 (TargetManager의 전투 준비가 완료된 경우에만)
+                bool shouldShowPanel = TargetManager.Instance != null && TargetManager.Instance.IsBattleReady;
+
+                if (targetEnemyPanel != null && shouldShowPanel)
+                {
+                    targetEnemyPanel.SetActive(true);
+                }
+
+                // 타겟 스프라이트 업데이트
+                if (targetEnemySprite != null)
+                {
+                    var spriteRenderer = currentTarget.GetComponent<SpriteRenderer>();
+                    if (spriteRenderer != null && spriteRenderer.sprite != null)
+                    {
+                        targetEnemySprite.sprite = spriteRenderer.sprite;
+                        targetEnemySprite.color = Color.white;
+                    }
+                }
+
+                // 타겟 체력 정보 업데이트
+                float maxHealth = currentTarget.MaxHealth;
+                float currentHealth = currentTarget.CurrentHealth;
+
+                // 체력바 업데이트
+                if (targetEnemyHealthBar != null && maxHealth > 0)
+                {
+                    float healthRatio = currentHealth / maxHealth;
+                    targetEnemyHealthBar.value = healthRatio;
+                }
+
+                // 체력 텍스트 업데이트
+                if (targetEnemyHealthText != null)
+                {
+                    targetEnemyHealthText.text = $"{(int)currentHealth}/{(int)maxHealth}";
+                }
+
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] 타겟 UI 업데이트: {currentTarget.EnemyName} (체력: {currentHealth}/{maxHealth}) 패널 표시: {shouldShowPanel}");
+            }
+            else
+            {
+                // 타겟이 없거나 죽은 경우 전체 패널 숨기기
+                if (targetEnemyPanel != null)
+                {
+                    targetEnemyPanel.SetActive(false);
+                }
+
+                if (debugMode)
+                    Debug.Log("[BattleUIManager] 타겟이 없어서 타겟 패널 숨김");
+            }
+        }
+
+        /// <summary>
+        /// 타겟 UI 실시간 업데이트 (체력 변화만)
+        /// </summary>
+        private void UpdateTargetUIRealtime()
+        {
+            // TargetManager에서 현재 타겟 가져오기
+            var currentTarget = TargetManager.Instance?.CurrentTarget;
+
+            if (currentTarget != null && currentTarget.IsAlive && targetEnemyPanel != null && targetEnemyPanel.activeInHierarchy)
+            {
+                // 체력 정보 가져오기
+                float maxHealth = currentTarget.MaxHealth;
+                float currentHealth = currentTarget.CurrentHealth;
+
+                if (maxHealth > 0)
+                {
+                    // 체력바 실시간 업데이트 (변화가 있을 때만)
+                    if (targetEnemyHealthBar != null)
+                    {
+                        float healthRatio = currentHealth / maxHealth;
+                        if (Mathf.Abs(targetEnemyHealthBar.value - healthRatio) > 0.01f)
+                        {
+                            targetEnemyHealthBar.value = healthRatio;
+                        }
+                    }
+
+                    // 체력 텍스트 실시간 업데이트 (변화가 있을 때만)
+                    if (targetEnemyHealthText != null)
+                    {
+                        string newHealthText = $"{(int)currentHealth}/{(int)maxHealth}";
+                        if (targetEnemyHealthText.text != newHealthText)
+                        {
+                            targetEnemyHealthText.text = newHealthText;
+                        }
+                    }
+                }
+            }
+        }
         #endregion
 
         #region Event Handlers
@@ -1396,6 +1641,17 @@ namespace Maglin.Battle
         {
             isBattleActive = (phase == BattlePhase.PlayerTurn || phase == BattlePhase.EnemyTurn);
             UpdateButtonStates();
+        }
+
+        /// <summary>
+        /// 타겟 변경 이벤트 처리
+        /// </summary>
+        private void OnTargetChanged(Maglin.Enemy.Enemy target)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 타겟 변경: {target?.EnemyName ?? "없음"}");
+
+            UpdateTargetUI();
         }
         #endregion
 
@@ -1435,6 +1691,28 @@ namespace Maglin.Battle
         public void ResetComboSlots()
         {
             ClearComboSlots();
+        }
+
+        /// <summary>
+        /// 타겟 UI 강제 업데이트 (외부에서 호출 가능)
+        /// </summary>
+        public void ForceUpdateTargetUI()
+        {
+            UpdateTargetUI();
+        }
+
+        /// <summary>
+        /// 타겟 UI 표시/숨김
+        /// </summary>
+        public void SetTargetUIVisible(bool visible)
+        {
+            if (targetEnemyPanel != null)
+            {
+                targetEnemyPanel.SetActive(visible);
+            }
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 타겟 UI 패널 표시/숨김: {visible}");
         }
         #endregion
 

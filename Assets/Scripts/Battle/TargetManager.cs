@@ -1357,6 +1357,9 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log($"[TargetManager] 전투 준비 완료 - 타겟 시스템 활성화 (최종 타겟: {currentTarget?.EnemyName ?? "없음"})");
+
+            // 전투 준비 완료 후 타겟 변경 이벤트 발생 (UI 업데이트를 위해)
+            OnTargetChanged?.Invoke(currentTarget);
         }
         #endregion
     }

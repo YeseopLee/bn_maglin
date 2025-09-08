@@ -155,24 +155,20 @@ namespace Maglin.Battle
         /// </summary>
         public void InitializeGridField()
         {
-            if (isInitialized)
-            {
-                if (debugMode)
-                    Debug.Log("[GridFieldManager] 이미 초기화되어 있습니다.");
-                return;
-            }
-
             if (debugMode)
                 Debug.Log("[GridFieldManager] 그리드 필드 초기화 시작");
 
             // GameMap 찾기 또는 생성
             FindOrCreateGameMap();
 
-            // 그리드 설정
+            // 그리드 설정 (기존 참조가 있으면 유지, 없으면 새로 찾기)
             SetupGrid();
 
-            // 컴포넌트 참조 설정
+            // 컴포넌트 참조 설정 (기존 참조가 있으면 유지, 없으면 새로 찾기)
             SetupComponentReferences();
+
+            // 오브젝트 딕셔너리 정리 (씬 전환으로 인해 무효해진 오브젝트들 제거)
+            CleanupInvalidObjects();
 
             isInitialized = true;
 
@@ -236,8 +232,11 @@ namespace Maglin.Battle
         /// </summary>
         private void SetupGrid()
         {
-            // Grid 컴포넌트 찾기
-            gridComponent = FindObjectOfType<Grid>();
+            // 기존 참조가 유효하지 않으면 새로 찾기
+            if (gridComponent == null)
+            {
+                gridComponent = FindObjectOfType<Grid>();
+            }
 
             if (gridComponent == null)
             {
@@ -246,12 +245,18 @@ namespace Maglin.Battle
                 return;
             }
 
-            // 그리드 설정 확인
-            if (gridComponent.cellSize.x != cellSize)
+            // 인스펙터에서 설정한 값이 있으면 그대로 사용, 없으면 Grid 컴포넌트의 현재 값 사용
+            if (cellSize <= 0)
             {
-                gridComponent.cellSize = new Vector3(cellSize, cellSize, 1f);
+                cellSize = gridComponent.cellSize.x;
                 if (debugMode)
-                    Debug.Log($"[GridFieldManager] Grid cellSize를 {cellSize}로 설정했습니다.");
+                    Debug.Log($"[GridFieldManager] Grid에서 cellSize 가져옴: {cellSize}");
+            }
+            else
+            {
+                // 인스펙터에서 설정한 값이 있으면 Grid 컴포넌트에 적용하지 않고 그대로 사용
+                if (debugMode)
+                    Debug.Log($"[GridFieldManager] 인스펙터 설정값 사용: cellSize = {cellSize}");
             }
         }
 
@@ -260,11 +265,63 @@ namespace Maglin.Battle
         /// </summary>
         private void SetupComponentReferences()
         {
-            // Ground Tilemap 찾기
-            GameObject groundObj = GameObject.Find("Ground");
-            if (groundObj != null)
+            // 기존 참조가 유효하지 않으면 새로 찾기
+            if (groundTilemap == null)
             {
-                groundTilemap = groundObj.GetComponent<Tilemap>();
+                GameObject groundObj = GameObject.Find("Ground");
+                if (groundObj != null)
+                {
+                    groundTilemap = groundObj.GetComponent<Tilemap>();
+                    if (debugMode)
+                        Debug.Log("[GridFieldManager] Ground Tilemap 참조를 새로 찾았습니다.");
+                }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log("[GridFieldManager] 기존 Ground Tilemap 참조를 유지합니다.");
+            }
+        }
+
+        /// <summary>
+        /// 씬 전환으로 무효해진 오브젝트들 정리
+        /// </summary>
+        private void CleanupInvalidObjects()
+        {
+            List<Vector2Int> invalidPositions = new List<Vector2Int>();
+            List<GameObject> invalidObjects = new List<GameObject>();
+
+            // 무효한 오브젝트들 찾기
+            foreach (var kvp in gridObjects)
+            {
+                if (kvp.Value == null)
+                {
+                    invalidPositions.Add(kvp.Key);
+                }
+            }
+
+            foreach (var kvp in objectPositions)
+            {
+                if (kvp.Key == null)
+                {
+                    invalidObjects.Add(kvp.Key);
+                }
+            }
+
+            // 무효한 항목들 제거
+            foreach (var pos in invalidPositions)
+            {
+                gridObjects.Remove(pos);
+            }
+
+            foreach (var obj in invalidObjects)
+            {
+                objectPositions.Remove(obj);
+            }
+
+            if (debugMode && (invalidPositions.Count > 0 || invalidObjects.Count > 0))
+            {
+                Debug.Log($"[GridFieldManager] 씬 전환으로 무효해진 오브젝트 {invalidPositions.Count + invalidObjects.Count}개를 정리했습니다.");
             }
         }
         #endregion
@@ -278,11 +335,16 @@ namespace Maglin.Battle
             if (gridComponent != null)
             {
                 Vector3Int cellPosition = new Vector3Int(gridPosition.x, gridPosition.y, 0);
-                return gridComponent.CellToWorld(cellPosition) + gridComponent.cellSize * 0.5f;
+                // Grid의 실제 transform 위치를 고려하여 월드 좌표 계산
+                Vector3 cellWorldPos = gridComponent.CellToWorld(cellPosition);
+                Vector3 cellCenter = cellWorldPos + gridComponent.cellSize * 0.5f;
+                return cellCenter;
             }
 
-            // Fallback: 수동 계산
-            return new Vector3(
+            // Fallback: 수동 계산 (Grid 컴포넌트가 없을 때)
+            // 이 경우에는 이 GridFieldManager의 transform 위치를 기준으로 계산
+            Vector3 basePosition = transform.position;
+            return basePosition + new Vector3(
                 gridPosition.x * cellSize + cellSize * 0.5f,
                 gridPosition.y * cellSize + cellSize * 0.5f,
                 0f

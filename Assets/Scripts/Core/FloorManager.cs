@@ -1087,6 +1087,13 @@ namespace Maglin.Core
                 else
                 {
                     Debug.LogWarning("[FloorManager] AdditiveSceneLoader가 없어서 기존 방식으로 로드");
+
+                    // 씬 전환 전에 플레이어 정리 (기존 방식에서만)
+                    if (Battle.PlayerBattleManager.Instance != null)
+                    {
+                        Battle.PlayerBattleManager.Instance.CleanupOnSceneTransition();
+                    }
+
                     // 폴백: 기존 방식
                     var asyncLoad = UnityEngine.SceneManagement.SceneManager.LoadSceneAsync(battleSceneName);
 

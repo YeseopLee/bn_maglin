@@ -27,5 +27,9 @@ MonoBehaviour:
   canSummonObjects: 0
   hasSpecialMechanics: 0
   specialAbilityDescription: 
+  isNeutralObject: 0
+  blocksMonsterMovement: 0
+  monstersAttackThis: 0
+  objectDescription: 
   goldReward: 0
   experienceReward: 0

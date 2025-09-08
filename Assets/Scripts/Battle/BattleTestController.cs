@@ -1884,7 +1884,7 @@ namespace Maglin.Battle
             // 매니저들에 전투 종료 알림
             BattleUIManager.Instance?.SetBattleState(false, false);
 
-            // PlayerBattleManager에 전투 종료 알림
+            // PlayerBattleManager에 전투 종료 알림 (플레이어 오브젝트는 유지)
             PlayerBattleManager.Instance?.OnBattleEnd();
 
             if (victory)
@@ -1922,6 +1922,12 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.Log("[BattleTestController] 전투 패배! 게임 오버");
+
+                // 패배 시에는 플레이어 정리 (게임 오버이므로)
+                if (PlayerBattleManager.Instance != null)
+                {
+                    PlayerBattleManager.Instance.CleanupOnSceneTransition();
+                }
             }
         }
 

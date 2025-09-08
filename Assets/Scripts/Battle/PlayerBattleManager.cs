@@ -72,28 +72,64 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 초기화 시작");
 
-            // 같은 씬으로 재진입하는 경우를 위해 기존 상태 초기화
-            if (isInitialized)
+            // 이미 초기화되어 있고 플레이어 오브젝트가 존재하면 위치만 업데이트
+            if (isInitialized && playerGameObject != null)
             {
                 if (debugMode)
-                    Debug.Log("[PlayerBattleManager] 재초기화 - 기존 상태 정리 중");
+                    Debug.Log("[PlayerBattleManager] 기존 플레이어 오브젝트 유지, 위치만 업데이트");
 
-                // 기존 플레이어 게임오브젝트 정리
-                if (playerGameObject != null)
-                {
-                    if (GridFieldManager.Instance != null)
-                    {
-                        GridFieldManager.Instance.RemoveObjectFromGrid(playerGameObject);
-                    }
-                    DestroyImmediate(playerGameObject);
-                    playerGameObject = null;
-                }
-
-                isInitialized = false;
+                // 기존 플레이어의 위치만 업데이트
+                StartCoroutine(UpdateExistingPlayerPosition());
+                return;
             }
+
+            // 완전히 새로운 초기화가 필요한 경우
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 새로운 플레이어 초기화");
+
+            // 기존 플레이어 게임오브젝트가 있으면 정리 (안전 장치)
+            if (playerGameObject != null)
+            {
+                if (GridFieldManager.Instance != null)
+                {
+                    GridFieldManager.Instance.RemoveObjectFromGrid(playerGameObject);
+                }
+                DestroyImmediate(playerGameObject);
+                playerGameObject = null;
+            }
+
+            isInitialized = false;
 
             // GridFieldManager 초기화 대기
             StartCoroutine(InitializeAfterGridReady());
+        }
+
+        /// <summary>
+        /// 기존 플레이어 위치 업데이트
+        /// </summary>
+        private IEnumerator UpdateExistingPlayerPosition()
+        {
+            // GridFieldManager가 초기화될 때까지 대기
+            while (GridFieldManager.Instance == null || !GridFieldManager.Instance.IsInitialized)
+            {
+                yield return null;
+            }
+
+            // 플레이어 위치 재설정
+            SetPlayerGridPosition(playerGridPosition);
+
+            // 애니메이션 이벤트 재구독
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
+                PlayerManager.OnPlayerAnimationChanged += UpdatePlayerSprite;
+
+                // 스프라이트 업데이트
+                UpdatePlayerSprite();
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 기존 플레이어 위치 업데이트 완료");
         }
 
         /// <summary>
@@ -150,6 +186,29 @@ namespace Maglin.Battle
             if (PlayerManager.Instance != null)
             {
                 PlayerManager.Instance.OnBattleEnd();
+            }
+
+            // 플레이어 게임오브젝트는 씬 전환 시에만 정리되도록 수정
+            // (전투 종료 시에는 플레이어를 유지하여 다음 전투에서 연속성 보장)
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 플레이어 오브젝트 유지 (씬 전환 시까지)");
+
+            // 초기화 상태만 리셋 (재초기화를 위해)
+            // isInitialized = false;  // 이것도 주석 처리하여 플레이어 상태 유지
+        }
+
+        /// <summary>
+        /// 씬 전환 시 플레이어 정리 (명시적 호출)
+        /// </summary>
+        public void CleanupOnSceneTransition()
+        {
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 씬 전환으로 인한 플레이어 정리");
+
+            // GridFieldManager에서 플레이어 제거
+            if (playerGameObject != null && GridFieldManager.Instance != null)
+            {
+                GridFieldManager.Instance.RemoveObjectFromGrid(playerGameObject);
             }
 
             // 플레이어 게임오브젝트 정리
