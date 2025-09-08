@@ -1064,17 +1064,17 @@ namespace Maglin.Battle
         {
             if (monster == null) return;
 
-            // MonsterSpawnManager를 통해 위치 이동 요청
-            if (MonsterSpawnManager.Instance != null)
+            // MonsterBattleManager를 통해 위치 이동 요청
+            if (MonsterBattleManager.Instance != null)
             {
-                MonsterSpawnManager.Instance.RequestMonsterMovement(monster, newGridPosition);
+                MonsterBattleManager.Instance.RequestMonsterMovement(monster, newGridPosition);
 
                 if (debugMode)
-                    Debug.Log($"[TargetManager] MonsterSpawnManager에게 이동 요청: {monster.EnemyName} -> {newGridPosition}");
+                    Debug.Log($"[TargetManager] MonsterBattleManager에게 이동 요청: {monster.EnemyName} -> {newGridPosition}");
             }
             else
             {
-                // MonsterSpawnManager가 없는 경우 폴백 (직접 처리)
+                // MonsterBattleManager가 없는 경우 폴백 (직접 처리)
                 monster.SetPosition(newGridPosition);
 
                 if (GridFieldManager.Instance != null)
@@ -1089,7 +1089,7 @@ namespace Maglin.Battle
                 }
 
                 if (debugMode)
-                    Debug.LogWarning($"[TargetManager] MonsterSpawnManager가 없어 직접 이동 처리: {monster.EnemyName} -> {newGridPosition}");
+                    Debug.LogWarning($"[TargetManager] MonsterBattleManager가 없어 직접 이동 처리: {monster.EnemyName} -> {newGridPosition}");
             }
         }
         #endregion

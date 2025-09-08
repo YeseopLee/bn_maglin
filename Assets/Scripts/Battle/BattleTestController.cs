@@ -419,6 +419,22 @@ namespace Maglin.Battle
                 Debug.LogError("[BattleTestController] MonsterSpawnManager.Instance가 null입니다!");
             }
 
+            // MonsterBattleManager 초기화
+            if (MonsterBattleManager.Instance != null)
+            {
+                // PlayerBattleManager에서 플레이어 그리드 위치 가져오기
+                Vector2Int playerPos = PlayerBattleManager.Instance != null ?
+                    PlayerBattleManager.Instance.GetPlayerGridPosition() : Vector2Int.zero;
+                MonsterBattleManager.Instance.SetPlayerPosition(playerPos);
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] MonsterBattleManager 초기화 완료");
+            }
+            else
+            {
+                Debug.LogError("[BattleTestController] MonsterBattleManager.Instance가 null입니다!");
+            }
+
             // CardManager 초기화
             if (CardManager.Instance != null)
             {
@@ -975,9 +991,9 @@ namespace Maglin.Battle
             isPlayerTurn = true;
 
             // 몬스터 이동 플래그 초기화 (새로운 플레이어 턴 시작)
-            if (MonsterSpawnManager.Instance != null)
+            if (MonsterBattleManager.Instance != null)
             {
-                MonsterSpawnManager.Instance.ResetAllMonsterMoveFlags();
+                MonsterBattleManager.Instance.ResetAllMonsterMoveFlags();
             }
 
             // 매니저들에 턴 상태 알림
@@ -1067,9 +1083,9 @@ namespace Maglin.Battle
                 Debug.Log($"[BattleTestController] 몬스터 턴 시작");
 
             // 몬스터 이동 플래그 초기화 (새로운 턴 시작)
-            if (MonsterSpawnManager.Instance != null)
+            if (MonsterBattleManager.Instance != null)
             {
-                MonsterSpawnManager.Instance.ResetAllMonsterMoveFlags();
+                MonsterBattleManager.Instance.ResetAllMonsterMoveFlags();
             }
 
             // 살아있는 몬스터들 가져오기
@@ -1107,11 +1123,11 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[BattleTestController] {monster.EnemyName} 행동 시작");
 
-            // MonsterSpawnManager를 통해 몬스터 이동
-            yield return StartCoroutine(MonsterSpawnManager.Instance.ProcessMonsterMovement(monster));
+            // MonsterBattleManager를 통해 몬스터 이동
+            yield return StartCoroutine(MonsterBattleManager.Instance.ProcessMonsterMovement(monster));
 
-            // MonsterSpawnManager를 통해 몬스터 공격
-            yield return StartCoroutine(MonsterSpawnManager.Instance.ProcessMonsterAttack(monster));
+            // MonsterBattleManager를 통해 몬스터 공격
+            yield return StartCoroutine(MonsterBattleManager.Instance.ProcessMonsterAttack(monster));
         }
         #endregion
 

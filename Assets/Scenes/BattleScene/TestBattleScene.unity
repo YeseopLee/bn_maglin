@@ -1597,7 +1597,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 53088569d052245a4961e6d07d4d9eeb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugMode: 0
+  debugMode: 1
   enableSpawnAnimations: 1
   useSequentialSpawn: 1
 --- !u!4 &340597818
@@ -4832,7 +4832,7 @@ MonoBehaviour:
   slideDistance: 2
   useColorFadeEffect: 1
   preserveOriginalColor: 1
-  debugMode: 1
+  debugMode: 0
 --- !u!4 &876231592
 Transform:
   m_ObjectHideFlags: 0

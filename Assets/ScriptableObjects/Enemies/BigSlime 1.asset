@@ -19,14 +19,17 @@ MonoBehaviour:
   maxHealth: 10
   enemyElement: 0
   attackDamage: 10
-  attackPattern: 0
   attackRange: 1
-  movementPattern: 2
   movementSpeed: 1
+  attackPattern: 0
+  movementPattern: 2
   sizeInTiles: 1
   canSummonObjects: 0
   hasSpecialMechanics: 0
   specialAbilityDescription: 
+  patterns:
+  - {fileID: 11400000, guid: dd0538012150b406da1aca48dd30b39f, type: 2}
+  - {fileID: 11400000, guid: 5e085f81d4c604abdbfd120505261691, type: 2}
   isNeutralObject: 0
   blocksMonsterMovement: 0
   monstersAttackThis: 0

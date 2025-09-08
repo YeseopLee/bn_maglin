@@ -1546,7 +1546,17 @@ namespace Maglin.Battle
                     if (spriteRenderer != null && spriteRenderer.sprite != null)
                     {
                         targetEnemySprite.sprite = spriteRenderer.sprite;
-                        targetEnemySprite.color = Color.white;
+
+                        // EnemySO의 색상 설정 반영
+                        if (currentTarget.EnemyData != null)
+                        {
+                            targetEnemySprite.color = currentTarget.EnemyData.Color;
+                        }
+                        else
+                        {
+                            // EnemyData가 없는 경우 SpriteRenderer의 색상 사용
+                            targetEnemySprite.color = spriteRenderer.color;
+                        }
                     }
                 }
 
