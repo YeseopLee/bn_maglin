@@ -1647,6 +1647,8 @@ MonoBehaviour:
   debugMode: 0
   entranceAnimationDuration: 2
   entranceStartOffsetX: -5
+  deathCameraZoomScale: 0.5
+  deathCameraZoomDuration: 1
 --- !u!4 &349089489
 Transform:
   m_ObjectHideFlags: 0
@@ -2403,16 +2405,30 @@ MonoBehaviour:
   - {fileID: -1577144373, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
   - {fileID: 1272574604, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
   - {fileID: -509191186, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
-  attackSprites2: []
-  attackSprites3: []
-  hitSprites: []
-  deathSprites: []
+  attackSprites2:
+  - {fileID: 103077188, guid: 5b3d421f3ab1044b784f1f944e231c46, type: 3}
+  attackSprites3:
+  - {fileID: -1442243904, guid: 5b3d421f3ab1044b784f1f944e231c46, type: 3}
+  hitSprites:
+  - {fileID: -141745875, guid: 5b3d421f3ab1044b784f1f944e231c46, type: 3}
+  deathSprites:
+  - {fileID: -160463798, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1976825843, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -404060229, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1521543304, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -483965303, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 369282708, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -1577144373, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: 1272574604, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
+  - {fileID: -509191186, guid: 469afc53ba82b404697c8b10fdd4b20a, type: 3}
   idleFrameRate: 12
   walkFrameRate: 12
   attackFrameRate: 12
   hitFrameRate: 12
   deathFrameRate: 12
   debugMode: 1
+  deathSlowMotionScale: 0.3
+  deathSlowMotionDuration: 2
 --- !u!4 &494234833
 Transform:
   m_ObjectHideFlags: 0

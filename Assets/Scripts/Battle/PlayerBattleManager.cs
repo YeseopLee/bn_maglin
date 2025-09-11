@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using Maglin.Player;
 using Maglin.Core;
 
@@ -35,12 +36,40 @@ namespace Maglin.Battle
         [SerializeField] private float entranceAnimationDuration = 1.2f; // 입장 애니메이션 시간 (더 빠르게)
         [SerializeField] private float entranceStartOffsetX = -50f; // 화면 왼쪽 시작 위치 오프셋 (화면 완전 밖에서부터)
 
+        [Header("사망 카메라 효과")]
+        [SerializeField] private float deathCameraZoomScale = 0.5f; // 사망 시 카메라 확대 배율 (작을수록 더 확대)
+        [SerializeField] private float deathCameraZoomDuration = 0.8f; // 카메라 확대/축소 애니메이션 시간 (빠르게)
+
+        [Header("사망 시각 효과")]
+        [SerializeField] private float deathEffectFadeTime = 1f; // 사망 효과 페이드 인 시간
+        [SerializeField] private float whiteOverlayMaxAlpha = 0.7f; // 하얀 오버레이 최대 투명도 (더 강하게)
+
         // 플레이어 위치 설정 (Grid 기반)
         private Vector2Int playerGridPosition = new Vector2Int(0, 0);
 
         // 플레이어 게임오브젝트
         private GameObject playerGameObject = null;
         private bool isInitialized = false;
+
+        // 사망 카메라 효과용
+        private float originalCameraSize;
+        private Vector3 originalCameraPosition;
+        private bool isDeathCameraActive = false;
+
+        // 사망 시각 효과용
+        private List<SpriteRenderer> allSpriteRenderers = new List<SpriteRenderer>();
+        private List<Color> originalColors = new List<Color>();
+        private bool isDeathVisualEffectActive = false;
+        private GameObject deathOverlayObject;
+        private SpriteRenderer deathOverlayRenderer;
+
+        // UI 숨기기용
+        private List<Canvas> allCanvases = new List<Canvas>();
+        private List<bool> originalCanvasStates = new List<bool>();
+
+        // 플레이어 렌더러 레이어 관리용
+        private SpriteRenderer playerSpriteRenderer;
+        private int originalPlayerSortingOrder;
 
         #region Unity Events
         private void Awake()
@@ -744,6 +773,476 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 기본 코루틴 입장 애니메이션 완료");
+        }
+        #endregion
+
+        #region Death Camera Effects
+        /// <summary>
+        /// 사망 카메라 효과 시작 (플레이어 확대)
+        /// </summary>
+        public void StartDeathCameraEffect()
+        {
+            if (isDeathCameraActive)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 사망 카메라 효과가 이미 활성화되어 있습니다.");
+                return;
+            }
+
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 메인 카메라를 찾을 수 없습니다.");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 사망 카메라 효과 시작 - 플레이어로 확대");
+
+            isDeathCameraActive = true;
+
+            // 원본 카메라 상태 저장
+            originalCameraSize = mainCamera.orthographicSize;
+            originalCameraPosition = mainCamera.transform.position;
+
+            // 플레이어 위치로 카메라 이동 및 확대
+            Vector3 playerWorldPos = GetPlayerWorldPosition();
+            Vector3 targetCameraPos = new Vector3(playerWorldPos.x, playerWorldPos.y, originalCameraPosition.z);
+
+            StartCoroutine(AnimateCameraToPlayer(mainCamera, targetCameraPos, originalCameraSize * deathCameraZoomScale));
+        }
+
+        /// <summary>
+        /// 사망 카메라 효과 종료 (원래 위치로 복구)
+        /// </summary>
+        public void EndDeathCameraEffect()
+        {
+            if (!isDeathCameraActive)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 사망 카메라 효과가 활성화되어 있지 않습니다.");
+                return;
+            }
+
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 메인 카메라를 찾을 수 없습니다.");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 사망 카메라 효과 종료 - 원래 위치로 복구");
+
+            StartCoroutine(AnimateCameraToOriginal(mainCamera));
+        }
+
+        /// <summary>
+        /// 카메라를 플레이어 위치로 애니메이션
+        /// </summary>
+        private System.Collections.IEnumerator AnimateCameraToPlayer(Camera camera, Vector3 targetPosition, float targetSize)
+        {
+            Vector3 startPosition = camera.transform.position;
+            float startSize = camera.orthographicSize;
+
+            float elapsedTime = 0f;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 카메라 확대 애니메이션 시작 (슬로우 모션 영향 받음)");
+
+            while (elapsedTime < deathCameraZoomDuration)
+            {
+                elapsedTime += Time.deltaTime; // deltaTime 사용 (슬로우 모션 영향 받음)
+                float progress = elapsedTime / deathCameraZoomDuration;
+
+                // 극적인 Ease In Cubic 곡선 (빠르게 시작해서 급격히 줌인)
+                float easedProgress = 1f - Mathf.Pow(1f - progress, 3f);
+
+                // 위치와 크기 동시 애니메이션
+                camera.transform.position = Vector3.Lerp(startPosition, targetPosition, easedProgress);
+                camera.orthographicSize = Mathf.Lerp(startSize, targetSize, easedProgress);
+
+                yield return null;
+            }
+
+            // 최종 값으로 정확히 설정
+            camera.transform.position = targetPosition;
+            camera.orthographicSize = targetSize;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 플레이어로 카메라 이동 완료");
+        }
+
+        /// <summary>
+        /// 카메라를 원래 위치로 애니메이션
+        /// </summary>
+        private System.Collections.IEnumerator AnimateCameraToOriginal(Camera camera)
+        {
+            Vector3 startPosition = camera.transform.position;
+            float startSize = camera.orthographicSize;
+
+            float elapsedTime = 0f;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 카메라 줌 아웃 애니메이션 시작 (슬로우 모션 종료 후)");
+
+            while (elapsedTime < deathCameraZoomDuration)
+            {
+                elapsedTime += Time.deltaTime; // 일반 deltaTime 사용 (슬로우 모션 이미 해제됨)
+                float progress = elapsedTime / deathCameraZoomDuration;
+
+                // Ease In-Out Quad 곡선
+                float easedProgress = progress < 0.5f ?
+                    2f * progress * progress :
+                    1f - 2f * (1f - progress) * (1f - progress);
+
+                // 위치와 크기 동시 애니메이션
+                camera.transform.position = Vector3.Lerp(startPosition, originalCameraPosition, easedProgress);
+                camera.orthographicSize = Mathf.Lerp(startSize, originalCameraSize, easedProgress);
+
+                yield return null;
+            }
+
+            // 최종 값으로 정확히 설정
+            camera.transform.position = originalCameraPosition;
+            camera.orthographicSize = originalCameraSize;
+
+            isDeathCameraActive = false;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 카메라 원래 위치 복구 완료");
+        }
+        #endregion
+
+        #region Death Visual Effects
+        /// <summary>
+        /// 사망 시각 효과 시작 (모든 객체 흑백 변환 + 노이즈 오버레이)
+        /// </summary>
+        public void StartDeathVisualEffect()
+        {
+            if (isDeathVisualEffectActive)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 사망 시각 효과가 이미 활성화되어 있습니다.");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 사망 시각 효과 시작 - 흑백 변환 및 노이즈 오버레이");
+
+            isDeathVisualEffectActive = true;
+
+            // 모든 스프라이트 렌더러 수집 및 색상 저장
+            CollectAllSpriteRenderersAndSaveColors();
+
+            // UI 숨기기
+            HideAllUI();
+
+            // 플레이어를 최상위 레이어로 이동
+            SetPlayerToTopLayer();
+
+            // 하얀 오버레이 생성
+            CreateDeathOverlay();
+
+            // 시각 효과 시작
+            StartCoroutine(ApplyDeathVisualEffect());
+        }
+
+        /// <summary>
+        /// 사망 시각 효과 종료 (원상복구)
+        /// </summary>
+        public void EndDeathVisualEffect()
+        {
+            if (!isDeathVisualEffectActive)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 사망 시각 효과가 활성화되어 있지 않습니다.");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 사망 시각 효과 종료 - 원상복구");
+
+            StartCoroutine(RestoreOriginalVisualEffect());
+        }
+
+        /// <summary>
+        /// 몬스터 스프라이트 렌더러만 수집 및 원본 색상 저장 (플레이어 제외)
+        /// </summary>
+        private void CollectAllSpriteRenderersAndSaveColors()
+        {
+            allSpriteRenderers.Clear();
+            originalColors.Clear();
+
+            // 씬의 모든 SpriteRenderer 찾기
+            SpriteRenderer[] renderers = FindObjectsOfType<SpriteRenderer>();
+
+            foreach (var renderer in renderers)
+            {
+                // UI 요소는 제외 (Canvas 하위에 있는 것들)
+                if (renderer.GetComponentInParent<Canvas>() != null)
+                    continue;
+
+                // 플레이어 오브젝트는 제외 (PlayerManager나 PlayerBattleManager 컴포넌트가 있는 오브젝트)
+                bool isPlayerObject = false;
+                GameObject obj = renderer.gameObject;
+
+                // 오브젝트 자체나 부모에서 플레이어 관련 컴포넌트 확인
+                if (obj.GetComponent<PlayerManager>() != null ||
+                    obj.GetComponentInParent<PlayerManager>() != null ||
+                    obj.name.ToLower().Contains("player"))
+                {
+                    isPlayerObject = true;
+                }
+
+                if (!isPlayerObject)
+                {
+                    allSpriteRenderers.Add(renderer);
+                    originalColors.Add(renderer.color);
+                }
+            }
+
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 몬스터 스프라이트 렌더러 수집 완료: {allSpriteRenderers.Count}개 (플레이어 제외)");
+        }
+
+        /// <summary>
+        /// 하얀 오버레이 생성
+        /// </summary>
+        private void CreateDeathOverlay()
+        {
+            if (deathOverlayObject != null)
+            {
+                DestroyImmediate(deathOverlayObject);
+            }
+
+            // 오버레이 객체 생성
+            deathOverlayObject = new GameObject("DeathOverlay");
+            deathOverlayRenderer = deathOverlayObject.AddComponent<SpriteRenderer>();
+
+            // 하얀 텍스처 생성
+            Texture2D whiteTexture = CreateSolidColorTexture(512, 512, Color.white);
+            Sprite whiteSprite = Sprite.Create(whiteTexture, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f), 100f);
+
+            // 오버레이 설정
+            deathOverlayRenderer.sprite = whiteSprite;
+            deathOverlayRenderer.color = new Color(1f, 1f, 1f, 0f); // 시작은 투명
+            deathOverlayRenderer.sortingOrder = 500; // 플레이어보다는 뒤에 표시
+
+            // 카메라 크기에 맞게 스케일 조정
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                float cameraHeight = mainCamera.orthographicSize * 2f;
+                float cameraWidth = cameraHeight * mainCamera.aspect;
+                deathOverlayObject.transform.localScale = new Vector3(cameraWidth / 5.12f, cameraHeight / 5.12f, 1f);
+                deathOverlayObject.transform.position = new Vector3(mainCamera.transform.position.x, mainCamera.transform.position.y, 0f);
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 하얀 오버레이 생성 완료");
+        }
+
+        /// <summary>
+        /// 단색 텍스처 생성
+        /// </summary>
+        private Texture2D CreateSolidColorTexture(int width, int height, Color color)
+        {
+            Texture2D texture = new Texture2D(width, height);
+            Color[] pixels = new Color[width * height];
+
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                pixels[i] = color;
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply();
+            return texture;
+        }
+
+        /// <summary>
+        /// 사망 시각 효과 적용 (페이드 인)
+        /// </summary>
+        private System.Collections.IEnumerator ApplyDeathVisualEffect()
+        {
+            float elapsedTime = 0f;
+
+            while (elapsedTime < deathEffectFadeTime)
+            {
+                elapsedTime += Time.deltaTime; // 슬로우 모션 영향을 받음
+                float progress = elapsedTime / deathEffectFadeTime;
+
+                // 모든 몬스터 스프라이트를 점진적으로 검은색으로 변환
+                for (int i = 0; i < allSpriteRenderers.Count; i++)
+                {
+                    if (allSpriteRenderers[i] != null)
+                    {
+                        Color originalColor = originalColors[i];
+                        Color blackColor = new Color(0f, 0f, 0f, originalColor.a); // 완전히 검은색, 투명도는 유지
+                        allSpriteRenderers[i].color = Color.Lerp(originalColor, blackColor, progress);
+                    }
+                }
+
+                // 하얀 오버레이 페이드 인
+                if (deathOverlayRenderer != null)
+                {
+                    Color overlayColor = deathOverlayRenderer.color;
+                    overlayColor.a = whiteOverlayMaxAlpha * progress;
+                    deathOverlayRenderer.color = overlayColor;
+                }
+
+                yield return null;
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 사망 시각 효과 적용 완료");
+        }
+
+        /// <summary>
+        /// 원본 시각 효과 복구 (페이드 아웃)
+        /// </summary>
+        private System.Collections.IEnumerator RestoreOriginalVisualEffect()
+        {
+            float elapsedTime = 0f;
+
+            while (elapsedTime < deathEffectFadeTime)
+            {
+                elapsedTime += Time.deltaTime;
+                float progress = elapsedTime / deathEffectFadeTime;
+
+                // 모든 스프라이트를 점진적으로 원본 색상으로 복구
+                for (int i = 0; i < allSpriteRenderers.Count; i++)
+                {
+                    if (allSpriteRenderers[i] != null && i < originalColors.Count)
+                    {
+                        Color targetColor = originalColors[i];
+                        Color currentColor = allSpriteRenderers[i].color;
+                        allSpriteRenderers[i].color = Color.Lerp(currentColor, targetColor, progress);
+                    }
+                }
+
+                // 하얀 오버레이 페이드 아웃
+                if (deathOverlayRenderer != null)
+                {
+                    Color overlayColor = deathOverlayRenderer.color;
+                    overlayColor.a = whiteOverlayMaxAlpha * (1f - progress);
+                    deathOverlayRenderer.color = overlayColor;
+                }
+
+                yield return null;
+            }
+
+            // 최종 정리
+            for (int i = 0; i < allSpriteRenderers.Count; i++)
+            {
+                if (allSpriteRenderers[i] != null && i < originalColors.Count)
+                {
+                    allSpriteRenderers[i].color = originalColors[i];
+                }
+            }
+
+            // 오버레이 제거
+            if (deathOverlayObject != null)
+            {
+                DestroyImmediate(deathOverlayObject);
+                deathOverlayObject = null;
+                deathOverlayRenderer = null;
+            }
+
+            // UI 복구
+            RestoreAllUI();
+
+            // 플레이어 레이어 복구
+            RestorePlayerLayer();
+
+            isDeathVisualEffectActive = false;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 원본 시각 효과 및 UI 복구 완료");
+        }
+
+        /// <summary>
+        /// 모든 UI 캔버스 숨기기
+        /// </summary>
+        private void HideAllUI()
+        {
+            allCanvases.Clear();
+            originalCanvasStates.Clear();
+
+            // 씬의 모든 Canvas 찾기
+            Canvas[] canvases = FindObjectsOfType<Canvas>();
+
+            foreach (var canvas in canvases)
+            {
+                allCanvases.Add(canvas);
+                originalCanvasStates.Add(canvas.enabled);
+                canvas.enabled = false; // Canvas 비활성화
+            }
+
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] UI 캔버스 숨기기 완료: {allCanvases.Count}개");
+        }
+
+        /// <summary>
+        /// 모든 UI 캔버스 복구
+        /// </summary>
+        private void RestoreAllUI()
+        {
+            for (int i = 0; i < allCanvases.Count; i++)
+            {
+                if (allCanvases[i] != null && i < originalCanvasStates.Count)
+                {
+                    allCanvases[i].enabled = originalCanvasStates[i];
+                }
+            }
+
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] UI 캔버스 복구 완료: {allCanvases.Count}개");
+
+            allCanvases.Clear();
+            originalCanvasStates.Clear();
+        }
+
+        /// <summary>
+        /// 플레이어를 최상위 레이어로 이동
+        /// </summary>
+        private void SetPlayerToTopLayer()
+        {
+            // 플레이어 게임오브젝트에서 SpriteRenderer 찾기
+            if (playerGameObject != null)
+            {
+                playerSpriteRenderer = playerGameObject.GetComponent<SpriteRenderer>();
+                if (playerSpriteRenderer != null)
+                {
+                    originalPlayerSortingOrder = playerSpriteRenderer.sortingOrder;
+                    playerSpriteRenderer.sortingOrder = 1000; // 오버레이(500)보다 높게 설정
+
+                    if (debugMode)
+                        Debug.Log($"[PlayerBattleManager] 플레이어 레이어를 최상위로 이동: {originalPlayerSortingOrder} -> 1000");
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.LogWarning("[PlayerBattleManager] 플레이어 게임오브젝트에서 SpriteRenderer를 찾을 수 없습니다.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 레이어 복구
+        /// </summary>
+        private void RestorePlayerLayer()
+        {
+            if (playerSpriteRenderer != null)
+            {
+                playerSpriteRenderer.sortingOrder = originalPlayerSortingOrder;
+
+                if (debugMode)
+                    Debug.Log($"[PlayerBattleManager] 플레이어 레이어 복구: 1000 -> {originalPlayerSortingOrder}");
+            }
         }
         #endregion
 

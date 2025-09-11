@@ -108,6 +108,10 @@ namespace Maglin.Player
         [Header("디버그")]
         [SerializeField] private bool debugMode = true; // 유물 디버그를 위해 활성화
 
+        [Header("사망 연출 설정")]
+        [SerializeField] private float deathSlowMotionScale = 0.3f; // 사망 시 슬로우 모션 배율
+        [SerializeField] private float deathSlowMotionDuration = 6f; // 슬로우 모션 지속 시간
+
         // 계산된 스탯 (유물 효과 적용)
         private int calculatedMaxHealth;
         private int calculatedMaxMana;
@@ -386,7 +390,19 @@ namespace Maglin.Player
                 if (deathSprites == null || deathSprites.Length == 0)
                 {
                     deathSprites = new Sprite[] { CreateDefaultSprite(Color.black) };
+                    if (debugMode)
+                        Debug.Log("[PlayerManager] Resources에서 Death 스프라이트를 찾을 수 없어 기본 스프라이트 생성");
                 }
+                else
+                {
+                    if (debugMode)
+                        Debug.Log($"[PlayerManager] Resources에서 Death 스프라이트 로드: {deathSprites.Length}개");
+                }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Inspector에서 할당된 Death 스프라이트 사용: {deathSprites.Length}개");
             }
 
             if (debugMode)
@@ -1307,6 +1323,7 @@ namespace Maglin.Player
 
             float frameDuration = 1f / frameRate;
             bool isLooping = ShouldLoopAnimation(currentAnimationState);
+            bool isDeathAnimation = currentAnimationState == PlayerAnimationState.Death;
 
             if (debugMode)
                 Debug.Log($"[PlayerManager] 애니메이션 시작: {currentAnimationState}, 프레임 수: {sprites.Length}, 프레임레이트: {frameRate}, 루프: {isLooping}");
@@ -1320,10 +1337,19 @@ namespace Maglin.Player
                     currentFrameIndex = i;
                     OnPlayerAnimationChanged?.Invoke(currentAnimationState);
 
-                    // if (debugMode && sprites.Length > 1)
-                    // Debug.Log($"[PlayerManager] 프레임 변경: {currentAnimationState} [{i}/{sprites.Length - 1}]");
+                    if (debugMode && isDeathAnimation)
+                        Debug.Log($"[PlayerManager] 사망 애니메이션 프레임: [{i}/{sprites.Length - 1}]");
 
-                    yield return new WaitForSeconds(frameDuration);
+                    // 사망 애니메이션의 경우 슬로우 모션 영향을 받도록 WaitForSeconds 사용
+                    // 다른 애니메이션은 일반적인 시간 기준 사용
+                    if (isDeathAnimation)
+                    {
+                        yield return new WaitForSeconds(frameDuration);
+                    }
+                    else
+                    {
+                        yield return new WaitForSeconds(frameDuration);
+                    }
                 }
             } while (isLooping && isPlayingAnimation);
 
@@ -1559,14 +1585,87 @@ namespace Maglin.Player
         }
 
         /// <summary>
-        /// 사망 애니메이션 실행
+        /// 사망 애니메이션 실행 (슬로우 모션 효과 포함)
         /// </summary>
         public void PlayDeathAnimation()
         {
+            if (debugMode)
+            {
+                Debug.Log("[PlayerManager] 사망 애니메이션 실행 (슬로우 모션 포함)");
+                Debug.Log($"[PlayerManager] Death 스프라이트 확인: {deathSprites?.Length ?? 0}개");
+                if (deathSprites != null)
+                {
+                    for (int i = 0; i < deathSprites.Length; i++)
+                    {
+                        if (deathSprites[i] != null)
+                        {
+                            Debug.Log($"[PlayerManager] Death 스프라이트 [{i}]: {deathSprites[i].name} (유효함)");
+                        }
+                        else
+                        {
+                            Debug.Log($"[PlayerManager] Death 스프라이트 [{i}]: null");
+                        }
+                    }
+                }
+                else
+                {
+                    Debug.LogError("[PlayerManager] deathSprites 배열이 null입니다!");
+                }
+
+                // 다른 스프라이트들과 비교
+                Debug.Log($"[PlayerManager] 비교 - Idle 스프라이트: {idleSprites?.Length ?? 0}개");
+                Debug.Log($"[PlayerManager] 비교 - Walk 스프라이트: {walkSprites?.Length ?? 0}개");
+            }
+
             SetAnimationState(PlayerAnimationState.Death);
 
+            // 슬로우 모션 효과 시작
+            StartCoroutine(ExecuteDeathSlowMotionEffect());
+        }
+
+        /// <summary>
+        /// 사망 시 슬로우 모션 효과 실행
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteDeathSlowMotionEffect()
+        {
             if (debugMode)
-                Debug.Log("[PlayerManager] 사망 애니메이션 실행");
+                Debug.Log($"[PlayerManager] 사망 연출 시작: 슬로우 모션 {deathSlowMotionScale}x 속도, {deathSlowMotionDuration}초 지속");
+
+            // 원래 시간 스케일 저장
+            float originalTimeScale = Time.timeScale;
+
+            // 슬로우 모션을 먼저 적용
+            Time.timeScale = deathSlowMotionScale;
+
+            if (debugMode)
+                Debug.Log($"[PlayerManager] 슬로우 모션 적용: {deathSlowMotionScale}x");
+
+            // 슬로우 모션이 적용된 상태에서 카메라 효과와 시각 효과 시작
+            if (PlayerBattleManager.Instance != null)
+            {
+                PlayerBattleManager.Instance.StartDeathCameraEffect();
+                PlayerBattleManager.Instance.StartDeathVisualEffect();
+            }
+
+            // 슬로우 모션 지속 시간 대기 (슬로우 모션이 적용된 시간 기준으로 기다림)
+            // 실제로는 deathSlowMotionDuration / deathSlowMotionScale 만큼의 실제 시간이 걸림
+            yield return new WaitForSeconds(deathSlowMotionDuration);
+
+            if (debugMode)
+                Debug.Log("[PlayerManager] 슬로우 모션 지속 시간 완료, 시간 스케일 복구 시작");
+
+            // 시간 스케일 복구
+            Time.timeScale = originalTimeScale;
+
+            if (debugMode)
+                Debug.Log("[PlayerManager] 슬로우 모션 종료, 시간 스케일 복구 완료");
+
+            // 슬로우 모션이 완전히 끝난 후 카메라 줌 아웃과 시각 효과 종료
+            if (PlayerBattleManager.Instance != null)
+            {
+                PlayerBattleManager.Instance.EndDeathCameraEffect();
+                PlayerBattleManager.Instance.EndDeathVisualEffect();
+            }
         }
 
         /// <summary>
