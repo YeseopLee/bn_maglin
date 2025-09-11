@@ -635,6 +635,71 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 116236569}
   m_CullTransparentMesh: 1
+--- !u!1 &246027727
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 246027729}
+  - component: {fileID: 246027728}
+  m_Layer: 0
+  m_Name: PlayerManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &246027728
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246027727}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 829f2ff37929a443984888233446df6a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  maxMana: 30
+  manaRecoveryPerTurn: 10
+  maxHandSize: 5
+  currentHealth: 0
+  currentMana: 0
+  currentGold: 0
+  currentRelics: []
+  idleSprites: []
+  walkSprites: []
+  attackSprites1: []
+  attackSprites2: []
+  attackSprites3: []
+  hitSprites: []
+  deathSprites: []
+  idleFrameRate: 8
+  walkFrameRate: 10
+  attackFrameRate: 12
+  hitFrameRate: 15
+  deathFrameRate: 10
+  debugMode: 1
+--- !u!4 &246027729
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 246027727}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &261950356
 GameObject:
   m_ObjectHideFlags: 0
@@ -1257,6 +1322,51 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &576807117
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 576807119}
+  - component: {fileID: 576807118}
+  m_Layer: 0
+  m_Name: MonsterBattleManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &576807118
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 576807117}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d2ac3af7186664c758175f58115284dc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  debugMode: 1
+--- !u!4 &576807119
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 576807117}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 436.6003, y: 291.8317, z: -2.7995946}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &659370156
 GameObject:
   m_ObjectHideFlags: 0
@@ -1403,7 +1513,7 @@ MonoBehaviour:
   availableEvents:
   - {fileID: 11400000, guid: e34dedf1851754958b2bf2c4e9b2fc4e, type: 2}
   - {fileID: 11400000, guid: cdfdc153c95d141b7a51b42d206f49c9, type: 2}
-  eventChance: 1
+  eventChance: 0
   currentEvent: {fileID: 0}
   isEventActive: 0
 --- !u!4 &757911326
@@ -2061,3 +2171,5 @@ SceneRoots:
   - {fileID: 757911326}
   - {fileID: 417326407}
   - {fileID: 1199951751}
+  - {fileID: 576807119}
+  - {fileID: 246027729}

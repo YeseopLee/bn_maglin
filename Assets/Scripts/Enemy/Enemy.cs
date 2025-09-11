@@ -64,6 +64,11 @@ namespace Maglin.Enemy
         [SerializeField] private bool hasActedThisTurn = false;
         [SerializeField] private int turnsSinceLastAttack = 0;
 
+        [Header("패턴 상태")]
+        [SerializeField] private int globalTurnCounter = 0;      // 이 몬스터가 생성된 이후 총 턴 수
+        [SerializeField] private bool isCharging = false;        // 차징 중인지 여부
+        [SerializeField] private bool patternExecutedThisTurn = false; // 이번 턴에 패턴을 실행했는지
+
         [Header("디버그")]
         [SerializeField] private bool debugMode = false;
 
@@ -168,6 +173,21 @@ namespace Maglin.Enemy
         /// 몬스터가 이 오브젝트를 공격하는지 여부
         /// </summary>
         public bool MonstersAttackThis => enemyData?.MonstersAttackThis ?? false;
+
+        /// <summary>
+        /// 글로벌 턴 카운터 (몬스터 생성 이후 턴 수)
+        /// </summary>
+        public int GlobalTurnCounter => globalTurnCounter;
+
+        /// <summary>
+        /// 차징 중인지 여부
+        /// </summary>
+        public bool IsCharging => isCharging;
+
+        /// <summary>
+        /// 이번 턴에 패턴을 실행했는지 여부
+        /// </summary>
+        public bool PatternExecutedThisTurn => patternExecutedThisTurn;
         #endregion
 
         #region Unity Events
@@ -213,6 +233,11 @@ namespace Maglin.Enemy
             turnsSinceLastAttack = 0;
             isStunned = false;
             stunDuration = 0;
+
+            // 패턴 상태 초기화
+            globalTurnCounter = 0;
+            isCharging = false;
+            patternExecutedThisTurn = false;
 
             // 스프라이트 및 색상 설정
             if (spriteRenderer != null)
@@ -340,6 +365,10 @@ namespace Maglin.Enemy
             hasActedThisTurn = false;
             turnsSinceLastAttack++;
 
+            // 패턴 상태 처리
+            patternExecutedThisTurn = false;
+            globalTurnCounter++;
+
             // 기절 상태 처리
             if (isStunned)
             {
@@ -351,7 +380,7 @@ namespace Maglin.Enemy
             }
 
             if (debugMode)
-                Debug.Log($"[Enemy] {EnemyName} 턴 종료 - 기절: {isStunned}({stunDuration}), 마지막 공격: {turnsSinceLastAttack}턴 전");
+                Debug.Log($"[Enemy] {EnemyName} 턴 종료 - 기절: {isStunned}({stunDuration}), 마지막 공격: {turnsSinceLastAttack}턴 전, 총 턴: {globalTurnCounter}");
         }
 
         /// <summary>
@@ -380,6 +409,28 @@ namespace Maglin.Enemy
         public bool CanMove()
         {
             return IsAlive && !isStunned && !hasActedThisTurn;
+        }
+
+        /// <summary>
+        /// 차징 상태 설정
+        /// </summary>
+        public void SetCharging(bool charging)
+        {
+            isCharging = charging;
+
+            if (debugMode)
+                Debug.Log($"[Enemy] {EnemyName} 차징 상태: {isCharging}");
+        }
+
+        /// <summary>
+        /// 패턴 실행 완료 표시
+        /// </summary>
+        public void MarkPatternExecuted()
+        {
+            patternExecutedThisTurn = true;
+
+            if (debugMode)
+                Debug.Log($"[Enemy] {EnemyName} 패턴 실행 완료");
         }
         #endregion
 
@@ -412,6 +463,7 @@ namespace Maglin.Enemy
             Debug.Log($"기절: {isStunned} ({stunDuration}턴)");
             Debug.Log($"이번 턴 행동: {hasActedThisTurn}");
             Debug.Log($"마지막 공격: {turnsSinceLastAttack}턴 전");
+            Debug.Log($"패턴 상태 - 총 턴: {globalTurnCounter}, 차징: {isCharging}, 패턴 실행: {patternExecutedThisTurn}");
         }
         #endregion
     }

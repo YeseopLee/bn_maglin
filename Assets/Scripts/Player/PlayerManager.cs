@@ -91,6 +91,7 @@ namespace Maglin.Player
 
         [Header("플레이어 스프라이트 애니메이션")]
         [SerializeField] private Sprite[] idleSprites;
+        [SerializeField] private Sprite[] walkSprites; // 이동 스프라이트 추가
         [SerializeField] private Sprite[] attackSprites1;
         [SerializeField] private Sprite[] attackSprites2;
         [SerializeField] private Sprite[] attackSprites3;
@@ -99,6 +100,7 @@ namespace Maglin.Player
 
         [Header("애니메이션 설정")]
         [SerializeField] private float idleFrameRate = 8f;
+        [SerializeField] private float walkFrameRate = 10f; // 이동 애니메이션 프레임 레이트 추가
         [SerializeField] private float attackFrameRate = 12f;
         [SerializeField] private float hitFrameRate = 15f;
         [SerializeField] private float deathFrameRate = 10f;
@@ -130,6 +132,7 @@ namespace Maglin.Player
         public enum PlayerAnimationState
         {
             Idle,
+            Walk,  // 이동 애니메이션 상태 추가
             Attack1,
             Attack2,
             Attack3,
@@ -327,6 +330,18 @@ namespace Maglin.Player
                 }
             }
 
+            if (walkSprites == null || walkSprites.Length == 0)
+            {
+                walkSprites = Resources.LoadAll<Sprite>("Player/PlayerWalk");
+                if (walkSprites == null || walkSprites.Length == 0)
+                {
+                    // Walk 스프라이트가 없으면 Idle 스프라이트 사용
+                    walkSprites = idleSprites;
+                    if (debugMode)
+                        Debug.Log("[PlayerManager] Walk 스프라이트가 없어 Idle 스프라이트 사용");
+                }
+            }
+
             if (attackSprites1 == null || attackSprites1.Length == 0)
             {
                 attackSprites1 = Resources.LoadAll<Sprite>("Player/PlayerAttack1");
@@ -378,6 +393,7 @@ namespace Maglin.Player
             {
                 Debug.Log("[PlayerManager] 플레이어 스프라이트 배열 로드/생성 완료");
                 Debug.Log($"  - Idle 스프라이트: {idleSprites?.Length ?? 0}개");
+                Debug.Log($"  - Walk 스프라이트: {walkSprites?.Length ?? 0}개");
                 Debug.Log($"  - Attack1 스프라이트: {attackSprites1?.Length ?? 0}개");
                 Debug.Log($"  - Attack2 스프라이트: {attackSprites2?.Length ?? 0}개");
                 Debug.Log($"  - Attack3 스프라이트: {attackSprites3?.Length ?? 0}개");
@@ -1267,6 +1283,8 @@ namespace Maglin.Player
             {
                 case PlayerAnimationState.Idle:
                     return idleFrameRate;
+                case PlayerAnimationState.Walk:
+                    return walkFrameRate;
                 case PlayerAnimationState.Attack1:
                 case PlayerAnimationState.Attack2:
                 case PlayerAnimationState.Attack3:
@@ -1329,6 +1347,8 @@ namespace Maglin.Player
             {
                 case PlayerAnimationState.Idle:
                     return true; // 대기 애니메이션은 루프
+                case PlayerAnimationState.Walk:
+                    return true; // 이동 애니메이션은 루프
                 case PlayerAnimationState.Attack1:
                 case PlayerAnimationState.Attack2:
                 case PlayerAnimationState.Attack3:
@@ -1367,6 +1387,8 @@ namespace Maglin.Player
             {
                 case PlayerAnimationState.Idle:
                     return idleSprites;
+                case PlayerAnimationState.Walk:
+                    return walkSprites;
                 case PlayerAnimationState.Attack1:
                     return attackSprites1;
                 case PlayerAnimationState.Attack2:
@@ -1481,6 +1503,17 @@ namespace Maglin.Player
 
             // 현재 상태의 스프라이트로 업데이트 이벤트 발생
             OnPlayerAnimationChanged?.Invoke(currentAnimationState);
+        }
+
+        /// <summary>
+        /// 이동 애니메이션 재생 (루프)
+        /// </summary>
+        public void PlayWalkAnimation()
+        {
+            SetAnimationState(PlayerAnimationState.Walk);
+
+            if (debugMode)
+                Debug.Log("[PlayerManager] 이동 애니메이션 실행");
         }
 
         /// <summary>

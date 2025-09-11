@@ -151,6 +151,15 @@ namespace Maglin.Battle
                 yield break;
             }
 
+            // 차징 중인 몬스터는 이동하지 않음
+            if (MonsterPatternExecutor.Instance != null && MonsterPatternExecutor.Instance.IsMonsterCharging(monster))
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 차징 중으로 이동 건너뛰기");
+                yield return new WaitForSeconds(0.2f);
+                yield break;
+            }
+
             var ai = monster.GetComponent<EnemyAI>();
             if (ai == null) yield break;
 
@@ -191,12 +200,29 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 몬스터 공격 처리 (플레이어 및 중립 오브젝트)
+        /// 몬스터 공격 처리 (패턴 우선, 그 다음 일반 공격)
         /// </summary>
         public IEnumerator ProcessMonsterAttack(Maglin.Enemy.Enemy monster)
         {
             if (monster == null || !monster.IsAlive) yield break;
             if (monster.IsNeutralObject) yield break; // 중립 오브젝트는 공격하지 않음
+
+            // 1. 패턴 실행 시도 (패턴이 있는 경우 우선 실행)
+            var patternResult = ExecuteMonsterPatterns(monster);
+            if (patternResult.executed)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 패턴 실행: {patternResult.description}");
+
+                // 패턴 실행 애니메이션 대기
+                yield return new WaitForSeconds(0.3f);
+
+                // 패턴이 일반 행동을 차단하는 경우 여기서 종료
+                if (patternResult.blockNormalActions)
+                {
+                    yield break;
+                }
+            }
 
             var ai = monster.GetComponent<EnemyAI>();
             if (ai == null) yield break;
@@ -267,9 +293,63 @@ namespace Maglin.Battle
                     Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 공격 범위 밖");
             }
         }
+
+        /// <summary>
+        /// 새로운 몬스터 초기화 시 패턴 시스템에 등록
+        /// </summary>
+        public void InitializeMonsterPatterns(Maglin.Enemy.Enemy monster)
+        {
+            if (MonsterPatternExecutor.Instance != null)
+            {
+                MonsterPatternExecutor.Instance.InitializeMonsterPatterns(monster);
+            }
+        }
+
+        /// <summary>
+        /// 몬스터 사망 시 패턴 처리
+        /// </summary>
+        public void HandleMonsterDeathPatterns(Maglin.Enemy.Enemy deadMonster)
+        {
+            if (MonsterPatternExecutor.Instance != null)
+            {
+                MonsterPatternExecutor.Instance.HandleDeathPatterns(deadMonster);
+            }
+        }
+
+        /// <summary>
+        /// 턴 시작 시 모든 몬스터의 턴 카운터 증가
+        /// </summary>
+        public void IncrementMonsterTurnCounters()
+        {
+            if (MonsterPatternExecutor.Instance != null)
+            {
+                MonsterPatternExecutor.Instance.IncrementTurnCounters();
+            }
+        }
         #endregion
 
         #region Private Methods
+        /// <summary>
+        /// 몬스터 패턴 실행
+        /// </summary>
+        private PatternExecutionResult ExecuteMonsterPatterns(Maglin.Enemy.Enemy monster)
+        {
+            if (MonsterPatternExecutor.Instance != null)
+            {
+                var result = MonsterPatternExecutor.Instance.ExecutePatterns(monster, playerGridPosition);
+
+                // 패턴이 실행된 경우 몬스터에 표시
+                if (result.executed)
+                {
+                    monster.MarkPatternExecuted();
+                }
+
+                return result;
+            }
+
+            return new PatternExecutionResult(false, false, "PatternExecutor 없음");
+        }
+
         /// <summary>
         /// 모든 몬스터 가져오기 (MonsterSpawnManager에서)
         /// </summary>

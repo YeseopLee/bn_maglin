@@ -777,7 +777,19 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[BattleTestController] 전투 초기화 시퀀스 시작");
 
-            // 1단계: 먼저 몬스터 스폰 (애니메이션 없이 생성만)
+            // 0단계: 플레이어 입장 애니메이션 (화면 왼쪽에서 걸어오기)
+            if (PlayerBattleManager.Instance != null)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 플레이어 입장 애니메이션 시작");
+
+                yield return StartCoroutine(PlayerBattleManager.Instance.PlayPlayerEntranceAnimation());
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 플레이어 입장 애니메이션 완료");
+            }
+
+            // 1단계: 몬스터 스폰 (애니메이션 없이 생성만)
             yield return StartCoroutine(SpawnMonstersOnly());
 
             // 2단계: BattleInitializationSequence 실행 (몬스터 애니메이션 처리)
@@ -1086,6 +1098,9 @@ namespace Maglin.Battle
             if (MonsterBattleManager.Instance != null)
             {
                 MonsterBattleManager.Instance.ResetAllMonsterMoveFlags();
+
+                // 패턴 시스템: 모든 몬스터의 턴 카운터 증가
+                MonsterBattleManager.Instance.IncrementMonsterTurnCounters();
             }
 
             // 살아있는 몬스터들 가져오기
@@ -2719,14 +2734,41 @@ namespace Maglin.Battle
                 PlayerBattleManager.Instance.SetPlayerGridPosition(new Vector2Int(0, 0));
             }
 
-            // BattleSO에서 직접 몬스터 스폰
-            StartCoroutine(SpawnEventBattleMonstersAndSetTarget(battleData));
+            // 이벤트 전투 초기화 시퀀스 시작 (플레이어 입장 애니메이션 포함)
+            StartCoroutine(ExecuteEventBattleInitialization(battleData));
+        }
 
-            // 플레이어 턴 시작
+        /// <summary>
+        /// 이벤트 전투 초기화 시퀀스 (플레이어 입장 애니메이션 포함)
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteEventBattleInitialization(BattleSO battleData)
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 이벤트 전투 초기화 시퀀스 시작");
+
+            // 0단계: 플레이어 입장 애니메이션 (화면 왼쪽에서 걸어오기)
+            if (PlayerBattleManager.Instance != null)
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 이벤트 전투 플레이어 입장 애니메이션 시작");
+
+                yield return StartCoroutine(PlayerBattleManager.Instance.PlayPlayerEntranceAnimation());
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 이벤트 전투 플레이어 입장 애니메이션 완료");
+            }
+
+            // 1단계: BattleSO에서 직접 몬스터 스폰
+            yield return StartCoroutine(SpawnEventBattleMonstersAndSetTarget(battleData));
+
+            // 2단계: 플레이어 턴 시작
             StartPlayerTurn();
 
-            // UI 업데이트
+            // 3단계: UI 업데이트
             BattleUIManager.Instance?.UpdateAllUI();
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] 이벤트 전투 초기화 시퀀스 완료");
         }
 
         /// <summary>

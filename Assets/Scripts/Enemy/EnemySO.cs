@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using Maglin.Cards;
 
 namespace Maglin.Enemy
@@ -73,6 +74,9 @@ namespace Maglin.Enemy
 
 
 
+        [Header("몬스터 패턴")]
+        [SerializeField] private List<MonsterPatternSO> monsterPatterns = new List<MonsterPatternSO>();
+
         [Header("보상 정보")]
         [SerializeField] private int goldReward;
         [SerializeField] private int experienceReward;
@@ -95,6 +99,7 @@ namespace Maglin.Enemy
         public string SpecialAbilityDescription => specialAbilityDescription;
         public int GoldReward => goldReward;
         public int ExperienceReward => experienceReward;
+        public List<MonsterPatternSO> MonsterPatterns => monsterPatterns;
 
         // 중립 오브젝트 관련 Properties
         public bool IsNeutralObject => isNeutralObject;

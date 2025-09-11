@@ -31,6 +31,10 @@ namespace Maglin.Battle
         [Header("디버그")]
         [SerializeField] private bool debugMode = true;
 
+        [Header("플레이어 입장 애니메이션")]
+        [SerializeField] private float entranceAnimationDuration = 1.2f; // 입장 애니메이션 시간 (더 빠르게)
+        [SerializeField] private float entranceStartOffsetX = -50f; // 화면 왼쪽 시작 위치 오프셋 (화면 완전 밖에서부터)
+
         // 플레이어 위치 설정 (Grid 기반)
         private Vector2Int playerGridPosition = new Vector2Int(0, 0);
 
@@ -272,9 +276,17 @@ namespace Maglin.Battle
 
         #region Player GameObject Management
         /// <summary>
-        /// 플레이어 게임오브젝트 생성
+        /// 플레이어 게임오브젝트 생성 (기본 위치)
         /// </summary>
         private void CreatePlayerGameObject()
+        {
+            CreatePlayerGameObjectAtPosition(GetPlayerWorldPosition());
+        }
+
+        /// <summary>
+        /// 플레이어 게임오브젝트를 특정 위치에 생성
+        /// </summary>
+        private void CreatePlayerGameObjectAtPosition(Vector3 worldPosition)
         {
             // 기존 플레이어 오브젝트 제거
             if (playerGameObject != null)
@@ -305,30 +317,15 @@ namespace Maglin.Battle
             // SpriteRenderer 컴포넌트 추가
             var spriteRenderer = playerGameObject.AddComponent<SpriteRenderer>();
             spriteRenderer.sprite = playerSprite;
-            spriteRenderer.color = Color.white; // 파란색 제거 - 원본 스프라이트 색상 사용
+            spriteRenderer.color = Color.white; // 원본 스프라이트 색상 사용
             spriteRenderer.sortingLayerName = "Default";
             spriteRenderer.sortingOrder = 10;
 
-            // GridFieldManager를 통해 플레이어를 그리드에 배치
-            if (GridFieldManager.Instance != null && GridFieldManager.Instance.IsInitialized)
-            {
-                bool placed = GridFieldManager.Instance.PlaceObjectAtGrid(playerGameObject, playerGridPosition, true);
+            // 지정된 월드 위치에 배치
+            playerGameObject.transform.position = worldPosition;
 
-                if (debugMode)
-                {
-                    if (placed)
-                        Debug.Log($"[PlayerBattleManager] 플레이어를 그리드 위치 {playerGridPosition}에 배치했습니다.");
-                    else
-                        Debug.LogWarning($"[PlayerBattleManager] 플레이어를 그리드 위치 {playerGridPosition}에 배치할 수 없습니다.");
-                }
-            }
-            else
-            {
-                // 그리드가 준비되지 않은 경우 기본 위치 설정
-                playerGameObject.transform.position = new Vector3(0f, 0.5f, 0f);
-                if (debugMode)
-                    Debug.LogWarning("[PlayerBattleManager] GridFieldManager가 준비되지 않아 기본 위치에 플레이어 배치");
-            }
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 플레이어를 위치 {worldPosition}에 생성했습니다.");
         }
 
         /// <summary>
@@ -491,6 +488,262 @@ namespace Maglin.Battle
                 // 즉시 스프라이트 업데이트
                 UpdatePlayerSprite();
             }
+        }
+        /// <summary>
+        /// 화면 밖 시작 위치 계산 (카메라 기준)
+        /// </summary>
+        private Vector3 CalculateOffScreenStartPosition(Vector3 targetPosition)
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null)
+            {
+                // 카메라가 없으면 기본 오프셋 사용
+                return new Vector3(
+                    targetPosition.x + entranceStartOffsetX,
+                    targetPosition.y,
+                    targetPosition.z
+                );
+            }
+
+            // 카메라의 화면 경계 계산
+            float cameraHeight = 2f * mainCamera.orthographicSize;
+            float cameraWidth = cameraHeight * mainCamera.aspect;
+
+            // 카메라 중심점
+            Vector3 cameraCenter = mainCamera.transform.position;
+
+            // 화면 왼쪽 경계에서 추가로 여유분만큼 더 왼쪽에 배치
+            float leftScreenEdge = cameraCenter.x - (cameraWidth / 2f);
+            float offScreenBuffer = 5f; // 화면 경계에서 추가로 5유닛 더 밖에
+
+            Vector3 startPosition = new Vector3(
+                leftScreenEdge - offScreenBuffer,
+                targetPosition.y,
+                targetPosition.z
+            );
+
+            if (debugMode)
+            {
+                Debug.Log($"[PlayerBattleManager] 화면 밖 시작 위치 계산:");
+                Debug.Log($"  - 카메라 중심: {cameraCenter}");
+                Debug.Log($"  - 카메라 크기: {cameraWidth} x {cameraHeight}");
+                Debug.Log($"  - 화면 왼쪽 경계: {leftScreenEdge}");
+                Debug.Log($"  - 시작 위치: {startPosition}");
+                Debug.Log($"  - 목표 위치: {targetPosition}");
+            }
+
+            return startPosition;
+        }
+        #endregion
+
+        #region Player Entrance Animation
+        /// <summary>
+        /// 플레이어 입장 애니메이션 실행 (화면 왼쪽에서 걸어와서 그리드 위치에 도착)
+        /// </summary>
+        public System.Collections.IEnumerator PlayPlayerEntranceAnimation()
+        {
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 플레이어 입장 애니메이션 시작");
+
+            // 최종 목표 위치 (그리드 위치)
+            Vector3 targetWorldPosition = GetPlayerWorldPosition();
+
+            // 카메라를 기준으로 화면 완전 밖에서 시작하도록 계산
+            Vector3 startPosition = CalculateOffScreenStartPosition(targetWorldPosition);
+
+            // 플레이어 게임오브젝트가 없으면 시작 위치에서 생성
+            if (playerGameObject == null)
+            {
+                CreatePlayerGameObjectAtPosition(startPosition);
+            }
+            else
+            {
+                // 이미 존재하면 시작 위치로 즉시 이동
+                playerGameObject.transform.position = startPosition;
+            }
+
+            if (playerGameObject == null)
+            {
+                Debug.LogError("[PlayerBattleManager] 플레이어 게임오브젝트 생성 실패!");
+                yield break;
+            }
+
+            // PlayerManager에 Walk 애니메이션 시작 알림
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.PlayWalkAnimation();
+            }
+
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 플레이어 이동 시작: {startPosition} -> {targetWorldPosition}");
+
+            // DOTween을 사용한 부드러운 이동 (DOTween이 없으면 기본 코루틴 사용)
+            bool useDOTween = false;
+
+            // DOTween 사용 가능 여부 확인
+            try
+            {
+                // DOTween 클래스가 있는지 확인
+                var doTweenType = System.Type.GetType("DG.Tweening.DOTween, DOTween");
+                useDOTween = doTweenType != null;
+            }
+            catch
+            {
+                useDOTween = false;
+            }
+
+            if (useDOTween)
+            {
+                // DOTween 사용
+                yield return StartCoroutine(PlayEntranceAnimationWithDOTween(startPosition, targetWorldPosition));
+            }
+            else
+            {
+                // 기본 코루틴 사용
+                yield return StartCoroutine(PlayEntranceAnimationWithCoroutine(startPosition, targetWorldPosition));
+            }
+
+            // 애니메이션 완료 후 Idle 상태로 변경
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.ReturnToIdle();
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 플레이어 입장 애니메이션 완료");
+        }
+
+        /// <summary>
+        /// DOTween을 사용한 입장 애니메이션
+        /// </summary>
+        private System.Collections.IEnumerator PlayEntranceAnimationWithDOTween(Vector3 startPos, Vector3 targetPos)
+        {
+            bool doTweenSuccess = false;
+
+            // DOTween 사용 시도
+            doTweenSuccess = TryExecuteDOTweenAnimation(startPos, targetPos);
+
+            if (doTweenSuccess)
+            {
+                // DOTween 애니메이션 실행 성공 - 완료까지 대기
+                yield return StartCoroutine(WaitForDOTweenCompletion());
+
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] DOTween 입장 애니메이션 완료");
+            }
+            else
+            {
+                // DOTween 실패 시 기본 애니메이션으로 폴백
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] DOTween 사용 실패, 기본 애니메이션으로 폴백");
+
+                yield return StartCoroutine(PlayEntranceAnimationWithCoroutine(startPos, targetPos));
+            }
+        }
+
+        /// <summary>
+        /// DOTween 애니메이션 실행 시도 (try-catch 포함)
+        /// </summary>
+        private bool TryExecuteDOTweenAnimation(Vector3 startPos, Vector3 targetPos)
+        {
+            try
+            {
+                // 리플렉션을 사용하여 DOTween 호출
+                var doTweenType = System.Type.GetType("DG.Tweening.DOTween, DOTween");
+                var tweenerType = System.Type.GetType("DG.Tweening.Tweener, DOTween");
+                var easeType = System.Type.GetType("DG.Tweening.Ease, DOTween");
+
+                if (doTweenType != null && tweenerType != null && easeType != null)
+                {
+                    // DOTween.To() 메서드 호출
+                    var toMethod = doTweenType.GetMethod("To", new System.Type[] {
+                        typeof(System.Func<Vector3>),
+                        typeof(System.Action<Vector3>),
+                        typeof(Vector3),
+                        typeof(float)
+                    });
+
+                    if (toMethod != null)
+                    {
+                        // Tween 생성
+                        var tween = toMethod.Invoke(null, new object[] {
+                            new System.Func<Vector3>(() => playerGameObject.transform.position),
+                            new System.Action<Vector3>(pos => playerGameObject.transform.position = pos),
+                            targetPos,
+                            entranceAnimationDuration
+                        });
+
+                        // Ease 설정 (OutQuad)
+                        var setEaseMethod = tweenerType.GetMethod("SetEase", new System.Type[] { easeType });
+                        if (setEaseMethod != null)
+                        {
+                            var outQuadValue = System.Enum.Parse(easeType, "OutQuad");
+                            setEaseMethod.Invoke(tween, new object[] { outQuadValue });
+                        }
+
+                        // 완료 콜백 설정
+                        var onCompleteMethod = tweenerType.GetMethod("OnComplete", new System.Type[] { typeof(System.Action) });
+                        if (onCompleteMethod != null)
+                        {
+                            onCompleteMethod.Invoke(tween, new object[] { new System.Action(() => doTweenAnimationCompleted = true) });
+                        }
+
+                        return true; // 성공
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[PlayerBattleManager] DOTween 사용 실패: {e.Message}");
+            }
+
+            return false; // 실패
+        }
+
+        // DOTween 애니메이션 완료 플래그
+        private bool doTweenAnimationCompleted = false;
+
+        /// <summary>
+        /// DOTween 애니메이션 완료 대기
+        /// </summary>
+        private System.Collections.IEnumerator WaitForDOTweenCompletion()
+        {
+            doTweenAnimationCompleted = false;
+            yield return new WaitUntil(() => doTweenAnimationCompleted);
+        }
+
+        /// <summary>
+        /// 기본 코루틴을 사용한 입장 애니메이션
+        /// </summary>
+        private System.Collections.IEnumerator PlayEntranceAnimationWithCoroutine(Vector3 startPos, Vector3 targetPos)
+        {
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 기본 코루틴 입장 애니메이션 시작");
+
+            float elapsedTime = 0f;
+            Vector3 currentPos = startPos;
+
+            while (elapsedTime < entranceAnimationDuration)
+            {
+                elapsedTime += Time.deltaTime;
+                float progress = elapsedTime / entranceAnimationDuration;
+
+                // Ease Out Quad 곡선 적용
+                float easedProgress = 1f - (1f - progress) * (1f - progress);
+
+                // 현재 위치 계산
+                currentPos = Vector3.Lerp(startPos, targetPos, easedProgress);
+                playerGameObject.transform.position = currentPos;
+
+                yield return null;
+            }
+
+            // 최종 위치로 정확히 설정
+            playerGameObject.transform.position = targetPos;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 기본 코루틴 입장 애니메이션 완료");
         }
         #endregion
 

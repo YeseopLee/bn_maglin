@@ -475,6 +475,12 @@ namespace Maglin.Battle
 
                     // 몬스터 체력 이벤트 구독
                     SetupMonsterHealthEvents(enemy);
+
+                    // 패턴 시스템에 등록
+                    if (MonsterBattleManager.Instance != null)
+                    {
+                        MonsterBattleManager.Instance.InitializeMonsterPatterns(enemy);
+                    }
                 }
 
                 spawnedMonsters.Add(monsterObj);
@@ -1117,6 +1123,12 @@ namespace Maglin.Battle
             var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
             if (enemy != null)
             {
+                // 패턴 시스템에 등록 (애니메이션 완료 후)
+                if (MonsterBattleManager.Instance != null)
+                {
+                    MonsterBattleManager.Instance.InitializeMonsterPatterns(enemy);
+                }
+
                 // TargetManager에 몬스터 추가
                 if (TargetManager.Instance != null)
                 {
@@ -1186,6 +1198,12 @@ namespace Maglin.Battle
                     var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
                     if (enemy != null)
                     {
+                        // 패턴 시스템에 등록 (폴백 활성화 시)
+                        if (MonsterBattleManager.Instance != null)
+                        {
+                            MonsterBattleManager.Instance.InitializeMonsterPatterns(enemy);
+                        }
+
                         // TargetManager에 몬스터 추가
                         if (TargetManager.Instance != null)
                         {
@@ -1519,6 +1537,12 @@ namespace Maglin.Battle
 
                     enemy.Initialize(enemyData, position);
                     SetupMonsterHealthEvents(enemy);
+
+                    // 패턴 시스템에 등록
+                    if (MonsterBattleManager.Instance != null)
+                    {
+                        MonsterBattleManager.Instance.InitializeMonsterPatterns(enemy);
+                    }
                 }
 
                 spawnedMonsters.Add(monsterObj);
@@ -1538,6 +1562,139 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} 소환 완료: {position}");
             }
+        }
+
+        /// <summary>
+        /// 위치가 점유되어 있는지 확인 (패턴 시스템에서 사용)
+        /// </summary>
+        public bool IsPositionOccupied(Vector2Int position)
+        {
+            // 플레이어 위치 확인 (PlayerBattleManager를 통해)
+            if (PlayerBattleManager.Instance != null)
+            {
+                var playerPos = PlayerBattleManager.Instance.GetPlayerGridPosition();
+                if (playerPos == position) return true;
+            }
+
+            // 몬스터 위치 확인
+            foreach (var monsterObj in spawnedMonsters)
+            {
+                if (monsterObj == null) continue;
+
+                var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+                if (enemy != null && enemy.IsAlive && enemy.GridPosition == position)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 몬스터 스폰 (패턴 시스템에서 사용) - Enemy 반환 (애니메이션 포함)
+        /// </summary>
+        public Maglin.Enemy.Enemy SpawnMonsterForPattern(EnemySO enemyData, Vector2Int position)
+        {
+            if (enemyData == null)
+            {
+                Debug.LogError("[MonsterSpawnManager] EnemySO가 null입니다.");
+                return null;
+            }
+
+            if (IsPositionOccupied(position))
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[MonsterSpawnManager] 위치 {position}이 이미 점유되어 있습니다.");
+                return null;
+            }
+
+            // 몬스터 생성
+            GameObject monsterObj = CreateMonsterGameObject(enemyData.EnemyName, position, enemyData);
+            if (monsterObj == null) return null;
+
+            var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+            if (enemy != null)
+            {
+                // Enemy의 debugMode 설정
+                var debugField = typeof(Maglin.Enemy.Enemy).GetField("debugMode",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (debugField != null)
+                {
+                    debugField.SetValue(enemy, debugMode);
+                }
+
+                enemy.Initialize(enemyData, position);
+                SetupMonsterHealthEvents(enemy);
+            }
+
+            spawnedMonsters.Add(monsterObj);
+
+            // 애니메이션이 활성화되어 있다면 애니메이션 실행
+            if (enableSpawnAnimations && MonsterSpawnAnimationManager.Instance != null)
+            {
+                // 몬스터를 활성화하고 애니메이션 실행
+                monsterObj.SetActive(true);
+                MonsterSpawnAnimationManager.Instance.PlaySpawnAnimation(monsterObj);
+
+                // 애니메이션 완료 이벤트 구독 (일회성)
+                System.Action<GameObject> onAnimationCompleted = null;
+                onAnimationCompleted = (completedMonster) =>
+                {
+                    if (completedMonster == monsterObj)
+                    {
+                        // 이벤트 구독 해제
+                        MonsterSpawnAnimationManager.OnSpawnAnimationCompleted -= onAnimationCompleted;
+
+                        // 애니메이션 완료 후 처리
+                        OnPatternMonsterSpawnCompleted(enemy);
+                    }
+                };
+                MonsterSpawnAnimationManager.OnSpawnAnimationCompleted += onAnimationCompleted;
+            }
+            else
+            {
+                // 애니메이션 없이 즉시 활성화
+                monsterObj.SetActive(true);
+                OnPatternMonsterSpawnCompleted(enemy);
+            }
+
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] 패턴으로 {enemyData.EnemyName} 소환 시작: {position} (애니메이션: {enableSpawnAnimations})");
+
+            return enemy;
+        }
+
+        /// <summary>
+        /// 패턴으로 소환된 몬스터의 스폰 완료 처리
+        /// </summary>
+        private void OnPatternMonsterSpawnCompleted(Maglin.Enemy.Enemy enemy)
+        {
+            if (enemy == null) return;
+
+            // 패턴 시스템에 등록
+            if (MonsterBattleManager.Instance != null)
+            {
+                MonsterBattleManager.Instance.InitializeMonsterPatterns(enemy);
+            }
+
+            // TargetManager에 몬스터 추가
+            if (TargetManager.Instance != null)
+            {
+                TargetManager.Instance.AddMonster(enemy.gameObject);
+
+                // 첫 번째 몬스터라면 타겟으로 설정
+                if (TargetManager.Instance.CurrentTarget == null)
+                {
+                    TargetManager.Instance.SetTarget(enemy);
+                }
+            }
+
+            // 몬스터 스폰 이벤트 발생
+            OnMonsterSpawned?.Invoke(enemy);
+
+            if (debugMode)
+                Debug.Log($"[MonsterSpawnManager] 패턴 몬스터 {enemy.EnemyName} 스폰 완료");
         }
         #endregion
     }

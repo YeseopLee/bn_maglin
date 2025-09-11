@@ -12,22 +12,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2017d8aa583b4876861a47598542d44, type: 3}
   m_Name: SummonWall
   m_EditorClassIdentifier: 
-  patternName: "\uC2AC\uB77C\uC784\uC18C\uD658"
+  patternName: "\uBAAC\uC2A4\uD130\uC18C\uD658"
   patternType: 1
   priority: 1
-  description: "\uC2AC\uB77C\uC784\uC744 2\uD134\uB9C8\uB2E4 \uC18C\uD658\uD55C\uB2E4."
-  turnInterval: 2
-  startDelay: 0
-  monsterToSummon: {fileID: 11400000, guid: 0f034612c271e4d42811db7930c75caf, type: 2}
-  summonPositionType: 2
-  specificPosition: {x: 0, y: 0}
-  chargeDuration: 1
-  attackDamage: 10
-  attackRange: 3
-  attackTargetType: 0
-  targetMonsterToDestroy: {fileID: 0}
-  damageTargetType: 2
-  aoeAttackDamage: 15
-  onlyWhenPlayerInRange: 0
-  playerRangeRequired: 3
-  requiresAlive: 1
+  description: 
+  triggerInterval: 2
+  turnOffset: 1
+  blockNormalAttack: 1
+  chargeDuration: 2
+  chargeDamage: 10
+  chargeTarget: 0
+  spawnedMonsterData: {fileID: 11400000, guid: a7963180f13f245f0817a3d7ca67c00b, type: 2}
+  spawnLocation: 3
+  specificSpawnPosition: {x: 0, y: 0}
+  targetDestroyType: {fileID: 0}
+  destructionDamage: 5
+  destructionTarget: 2
