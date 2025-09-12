@@ -403,8 +403,39 @@ namespace Maglin.Enemy
         /// </summary>
         private PatternExecutionResult ExecuteDestroyAndAttackPattern(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
         {
-            // 구현 예정 - 현재는 기본 구조만
-            return new PatternExecutionResult(false, pattern.BlockNormalAttack, "파괴 및 공격 패턴 구현 예정");
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName}이(가) 파괴 및 공격 패턴 실행 시작");
+
+            // 1. 파괴할 몬스터들 찾기
+            var monstersToDestroy = GetMonstersToDestroy(monster, pattern);
+            
+            if (monstersToDestroy.Count == 0)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] 파괴할 몬스터가 없음");
+                return new PatternExecutionResult(false, pattern.BlockNormalAttack, "파괴할 몬스터가 없음");
+            }
+
+            // 2. 몬스터들 파괴
+            foreach (var targetMonster in monstersToDestroy)
+            {
+                if (targetMonster != null && targetMonster.IsAlive)
+                {
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {targetMonster.EnemyName} 파괴");
+                    
+                    // 몬스터를 즉시 죽임 (사망 애니메이션과 효과 포함)
+                    targetMonster.TakeDamage(targetMonster.CurrentHealth);
+                }
+            }
+
+            // 3. 공격 대상에게 데미지 적용
+            ApplyDestructionDamage(monster, pattern, playerPosition);
+
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] 파괴 및 공격 패턴 실행 완료");
+
+            return new PatternExecutionResult(true, pattern.BlockNormalAttack, $"{monstersToDestroy.Count}개 몬스터 파괴 후 {pattern.DestructionDamage} 데미지 적용");
         }
 
         /// <summary>
@@ -835,6 +866,108 @@ namespace Maglin.Enemy
 
             if (debugMode)
                 Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName}의 패턴 상태 정리 완료");
+        }
+
+        /// <summary>
+        /// 파괴할 몬스터들을 찾기
+        /// </summary>
+        private List<Enemy> GetMonstersToDestroy(Enemy executingMonster, MonsterPatternSO pattern)
+        {
+            var monstersToDestroy = new List<Enemy>();
+            
+            if (MonsterSpawnManager.Instance == null) return monstersToDestroy;
+            
+            var allMonsters = MonsterSpawnManager.Instance.GetAllMonsters();
+            
+            foreach (var monster in allMonsters)
+            {
+                if (monster == null || !monster.IsAlive) continue;
+                if (monster == executingMonster) continue; // 자기 자신은 제외
+                
+                // 타겟 타입 확인
+                if (pattern.TargetDestroyType == null)
+                {
+                    // null이면 모든 중립 몬스터 (IsNeutralObject인 몬스터들)
+                    if (monster.IsNeutralObject)
+                    {
+                        monstersToDestroy.Add(monster);
+                    }
+                }
+                else
+                {
+                    // 특정 타입의 몬스터만
+                    if (monster.EnemyData == pattern.TargetDestroyType)
+                    {
+                        monstersToDestroy.Add(monster);
+                    }
+                }
+            }
+            
+            return monstersToDestroy;
+        }
+
+        /// <summary>
+        /// 파괴 후 공격 데미지 적용
+        /// </summary>
+        private void ApplyDestructionDamage(Enemy executingMonster, MonsterPatternSO pattern, Vector2Int playerPosition)
+        {
+            int damage = pattern.DestructionDamage;
+            if (damage <= 0) return;
+
+            switch (pattern.DestructionTarget)
+            {
+                case AttackTargetType.Player:
+                    // 플레이어에게만 데미지
+                    if (PlayerManager.Instance != null)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[MonsterPatternExecutor] 플레이어에게 {damage} 파괴 데미지");
+                        PlayerManager.Instance.TakeDamage(damage, executingMonster);
+                    }
+                    break;
+
+                case AttackTargetType.AllMonsters:
+                    // 모든 몬스터에게 데미지 (자기자신 제외)
+                    ApplyDamageToAllMonsters(executingMonster, damage);
+                    break;
+
+                case AttackTargetType.PlayerAndAllMonsters:
+                    // 플레이어와 모든 몬스터에게 데미지
+                    if (PlayerManager.Instance != null)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[MonsterPatternExecutor] 플레이어에게 {damage} 파괴 데미지");
+                        PlayerManager.Instance.TakeDamage(damage, executingMonster);
+                    }
+                    ApplyDamageToAllMonsters(executingMonster, damage);
+                    break;
+
+                case AttackTargetType.Self:
+                    // 자기자신에게만 데미지
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {executingMonster.EnemyName}이(가) 자기자신에게 {damage} 파괴 데미지");
+                    executingMonster.TakeDamage(damage);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// 모든 몬스터에게 데미지 적용 (실행하는 몬스터 제외)
+        /// </summary>
+        private void ApplyDamageToAllMonsters(Enemy executingMonster, int damage)
+        {
+            if (MonsterSpawnManager.Instance == null) return;
+            
+            var allMonsters = MonsterSpawnManager.Instance.GetAllMonsters();
+            foreach (var monster in allMonsters)
+            {
+                if (monster != null && monster.IsAlive && monster != executingMonster)
+                {
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName}에게 {damage} 파괴 데미지");
+                    monster.TakeDamage(damage);
+                }
+            }
         }
         #endregion
     }

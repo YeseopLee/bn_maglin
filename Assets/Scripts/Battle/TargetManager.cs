@@ -281,28 +281,46 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 타겟 마커 위치 업데이트 (최적화됨)
+        /// 타겟 마커 위치 업데이트 (그리드 기반 고정 위치)
         /// </summary>
         private void UpdateTargetMarkerPosition(Transform targetMarker, Maglin.Enemy.Enemy enemy)
         {
             if (targetMarker == null || enemy == null) return;
 
-            // 몬스터의 SpriteRenderer 크기를 고려하여 마커 위치 계산 (캐시 활용)
-            float yOffset = 0.0f; // 기본값
-
-            SpriteRenderer monsterRenderer = enemy.GetComponent<SpriteRenderer>();
-            if (monsterRenderer != null && monsterRenderer.sprite != null)
+            // 그리드 기반 고정 위치 계산
+            if (GridFieldManager.Instance != null)
             {
-                // 스프라이트의 실제 크기를 고려하여 위쪽에 배치
-                // float spriteHeight = monsterRenderer.bounds.size.y;
-                // yOffset = spriteHeight * 0.6f; // 스프라이트 위쪽 60% 지점
+                // 몬스터의 그리드 위치 가져오기
+                Vector2Int monsterGridPos = enemy.GridPosition;
+                
+                // 그리드 셀의 월드 위치 계산 (중앙)
+                Vector3 gridCenterWorldPos = GridFieldManager.Instance.GridToWorldPosition(monsterGridPos);
+                
+                // 타겟마커를 그리드 셀 상단에 고정 배치 (셀 크기의 80% 위쪽)
+                float cellSize = GridFieldManager.Instance.CellSize;
+                Vector3 markerWorldPosition = new Vector3(
+                    gridCenterWorldPos.x,
+                    gridCenterWorldPos.y + (cellSize * 0.2f), // 셀 상단 80% 지점
+                    gridCenterWorldPos.z
+                );
+                
+                // 월드 위치를 직접 설정 (localPosition이 아닌 world position 사용)
+                if (Vector3.Distance(targetMarker.position, markerWorldPosition) > 0.01f)
+                {
+                    targetMarker.position = markerWorldPosition;
+                    
+                    if (debugMode)
+                        Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커를 그리드 기반 위치로 설정: {markerWorldPosition}");
+                }
             }
-
-            // 마커가 몬스터의 자식이므로 localPosition을 사용
-            Vector3 newPosition = new Vector3(0, yOffset, 0);
-            if (targetMarker.localPosition != newPosition)
+            else
             {
-                targetMarker.localPosition = newPosition;
+                // GridFieldManager가 없는 경우 기본 로컬 위치 사용 (폴백)
+                Vector3 newPosition = new Vector3(0, 1.5f, 0); // 고정된 높이
+                if (targetMarker.localPosition != newPosition)
+                {
+                    targetMarker.localPosition = newPosition;
+                }
             }
 
             // 스케일이 이미 설정되어 있지 않다면 설정
@@ -318,12 +336,6 @@ namespace Maglin.Battle
             {
                 markerRenderer.sortingOrder = 10; // 높은 값으로 설정
             }
-
-            // 디버그 로그는 위치가 실제로 변경될 때만 출력
-            // if (debugMode && targetMarker.localPosition == newPosition)
-            // {
-            //     Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커 위치 업데이트: 로컬={targetMarker.localPosition}");
-            // }
         }
 
         /// <summary>

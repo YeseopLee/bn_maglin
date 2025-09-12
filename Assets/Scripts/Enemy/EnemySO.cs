@@ -36,6 +36,18 @@ namespace Maglin.Enemy
         Stay                // 이동하지 않음
     }
 
+    /// <summary>
+    /// 몬스터 애니메이션 상태
+    /// </summary>
+    public enum MonsterAnimationState
+    {
+        Idle,       // 기본 상태
+        Move,       // 이동 상태
+        Attack,     // 공격 상태
+        Hit,        // 피격 상태
+        Death       // 사망 상태
+    }
+
     [CreateAssetMenu(fileName = "New Enemy", menuName = "Maglin/Enemy/EnemySO")]
     public class EnemySO : ScriptableObject
     {
@@ -54,7 +66,11 @@ namespace Maglin.Enemy
         [SerializeField] private Sprite[] deathSprites;       // 사망 애니메이션 스프라이트
 
         [Header("애니메이션 설정")]
-        [SerializeField] private float animationSpeed = 0.2f; // 애니메이션 프레임 간격
+        [SerializeField] private float idleFrameRate = 8f;     // 기본 상태 애니메이션 프레임 레이트
+        [SerializeField] private float moveFrameRate = 10f;    // 이동 애니메이션 프레임 레이트
+        [SerializeField] private float attackFrameRate = 12f;  // 공격 애니메이션 프레임 레이트
+        [SerializeField] private float hitFrameRate = 15f;     // 피격 애니메이션 프레임 레이트
+        [SerializeField] private float deathFrameRate = 8f;    // 사망 애니메이션 프레임 레이트
         [SerializeField] private bool flipSpritesHorizontally = false; // 모든 스프라이트 좌우 반전
 
         [Header("공격 정보")]
@@ -104,8 +120,18 @@ namespace Maglin.Enemy
         public Sprite[] AttackSprites => attackSprites;
         public Sprite[] HitSprites => hitSprites;
         public Sprite[] DeathSprites => deathSprites;
-        public float AnimationSpeed => animationSpeed;
+        
+        // 애니메이션 프레임 레이트 Properties
+        public float IdleFrameRate => idleFrameRate;
+        public float MoveFrameRate => moveFrameRate;
+        public float AttackFrameRate => attackFrameRate;
+        public float HitFrameRate => hitFrameRate;
+        public float DeathFrameRate => deathFrameRate;
         public bool FlipSpritesHorizontally => flipSpritesHorizontally;
+        
+        // 이전 버전 호환성을 위한 AnimationSpeed (Deprecated)
+        [System.Obsolete("AnimationSpeed는 더 이상 사용되지 않습니다. 각 상태별 FrameRate를 사용하세요.")]
+        public float AnimationSpeed => 1f / idleFrameRate; // 기본적으로 Idle 프레임 레이트 기준
         
         // 호환성을 위한 기본 스프라이트 (Idle의 첫 번째 프레임)
         public Sprite Sprite => (idleSprites != null && idleSprites.Length > 0) ? idleSprites[0] : null;
@@ -137,5 +163,71 @@ namespace Maglin.Enemy
         /// 근접 공격 몬스터인지 확인
         /// </summary>
         public bool IsMeleeAttacker => attackPattern == AttackPatternType.Melee;
+
+        /// <summary>
+        /// 특정 애니메이션 상태의 프레임 레이트 반환
+        /// </summary>
+        public float GetFrameRateForState(MonsterAnimationState state)
+        {
+            switch (state)
+            {
+                case MonsterAnimationState.Idle:
+                    return idleFrameRate;
+                case MonsterAnimationState.Move:
+                    return moveFrameRate;
+                case MonsterAnimationState.Attack:
+                    return attackFrameRate;
+                case MonsterAnimationState.Hit:
+                    return hitFrameRate;
+                case MonsterAnimationState.Death:
+                    return deathFrameRate;
+                default:
+                    return idleFrameRate;
+            }
+        }
+
+        /// <summary>
+        /// 특정 애니메이션 상태의 스프라이트 배열 반환
+        /// </summary>
+        public Sprite[] GetSpritesForState(MonsterAnimationState state)
+        {
+            switch (state)
+            {
+                case MonsterAnimationState.Idle:
+                    return idleSprites;
+                case MonsterAnimationState.Move:
+                    return moveSprites;
+                case MonsterAnimationState.Attack:
+                    return attackSprites;
+                case MonsterAnimationState.Hit:
+                    return hitSprites;
+                case MonsterAnimationState.Death:
+                    return deathSprites;
+                default:
+                    return idleSprites;
+            }
+        }
+
+        /// <summary>
+        /// 특정 애니메이션 상태가 루프 애니메이션인지 확인
+        /// </summary>
+        public bool ShouldLoopAnimation(MonsterAnimationState state)
+        {
+            switch (state)
+            {
+                case MonsterAnimationState.Idle:
+                    return true;  // 기본 상태는 루프
+                case MonsterAnimationState.Move:
+                    return true;  // 이동 상태는 루프
+                case MonsterAnimationState.Attack:
+                    return false; // 공격은 한 번만
+                case MonsterAnimationState.Hit:
+                    return false; // 피격은 한 번만
+                case MonsterAnimationState.Death:
+                    return false; // 사망은 한 번만 (마지막 프레임에서 정지)
+                default:
+                    return true;
+            }
+        }
     }
 }

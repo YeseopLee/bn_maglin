@@ -22,11 +22,11 @@ MonoBehaviour:
   chargeDuration: 2
   chargeDamage: 10
   chargeTarget: 0
-  spawnedMonsterData: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
+  spawnedMonsterData: {fileID: 0}
   spawnLocation: 3
   specificSpawnPosition: {x: 0, y: 0}
-  targetDestroyType: {fileID: 0}
-  destructionDamage: 5
+  targetDestroyType: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
+  destructionDamage: 1
   destructionTarget: 2
   patternSprites:
   - {fileID: -1225048931, guid: 8e827d1621bfdcd46839efd58b5330af, type: 3}

@@ -1488,6 +1488,66 @@ namespace Maglin.Battle
                 }
             }
             handCardUIs.Clear();
+
+            // TempCardParent 오브젝트들도 정리 (드로우 애니메이션 중단 시 남아있을 수 있음)
+            ClearTempCardParents();
+        }
+
+        /// <summary>
+        /// TempCardParent 오브젝트들 정리 (드로우 애니메이션 중단 시 남아있을 수 있는 임시 부모들)
+        /// </summary>
+        private void ClearTempCardParents()
+        {
+            if (handContent == null) return;
+
+            // handContent와 같은 부모 하위에서 TempCardParent로 시작하는 오브젝트들 찾아서 제거
+            Transform parentTransform = handContent.parent;
+            if (parentTransform != null)
+            {
+                var tempParents = new List<Transform>();
+                for (int i = 0; i < parentTransform.childCount; i++)
+                {
+                    var child = parentTransform.GetChild(i);
+                    if (child.name.StartsWith("TempCardParent"))
+                    {
+                        tempParents.Add(child);
+                    }
+                }
+
+                foreach (var tempParent in tempParents)
+                {
+                    if (tempParent != null)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[BattleUIManager] TempCardParent 정리: {tempParent.name}");
+                        Destroy(tempParent.gameObject);
+                    }
+                }
+
+                if (tempParents.Count > 0 && debugMode)
+                    Debug.Log($"[BattleUIManager] TempCardParent {tempParents.Count}개 정리 완료");
+            }
+
+            // handContent 직하위에 있을 수 있는 TempCardParent들도 정리
+            var directTempParents = new List<Transform>();
+            for (int i = 0; i < handContent.childCount; i++)
+            {
+                var child = handContent.GetChild(i);
+                if (child.name.StartsWith("TempCardParent"))
+                {
+                    directTempParents.Add(child);
+                }
+            }
+
+            foreach (var tempParent in directTempParents)
+            {
+                if (tempParent != null)
+                {
+                    if (debugMode)
+                        Debug.Log($"[BattleUIManager] HandContent 직하위 TempCardParent 정리: {tempParent.name}");
+                    Destroy(tempParent.gameObject);
+                }
+            }
         }
 
         /// <summary>
@@ -1755,6 +1815,14 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log($"[BattleUIManager] 타겟 UI 패널 표시/숨김: {visible}");
+        }
+
+        /// <summary>
+        /// TempCardParent 정리 (외부에서 호출 가능)
+        /// </summary>
+        public void ClearTempCardParentsPublic()
+        {
+            ClearTempCardParents();
         }
         #endregion
 
@@ -2558,7 +2626,13 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[BattleUIManager] 애니메이션 없이 손패 UI 업데이트");
 
-            // 기존 카드 UI 정리
+            // 진행 중인 드로우 애니메이션 중단
+            if (CardDrawAnimationManager.Instance != null)
+            {
+                CardDrawAnimationManager.Instance.StopAllAnimations();
+            }
+
+            // 기존 카드 UI 정리 (TempCardParent 포함)
             ClearHandCardUIs();
 
             // 새로운 카드 UI 생성

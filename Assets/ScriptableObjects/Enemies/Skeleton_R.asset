@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c5a97bf729a44666ad0d600a5799eb4, type: 3}
   m_Name: Skeleton_R
   m_EditorClassIdentifier: 
-  enemyName: Skeleton_M
+  enemyName: Skeleton_R
   enemyType: 0
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
   maxHealth: 1
@@ -61,11 +61,15 @@ MonoBehaviour:
   - {fileID: -234963839, guid: 2cfee52c77785444b9a079c2a6e4f73d, type: 3}
   - {fileID: -2082177142, guid: 2cfee52c77785444b9a079c2a6e4f73d, type: 3}
   - {fileID: 602940640, guid: 2cfee52c77785444b9a079c2a6e4f73d, type: 3}
-  animationSpeed: 0.1
+  idleFrameRate: 8
+  moveFrameRate: 10
+  attackFrameRate: 9
+  hitFrameRate: 1
+  deathFrameRate: 11
   flipSpritesHorizontally: 1
   attackDamage: 5
   attackPattern: 1
-  attackRange: 1
+  attackRange: 4
   movementPattern: 0
   movementSpeed: 1
   sizeInTiles: 1

@@ -352,6 +352,89 @@ namespace Maglin.Battle
 
             animatingCards.Clear();
             drawQueue.Clear();
+
+            // TempCardParent 오브젝트들 정리
+            ClearAllTempCardParents();
+        }
+
+        /// <summary>
+        /// 모든 TempCardParent 오브젝트들 정리 (애니메이션 중단 시)
+        /// </summary>
+        private void ClearAllTempCardParents()
+        {
+            var handTransform = GetHandContent();
+            if (handTransform == null) return;
+
+            // handContent와 같은 부모 하위에서 TempCardParent 찾아서 제거
+            Transform parentTransform = handTransform.parent;
+            if (parentTransform != null)
+            {
+                var tempParents = new List<Transform>();
+                for (int i = 0; i < parentTransform.childCount; i++)
+                {
+                    var child = parentTransform.GetChild(i);
+                    if (child.name.StartsWith("TempCardParent"))
+                    {
+                        tempParents.Add(child);
+                    }
+                }
+
+                foreach (var tempParent in tempParents)
+                {
+                    if (tempParent != null)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[CardDrawAnimationManager] TempCardParent 정리: {tempParent.name}");
+                        
+                        // 하위의 카드 UI들의 DOTween 애니메이션도 중단
+                        for (int i = 0; i < tempParent.childCount; i++)
+                        {
+                            var cardUI = tempParent.GetChild(i);
+                            if (cardUI != null)
+                            {
+                                cardUI.DOKill();
+                            }
+                        }
+                        
+                        Destroy(tempParent.gameObject);
+                    }
+                }
+
+                if (tempParents.Count > 0 && debugMode)
+                    Debug.Log($"[CardDrawAnimationManager] TempCardParent {tempParents.Count}개 정리 완료");
+            }
+
+            // handContent 직하위에 있을 수 있는 TempCardParent들도 정리
+            var directTempParents = new List<Transform>();
+            for (int i = 0; i < handTransform.childCount; i++)
+            {
+                var child = handTransform.GetChild(i);
+                if (child.name.StartsWith("TempCardParent"))
+                {
+                    directTempParents.Add(child);
+                }
+            }
+
+            foreach (var tempParent in directTempParents)
+            {
+                if (tempParent != null)
+                {
+                    if (debugMode)
+                        Debug.Log($"[CardDrawAnimationManager] HandContent 직하위 TempCardParent 정리: {tempParent.name}");
+                    
+                    // 하위의 카드 UI들의 DOTween 애니메이션도 중단
+                    for (int i = 0; i < tempParent.childCount; i++)
+                    {
+                        var cardUI = tempParent.GetChild(i);
+                        if (cardUI != null)
+                        {
+                            cardUI.DOKill();
+                        }
+                    }
+                    
+                    Destroy(tempParent.gameObject);
+                }
+            }
         }
 
         /// <summary>

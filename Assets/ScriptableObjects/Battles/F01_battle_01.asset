@@ -23,6 +23,10 @@ MonoBehaviour:
     startingPosition: 6
     isFixed: 0
     customHealth: 0
+  - enemyData: {fileID: 11400000, guid: f281c418ee5f6be4794d2efbfecec48a, type: 2}
+    startingPosition: 7
+    isFixed: 0
+    customHealth: 0
   objectPlacements: []
   initialFieldEffect: {fileID: 0}
   goldReward: 0

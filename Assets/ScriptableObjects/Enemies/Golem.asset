@@ -1,0 +1,97 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c5a97bf729a44666ad0d600a5799eb4, type: 3}
+  m_Name: Golem
+  m_EditorClassIdentifier: 
+  enemyName: Golem
+  enemyType: 0
+  enemyColor: {r: 1, g: 1, b: 1, a: 1}
+  maxHealth: 3
+  enemyElement: 0
+  idleSprites:
+  - {fileID: 2006732672, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 1563053726, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 675988307, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: -166469477, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 420870035, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: -755784235, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: -682004868, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 108281698, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  moveSprites:
+  - {fileID: -1494079742, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -933124554, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: 190479200, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -545033771, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: 1058384153, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -663856742, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: 1260825158, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: 562943411, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -1879076092, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: 608921393, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -1139341935, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -455387696, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: 1274550816, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -695440381, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -2126387607, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -394292204, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: -758818029, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  attackSprites:
+  - {fileID: -538201816, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: -2017041456, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 1038607504, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 313716221, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 1826495209, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: -568825206, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 1936824433, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 1254185455, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 563246718, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: -1621531049, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 1551474384, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 2017832202, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 1445225732, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 314804116, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: -299413035, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  - {fileID: 972779422, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
+  hitSprites:
+  - {fileID: 2006732672, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  deathSprites:
+  - {fileID: -928129493, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  - {fileID: -1409255666, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  - {fileID: 2107470932, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  - {fileID: 1558734096, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  - {fileID: 1922500066, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  - {fileID: 1607980629, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  - {fileID: 1598419037, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  - {fileID: 1473232068, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  idleFrameRate: 8
+  moveFrameRate: 17
+  attackFrameRate: 16
+  hitFrameRate: 1
+  deathFrameRate: 8
+  flipSpritesHorizontally: 1
+  attackDamage: 2
+  attackPattern: 1
+  attackRange: 2
+  movementPattern: 0
+  movementSpeed: 1
+  sizeInTiles: 1
+  canSummonObjects: 0
+  hasSpecialMechanics: 0
+  specialAbilityDescription: 
+  isNeutralObject: 0
+  blocksMonsterMovement: 0
+  monstersAttackThis: 0
+  objectDescription: 
+  monsterPatterns:
+  - {fileID: 11400000, guid: 547f9abafd986c2488ec4b5f0874c3b0, type: 2}
+  goldReward: 0
+  experienceReward: 0

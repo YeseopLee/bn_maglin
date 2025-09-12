@@ -174,7 +174,7 @@ namespace Maglin.Battle
                 // Move 애니메이션 시작
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Move);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Move);
                 }
 
                 // 위치 이동
@@ -196,7 +196,7 @@ namespace Maglin.Battle
                 // 이동 완료 후 Idle 애니메이션으로 복귀
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
             }
             else
@@ -231,7 +231,8 @@ namespace Maglin.Battle
                 {
                     // 실행된 패턴 정보 가져오기
                     var executedPattern = GetCurrentExecutablePattern(monster);
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Pattern, executedPattern);
+                    // Pattern 상태가 제거되었으므로 Attack 상태로 패턴 애니메이션 실행
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack, executedPattern);
                 }
 
                 // 패턴 실행 애니메이션 대기
@@ -241,7 +242,7 @@ namespace Maglin.Battle
                 // 패턴 완료 후 Idle로 복귀
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
 
                 // 패턴이 일반 행동을 차단하는 경우 여기서 종료
@@ -263,15 +264,14 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log($"[MonsterBattleManager] {monster.EnemyName}이 중립 오브젝트 {targetObject.EnemyName}를 공격! 데미지: {damage}");
 
-                // Attack 애니메이션 재생
+                // Attack 애니메이션 재생 후 완료 대기
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Attack);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack);
+                    
+                    // 애니메이션 완료까지 대기 (실제 애니메이션 이벤트 기반)
+                    yield return StartCoroutine(WaitForAttackAnimationComplete(monster));
                 }
-
-                // 공격 애니메이션 완료까지 대기
-                float attackAnimationDuration = GetAttackAnimationDuration(monster);
-                yield return new WaitForSeconds(attackAnimationDuration);
 
                 // 중립 오브젝트에게 데미지
                 targetObject.TakeDamage(damage, monster.Element);
@@ -282,7 +282,7 @@ namespace Maglin.Battle
                 // 공격 완료 후 Idle 애니메이션으로 복귀
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
 
                 // 공격 후 잠시 대기
@@ -298,15 +298,14 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log($"[MonsterBattleManager] {monster.EnemyName}이 플레이어를 공격! 데미지: {damage}");
 
-                // Attack 애니메이션 재생
+                // Attack 애니메이션 재생 후 완료 대기
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Attack);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack);
+                    
+                    // 애니메이션 완료까지 대기 (실제 애니메이션 이벤트 기반)
+                    yield return StartCoroutine(WaitForAttackAnimationComplete(monster));
                 }
-
-                // 공격 애니메이션 완료까지 대기
-                float attackAnimationDuration = GetAttackAnimationDuration(monster);
-                yield return new WaitForSeconds(attackAnimationDuration);
 
                 // 플레이어에게 데미지 (공격자 정보 포함)
                 if (PlayerManager.Instance != null)
@@ -320,7 +319,7 @@ namespace Maglin.Battle
                 // 공격 완료 후 Idle 애니메이션으로 복귀
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
 
                 // 공격 후 잠시 대기
@@ -578,7 +577,7 @@ namespace Maglin.Battle
 
         #region Animation Helper Methods
         /// <summary>
-        /// 공격 애니메이션 지속 시간 계산
+        /// 공격 애니메이션 지속 시간 계산 (새로운 프레임 레이트 시스템 사용)
         /// </summary>
         private float GetAttackAnimationDuration(Maglin.Enemy.Enemy monster)
         {
@@ -587,7 +586,12 @@ namespace Maglin.Battle
                 return 0.5f; // 기본 지속 시간
             }
 
-            return monster.EnemyData.AttackSprites.Length * monster.EnemyData.AnimationSpeed;
+            // 새로운 프레임 레이트 시스템 사용
+            float frameRate = monster.EnemyData.GetFrameRateForState(Maglin.Enemy.MonsterAnimationState.Attack);
+            float frameTime = 1f / Mathf.Max(0.1f, frameRate);
+            
+            // 전체 애니메이션 지속 시간 = 프레임 수 × 프레임 간격
+            return monster.EnemyData.AttackSprites.Length * frameTime;
         }
 
         /// <summary>
@@ -634,7 +638,7 @@ namespace Maglin.Battle
         {
             if (monster == null || MonsterAnimationManager.Instance == null) return;
 
-            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Hit);
+            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Hit);
             
             // Hit 애니메이션 후 Idle로 복귀 (코루틴으로 처리)
             StartCoroutine(ReturnToIdleAfterHit(monster));
@@ -647,7 +651,10 @@ namespace Maglin.Battle
         {
             if (monster?.EnemyData?.HitSprites != null && monster.EnemyData.HitSprites.Length > 0)
             {
-                float hitAnimationDuration = monster.EnemyData.HitSprites.Length * monster.EnemyData.AnimationSpeed;
+                // 새로운 프레임 레이트 시스템 사용
+                float frameRate = monster.EnemyData.GetFrameRateForState(Maglin.Enemy.MonsterAnimationState.Hit);
+                float frameTime = 1f / Mathf.Max(0.1f, frameRate);
+                float hitAnimationDuration = monster.EnemyData.HitSprites.Length * frameTime;
                 yield return new WaitForSeconds(hitAnimationDuration);
             }
             else
@@ -658,7 +665,7 @@ namespace Maglin.Battle
             // Idle 애니메이션으로 복귀
             if (monster != null && monster.IsAlive && MonsterAnimationManager.Instance != null)
             {
-                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
             }
         }
 
@@ -669,7 +676,55 @@ namespace Maglin.Battle
         {
             if (monster == null || MonsterAnimationManager.Instance == null) return;
 
-            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Death);
+            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Death);
+        }
+
+        /// <summary>
+        /// 공격 애니메이션 완료까지 대기하는 코루틴 (이벤트 기반)
+        /// </summary>
+        private IEnumerator WaitForAttackAnimationComplete(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null || MonsterAnimationManager.Instance == null)
+            {
+                yield return new WaitForSeconds(0.5f); // 폴백 시간
+                yield break;
+            }
+
+            bool animationCompleted = false;
+            
+            // 애니메이션 완료 이벤트 리스너 등록
+            System.Action<Maglin.Enemy.Enemy, Maglin.Enemy.MonsterAnimationState> onAnimationCompleted = 
+                (animatedMonster, state) =>
+                {
+                    if (animatedMonster == monster && state == Maglin.Enemy.MonsterAnimationState.Attack)
+                    {
+                        animationCompleted = true;
+                        if (debugMode)
+                            Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 공격 애니메이션 완료 감지");
+                    }
+                };
+
+            // 이벤트 구독
+            MonsterAnimationManager.OnMonsterAnimationCompleted += onAnimationCompleted;
+
+            // 애니메이션 완료까지 대기 (최대 5초 타임아웃)
+            float timeout = 5f;
+            float elapsedTime = 0f;
+            
+            while (!animationCompleted && elapsedTime < timeout)
+            {
+                yield return new WaitForSeconds(0.1f);
+                elapsedTime += 0.1f;
+            }
+
+            // 이벤트 구독 해제
+            MonsterAnimationManager.OnMonsterAnimationCompleted -= onAnimationCompleted;
+
+            // 타임아웃된 경우 경고
+            if (!animationCompleted && debugMode)
+            {
+                Debug.LogWarning($"[MonsterBattleManager] {monster.EnemyName} 공격 애니메이션 대기 타임아웃 ({timeout}초)");
+            }
         }
         #endregion
         #endregion

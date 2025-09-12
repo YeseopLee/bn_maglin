@@ -6,19 +6,6 @@ using Maglin.Enemy;
 namespace Maglin.Battle
 {
     /// <summary>
-    /// 몬스터 애니메이션 상태
-    /// </summary>
-    public enum MonsterAnimationState
-    {
-        Idle,
-        Move,
-        Attack,
-        Hit,
-        Death,
-        Pattern
-    }
-
-    /// <summary>
     /// 몬스터의 스프라이트 애니메이션을 관리하는 클래스
     /// </summary>
     public class MonsterAnimationManager : MonoBehaviour
@@ -49,12 +36,12 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터 애니메이션 상태 변경 이벤트
         /// </summary>
-        public static event System.Action<Maglin.Enemy.Enemy, MonsterAnimationState> OnMonsterAnimationChanged;
+        public static event System.Action<Maglin.Enemy.Enemy, Maglin.Enemy.MonsterAnimationState> OnMonsterAnimationChanged;
 
         /// <summary>
         /// 몬스터 애니메이션 완료 이벤트
         /// </summary>
-        public static event System.Action<Maglin.Enemy.Enemy, MonsterAnimationState> OnMonsterAnimationCompleted;
+        public static event System.Action<Maglin.Enemy.Enemy, Maglin.Enemy.MonsterAnimationState> OnMonsterAnimationCompleted;
         #endregion
 
         #region Fields
@@ -62,7 +49,7 @@ namespace Maglin.Battle
         [SerializeField] private bool debugMode = false;
 
         // 몬스터별 애니메이션 상태 추적
-        private Dictionary<Maglin.Enemy.Enemy, MonsterAnimationState> monsterStates = new Dictionary<Maglin.Enemy.Enemy, MonsterAnimationState>();
+        private Dictionary<Maglin.Enemy.Enemy, Maglin.Enemy.MonsterAnimationState> monsterStates = new Dictionary<Maglin.Enemy.Enemy, Maglin.Enemy.MonsterAnimationState>();
         private Dictionary<Maglin.Enemy.Enemy, Coroutine> activeAnimations = new Dictionary<Maglin.Enemy.Enemy, Coroutine>();
         private Dictionary<Maglin.Enemy.Enemy, MonsterPatternSO> patternAnimations = new Dictionary<Maglin.Enemy.Enemy, MonsterPatternSO>();
         #endregion
@@ -95,12 +82,12 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터의 애니메이션 상태 변경
         /// </summary>
-        public void SetMonsterAnimationState(Maglin.Enemy.Enemy monster, MonsterAnimationState newState, MonsterPatternSO pattern = null)
+        public void SetMonsterAnimationState(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState newState, MonsterPatternSO pattern = null)
         {
             if (monster == null) return;
 
             // 죽은 몬스터는 Death 상태로만 변경 가능
-            if (!monster.IsAlive && newState != MonsterAnimationState.Death)
+            if (!monster.IsAlive && newState != Maglin.Enemy.MonsterAnimationState.Death)
             {
                 if (debugMode)
                     Debug.LogWarning($"[MonsterAnimationManager] 죽은 몬스터 {monster.EnemyName}의 애니메이션 상태를 {newState}로 변경하려 했지만 무시됩니다.");
@@ -108,7 +95,7 @@ namespace Maglin.Battle
             }
 
             // Death 상태에서 다른 상태로 변경 시도 시 무시
-            if (monsterStates.ContainsKey(monster) && monsterStates[monster] == MonsterAnimationState.Death && newState != MonsterAnimationState.Death)
+            if (monsterStates.ContainsKey(monster) && monsterStates[monster] == Maglin.Enemy.MonsterAnimationState.Death && newState != Maglin.Enemy.MonsterAnimationState.Death)
             {
                 if (debugMode)
                     Debug.LogWarning($"[MonsterAnimationManager] {monster.EnemyName}는 이미 Death 상태이므로 {newState} 상태 변경을 무시합니다.");
@@ -121,8 +108,8 @@ namespace Maglin.Battle
             // 새 상태 설정
             monsterStates[monster] = newState;
 
-            // 패턴 애니메이션인 경우 패턴 저장
-            if (newState == MonsterAnimationState.Pattern && pattern != null)
+            // 패턴 애니메이션인 경우 패턴 저장 (Pattern 상태는 EnemySO에서 제거되었으므로 패턴이 있으면 저장)
+            if (pattern != null)
             {
                 patternAnimations[monster] = pattern;
                 if (debugMode)
@@ -131,8 +118,6 @@ namespace Maglin.Battle
             else
             {
                 patternAnimations.Remove(monster);
-                if (debugMode && newState == MonsterAnimationState.Pattern)
-                    Debug.LogWarning($"[MonsterAnimationManager] 패턴 애니메이션 시도했지만 패턴이 null: {monster.EnemyName}");
             }
 
             // 애니메이션 시작
@@ -148,10 +133,10 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터의 현재 애니메이션 상태 가져오기
         /// </summary>
-        public MonsterAnimationState GetMonsterAnimationState(Maglin.Enemy.Enemy monster)
+        public Maglin.Enemy.MonsterAnimationState GetMonsterAnimationState(Maglin.Enemy.Enemy monster)
         {
-            if (monster == null) return MonsterAnimationState.Idle;
-            return monsterStates.ContainsKey(monster) ? monsterStates[monster] : MonsterAnimationState.Idle;
+            if (monster == null) return Maglin.Enemy.MonsterAnimationState.Idle;
+            return monsterStates.ContainsKey(monster) ? monsterStates[monster] : Maglin.Enemy.MonsterAnimationState.Idle;
         }
 
         /// <summary>
@@ -180,7 +165,7 @@ namespace Maglin.Battle
                 return;
             }
             
-            SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+            SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
         }
 
         /// <summary>
@@ -201,7 +186,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터 애니메이션 시작
         /// </summary>
-        private void StartMonsterAnimation(Maglin.Enemy.Enemy monster, MonsterAnimationState state)
+        private void StartMonsterAnimation(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state)
         {
             if (monster == null || monster.EnemyData == null) return;
 
@@ -213,86 +198,85 @@ namespace Maglin.Battle
                 return;
             }
 
-            float animationSpeed = GetAnimationSpeed(monster, state);
-            bool loop = ShouldLoop(state);
+            float frameRate = GetAnimationFrameRate(monster, state);
+            float frameTime = 1f / Mathf.Max(0.1f, frameRate); // 프레임 레이트를 프레임 간격으로 변환
+            bool loop = ShouldLoop(monster, state);
 
             // 애니메이션 코루틴 시작
-            activeAnimations[monster] = StartCoroutine(PlaySpriteAnimation(monster, sprites, animationSpeed, loop, state));
+            activeAnimations[monster] = StartCoroutine(PlaySpriteAnimation(monster, sprites, frameTime, loop, state));
         }
 
         /// <summary>
         /// 상태에 따른 스프라이트 배열 가져오기
         /// </summary>
-        private Sprite[] GetSpritesForState(Maglin.Enemy.Enemy monster, MonsterAnimationState state)
+        private Sprite[] GetSpritesForState(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state)
         {
             EnemySO enemyData = monster.EnemyData;
             if (enemyData == null) return null;
 
-            switch (state)
+            // 패턴 애니메이션이 있으면 우선 사용 (이전 패턴 시스템 호환성)
+            if (patternAnimations.ContainsKey(monster))
             {
-                case MonsterAnimationState.Idle:
-                    return enemyData.IdleSprites;
-                case MonsterAnimationState.Move:
-                    return enemyData.MoveSprites;
-                case MonsterAnimationState.Attack:
-                    return enemyData.AttackSprites;
-                case MonsterAnimationState.Hit:
-                    return enemyData.HitSprites;
-                case MonsterAnimationState.Death:
-                    return enemyData.DeathSprites;
-                case MonsterAnimationState.Pattern:
-                    if (patternAnimations.ContainsKey(monster))
-                    {
-                        var pattern = patternAnimations[monster];
-                        return pattern.PatternSprites;
-                    }
-                    return null;
-                default:
-                    return enemyData.IdleSprites;
+                var pattern = patternAnimations[monster];
+                if (pattern?.PatternSprites != null && pattern.PatternSprites.Length > 0)
+                {
+                    return pattern.PatternSprites;
+                }
             }
+
+            // EnemySO의 새로운 메서드 사용
+            return enemyData.GetSpritesForState(state);
         }
 
         /// <summary>
-        /// 상태에 따른 애니메이션 속도 가져오기
+        /// 상태에 따른 애니메이션 프레임 레이트 가져오기
         /// </summary>
-        private float GetAnimationSpeed(Maglin.Enemy.Enemy monster, MonsterAnimationState state)
+        private float GetAnimationFrameRate(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state)
         {
             EnemySO enemyData = monster.EnemyData;
-            if (enemyData == null) return 0.2f;
+            if (enemyData == null) return 8f; // 기본 프레임 레이트
 
-            if (state == MonsterAnimationState.Pattern && patternAnimations.ContainsKey(monster))
+            // 패턴 애니메이션이 있으면 패턴의 속도를 프레임 레이트로 변환
+            if (patternAnimations.ContainsKey(monster))
             {
                 var pattern = patternAnimations[monster];
-                return pattern.PatternAnimationSpeed;
+                if (pattern?.PatternSprites != null && pattern.PatternSprites.Length > 0)
+                {
+                    // AnimationSpeed는 프레임 간격(초)이므로 프레임 레이트로 변환
+                    return 1f / Mathf.Max(0.01f, pattern.PatternAnimationSpeed);
+                }
             }
 
-            return enemyData.AnimationSpeed;
+            // EnemySO의 새로운 메서드 사용
+            return enemyData.GetFrameRateForState(state);
         }
 
         /// <summary>
         /// 상태에 따른 루프 여부 결정
         /// </summary>
-        private bool ShouldLoop(MonsterAnimationState state)
+        private bool ShouldLoop(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state)
         {
-            switch (state)
+            EnemySO enemyData = monster.EnemyData;
+            if (enemyData == null) return true;
+
+            // 패턴 애니메이션이 있으면 기본적으로 한 번만 실행
+            if (patternAnimations.ContainsKey(monster))
             {
-                case MonsterAnimationState.Idle:
-                case MonsterAnimationState.Move:
-                    return true; // Idle과 Move는 루프
-                case MonsterAnimationState.Attack:
-                case MonsterAnimationState.Hit:
-                case MonsterAnimationState.Death:
-                case MonsterAnimationState.Pattern:
-                    return false; // 한 번만 재생
-                default:
-                    return true;
+                var pattern = patternAnimations[monster];
+                if (pattern?.PatternSprites != null && pattern.PatternSprites.Length > 0)
+                {
+                    return false; // 패턴 애니메이션은 일반적으로 한 번만 실행
+                }
             }
+
+            // EnemySO의 새로운 메서드 사용
+            return enemyData.ShouldLoopAnimation(state);
         }
 
         /// <summary>
         /// 스프라이트 애니메이션 재생 코루틴
         /// </summary>
-        private IEnumerator PlaySpriteAnimation(Maglin.Enemy.Enemy monster, Sprite[] sprites, float frameTime, bool loop, MonsterAnimationState state)
+        private IEnumerator PlaySpriteAnimation(Maglin.Enemy.Enemy monster, Sprite[] sprites, float frameTime, bool loop, Maglin.Enemy.MonsterAnimationState state)
         {
             if (sprites == null || sprites.Length == 0) yield break;
 
@@ -346,7 +330,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 애니메이션 완료 처리
         /// </summary>
-        private void OnAnimationCompleted(Maglin.Enemy.Enemy monster, MonsterAnimationState state)
+        private void OnAnimationCompleted(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state)
         {
             if (monster == null) return;
 
@@ -359,16 +343,15 @@ namespace Maglin.Battle
             // 상태별 완료 후 처리
             switch (state)
             {
-                case MonsterAnimationState.Attack:
-                case MonsterAnimationState.Hit:
-                case MonsterAnimationState.Pattern:
+                case Maglin.Enemy.MonsterAnimationState.Attack:
+                case Maglin.Enemy.MonsterAnimationState.Hit:
                     // 일회성 애니메이션 완료 후 살아있는 몬스터만 Idle로 돌아가기
                     if (monster.IsAlive)
                     {
                         ReturnToIdle(monster);
                     }
                     break;
-                case MonsterAnimationState.Death:
+                case Maglin.Enemy.MonsterAnimationState.Death:
                     // 사망 애니메이션 완료 후 마지막 프레임 유지 (더 이상 애니메이션 없음)
                     if (debugMode)
                         Debug.Log($"[MonsterAnimationManager] {monster.EnemyName} 사망 애니메이션 완료 - 마지막 프레임 유지");
@@ -399,7 +382,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터가 특정 상태의 애니메이션 중인지 확인
         /// </summary>
-        public bool IsMonsterInState(Maglin.Enemy.Enemy monster, MonsterAnimationState state)
+        public bool IsMonsterInState(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state)
         {
             if (monster == null) return false;
             return monsterStates.ContainsKey(monster) && monsterStates[monster] == state;

@@ -44,6 +44,12 @@ namespace Maglin.Battle
         [SerializeField] private float deathEffectFadeTime = 1f; // 사망 효과 페이드 인 시간
         [SerializeField] private float whiteOverlayMaxAlpha = 0.7f; // 하얀 오버레이 최대 투명도 (더 강하게)
 
+        [Header("피격 효과")]
+        [SerializeField] private float hitShakeDuration = 0.3f; // 화면 떨림 지속 시간
+        [SerializeField] private float hitShakeIntensity = 0.15f; // 화면 떨림 강도
+        [SerializeField] private float hitVignetteFadeTime = 0.4f; // 빨간 비네팅 페이드 시간
+        [SerializeField] private float hitVignetteMaxAlpha = 0.4f; // 빨간 비네팅 최대 투명도
+
         // 플레이어 위치 설정 (Grid 기반)
         private Vector2Int playerGridPosition = new Vector2Int(0, 0);
 
@@ -73,6 +79,12 @@ namespace Maglin.Battle
 
         // 입장 애니메이션 상태 관리
         private bool isPlayingEntranceAnimation = false;
+
+        // 피격 효과 관련
+        private bool isHitEffectActive = false;
+        private GameObject hitVignetteObject;
+        private SpriteRenderer hitVignetteRenderer;
+        private Coroutine hitEffectCoroutine;
 
         #region Unity Events
         private void Awake()
@@ -294,12 +306,13 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 현재 플레이어 월드 위치 반환
+        /// 현재 플레이어 월드 위치 반환 (스프라이트 정렬 적용)
         /// </summary>
         public Vector3 GetPlayerWorldPosition()
         {
             if (GridFieldManager.Instance != null)
             {
+                // 스프라이트 pivot이 올바르게 설정되었으면 기본 그리드 위치 사용
                 return GridFieldManager.Instance.GridToWorldPosition(playerGridPosition);
             }
             return Vector3.zero;
@@ -601,22 +614,20 @@ namespace Maglin.Battle
             // 입장 애니메이션 플래그 설정
             isPlayingEntranceAnimation = true;
 
-            // 최종 목표 위치 (그리드 위치)
+            // 플레이어 게임오브젝트가 없으면 먼저 생성 (스프라이트 정렬 계산을 위해)
+            if (playerGameObject == null)
+            {
+                CreatePlayerGameObject();
+            }
+
+            // 최종 목표 위치 (스프라이트 정렬이 적용된 그리드 위치)
             Vector3 targetWorldPosition = GetPlayerWorldPosition();
 
             // 카메라를 기준으로 화면 완전 밖에서 시작하도록 계산
             Vector3 startPosition = CalculateOffScreenStartPosition(targetWorldPosition);
 
-            // 플레이어 게임오브젝트가 없으면 시작 위치에서 생성
-            if (playerGameObject == null)
-            {
-                CreatePlayerGameObjectAtPosition(startPosition);
-            }
-            else
-            {
-                // 이미 존재하면 시작 위치로 즉시 이동
-                playerGameObject.transform.position = startPosition;
-            }
+            // 시작 위치로 즉시 이동
+            playerGameObject.transform.position = startPosition;
 
             // 생성/이동 후 현재 스프라이트 확인
             if (debugMode && playerGameObject != null)
@@ -1306,6 +1317,267 @@ namespace Maglin.Battle
 
                 if (debugMode)
                     Debug.Log($"[PlayerBattleManager] 플레이어 레이어 복구: 1000 -> {originalPlayerSortingOrder}");
+            }
+        }
+        #endregion
+
+        #region Hit Effects
+        /// <summary>
+        /// 피격 효과 시작 (화면 떨림 + 빨간 비네팅)
+        /// </summary>
+        public void StartHitEffect()
+        {
+            if (isHitEffectActive)
+            {
+                // 이미 실행 중인 효과가 있으면 중지하고 새로 시작
+                EndHitEffect();
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 피격 효과 시작");
+
+            isHitEffectActive = true;
+
+            // 화면 떨림 효과 시작
+            StartScreenShake();
+
+            // 빨간 비네팅 효과 시작
+            StartHitVignette();
+        }
+
+        /// <summary>
+        /// 피격 효과 종료
+        /// </summary>
+        public void EndHitEffect()
+        {
+            if (!isHitEffectActive) return;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 피격 효과 종료");
+
+            // 진행 중인 효과 코루틴 중지
+            if (hitEffectCoroutine != null)
+            {
+                StopCoroutine(hitEffectCoroutine);
+                hitEffectCoroutine = null;
+            }
+
+            // 카메라 원위치 복구
+            RestoreCameraPosition();
+
+            // 비네팅 오버레이 제거
+            if (hitVignetteObject != null)
+            {
+                DestroyImmediate(hitVignetteObject);
+                hitVignetteObject = null;
+                hitVignetteRenderer = null;
+            }
+
+            isHitEffectActive = false;
+        }
+
+        /// <summary>
+        /// 화면 떨림 효과 시작
+        /// </summary>
+        private void StartScreenShake()
+        {
+            Camera mainCamera = Camera.main;
+            if (mainCamera == null) return;
+
+            // 원본 카메라 위치 저장 (아직 저장되지 않은 경우에만)
+            if (!isDeathCameraActive)
+            {
+                originalCameraPosition = mainCamera.transform.position;
+            }
+
+            // 화면 떨림 코루틴 시작
+            hitEffectCoroutine = StartCoroutine(ExecuteScreenShake(mainCamera));
+        }
+
+        /// <summary>
+        /// 화면 떨림 실행 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteScreenShake(Camera camera)
+        {
+            Vector3 originalPos = originalCameraPosition;
+            float elapsed = 0f;
+
+            while (elapsed < hitShakeDuration)
+            {
+                elapsed += Time.deltaTime;
+                
+                // 감쇠되는 떨림 강도 계산
+                float intensity = hitShakeIntensity * (1f - elapsed / hitShakeDuration);
+                
+                // 랜덤한 방향으로 떨림
+                float offsetX = UnityEngine.Random.Range(-intensity, intensity);
+                float offsetY = UnityEngine.Random.Range(-intensity, intensity);
+                
+                Vector3 shakePos = new Vector3(
+                    originalPos.x + offsetX,
+                    originalPos.y + offsetY,
+                    originalPos.z
+                );
+                
+                camera.transform.position = shakePos;
+                
+                yield return null;
+            }
+
+            // 원래 위치로 복구 (사망 카메라 효과가 활성화되지 않은 경우에만)
+            if (!isDeathCameraActive)
+            {
+                camera.transform.position = originalPos;
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 화면 떨림 효과 완료");
+        }
+
+        /// <summary>
+        /// 빨간 비네팅 효과 시작
+        /// </summary>
+        private void StartHitVignette()
+        {
+            // 기존 비네팅 오브젝트가 있으면 제거
+            if (hitVignetteObject != null)
+            {
+                DestroyImmediate(hitVignetteObject);
+            }
+
+            CreateHitVignette();
+            StartCoroutine(ExecuteHitVignette());
+        }
+
+        /// <summary>
+        /// 빨간 비네팅 오버레이 생성
+        /// </summary>
+        private void CreateHitVignette()
+        {
+            hitVignetteObject = new GameObject("HitVignette");
+            hitVignetteRenderer = hitVignetteObject.AddComponent<SpriteRenderer>();
+
+            // 빨간색 비네팅 텍스처 생성 (가장자리가 어두운 빨간색, 중앙은 투명)
+            Texture2D vignetteTexture = CreateVignetteTexture(512, 512);
+            Sprite vignetteSprite = Sprite.Create(vignetteTexture, new Rect(0, 0, 512, 512), new Vector2(0.5f, 0.5f), 100f);
+
+            // 비네팅 설정
+            hitVignetteRenderer.sprite = vignetteSprite;
+            hitVignetteRenderer.color = new Color(1f, 0f, 0f, 0f); // 시작은 투명
+            hitVignetteRenderer.sortingOrder = 999; // 가장 앞에 표시
+
+            // 카메라 크기에 맞게 스케일 조정
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                float cameraHeight = mainCamera.orthographicSize * 2f;
+                float cameraWidth = cameraHeight * mainCamera.aspect;
+                hitVignetteObject.transform.localScale = new Vector3(cameraWidth / 5.12f, cameraHeight / 5.12f, 1f);
+                hitVignetteObject.transform.position = new Vector3(mainCamera.transform.position.x, mainCamera.transform.position.y, 0f);
+            }
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 빨간 비네팅 오버레이 생성 완료");
+        }
+
+        /// <summary>
+        /// 비네팅 텍스처 생성 (가장자리가 어두운 빨간색)
+        /// </summary>
+        private Texture2D CreateVignetteTexture(int width, int height)
+        {
+            Texture2D texture = new Texture2D(width, height);
+            Color[] pixels = new Color[width * height];
+
+            Vector2 center = new Vector2(width * 0.5f, height * 0.5f);
+            float maxDistance = Mathf.Min(width, height) * 0.5f;
+
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    Vector2 pos = new Vector2(x, y);
+                    float distance = Vector2.Distance(pos, center);
+                    
+                    // 중앙에서 가장자리로 갈수록 알파값 증가
+                    float normalizedDistance = Mathf.Clamp01(distance / maxDistance);
+                    
+                    // 부드러운 그라데이션을 위한 곡선 적용
+                    float alpha = Mathf.Pow(normalizedDistance, 1.5f);
+                    
+                    pixels[y * width + x] = new Color(1f, 0f, 0f, alpha);
+                }
+            }
+
+            texture.SetPixels(pixels);
+            texture.Apply();
+            return texture;
+        }
+
+        /// <summary>
+        /// 빨간 비네팅 효과 실행 (페이드 인/아웃)
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteHitVignette()
+        {
+            if (hitVignetteRenderer == null) yield break;
+
+            float halfFadeTime = hitVignetteFadeTime * 0.5f;
+
+            // 페이드 인
+            float elapsed = 0f;
+            while (elapsed < halfFadeTime)
+            {
+                elapsed += Time.deltaTime;
+                float progress = elapsed / halfFadeTime;
+                
+                Color vignetteColor = hitVignetteRenderer.color;
+                vignetteColor.a = hitVignetteMaxAlpha * progress;
+                hitVignetteRenderer.color = vignetteColor;
+                
+                yield return null;
+            }
+
+            // 페이드 아웃
+            elapsed = 0f;
+            while (elapsed < halfFadeTime)
+            {
+                elapsed += Time.deltaTime;
+                float progress = elapsed / halfFadeTime;
+                
+                Color vignetteColor = hitVignetteRenderer.color;
+                vignetteColor.a = hitVignetteMaxAlpha * (1f - progress);
+                hitVignetteRenderer.color = vignetteColor;
+                
+                yield return null;
+            }
+
+            // 비네팅 오버레이 제거
+            if (hitVignetteObject != null)
+            {
+                DestroyImmediate(hitVignetteObject);
+                hitVignetteObject = null;
+                hitVignetteRenderer = null;
+            }
+
+            isHitEffectActive = false;
+
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 빨간 비네팅 효과 완료");
+        }
+
+        /// <summary>
+        /// 카메라 위치 복구 (사망 효과가 활성화되지 않은 경우에만)
+        /// </summary>
+        private void RestoreCameraPosition()
+        {
+            if (isDeathCameraActive) return; // 사망 카메라 효과가 활성화된 경우 복구하지 않음
+
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                mainCamera.transform.position = originalCameraPosition;
+                
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] 카메라 위치 복구 완료");
             }
         }
         #endregion

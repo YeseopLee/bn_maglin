@@ -337,6 +337,7 @@ namespace Maglin.Battle
                 Vector3Int cellPosition = new Vector3Int(gridPosition.x, gridPosition.y, 0);
                 // Grid의 실제 transform 위치를 고려하여 월드 좌표 계산
                 Vector3 cellWorldPos = gridComponent.CellToWorld(cellPosition);
+                // 셀의 중앙에 배치 (기존 그리드 위치 그대로 사용)
                 Vector3 cellCenter = cellWorldPos + gridComponent.cellSize * 0.5f;
                 return cellCenter;
             }
@@ -346,9 +347,69 @@ namespace Maglin.Battle
             Vector3 basePosition = transform.position;
             return basePosition + new Vector3(
                 gridPosition.x * cellSize + cellSize * 0.5f,
-                gridPosition.y * cellSize + cellSize * 0.5f,
+                gridPosition.y * cellSize + cellSize * 0.5f, // 기존 중앙 정렬로 복구
                 0f
             );
+        }
+
+        /// <summary>
+        /// 스프라이트 정렬을 고려한 그리드 월드 위치 계산
+        /// 스프라이트의 바닥이 그리드 셀의 바닥에 맞도록 조정
+        /// </summary>
+        public Vector3 GridToWorldPositionWithSpriteAlignment(GameObject obj, Vector2Int gridPosition)
+        {
+            Vector3 baseCenterPosition = GridToWorldPosition(gridPosition);
+            
+            // 그리드 셀의 바닥 위치 계산
+            Vector3 cellBottomPosition = baseCenterPosition;
+            if (gridComponent != null)
+            {
+                // Grid 컴포넌트가 있는 경우: 셀 크기의 절반만큼 아래로
+                cellBottomPosition.y -= gridComponent.cellSize.y * 0.5f;
+            }
+            else
+            {
+                // Fallback: 수동 계산
+                cellBottomPosition.y -= cellSize * 0.5f;
+            }
+            
+            // SpriteRenderer가 있는지 확인
+            SpriteRenderer spriteRenderer = obj.GetComponent<SpriteRenderer>();
+            if (spriteRenderer != null && spriteRenderer.sprite != null)
+            {
+                Sprite sprite = spriteRenderer.sprite;
+                
+                // 스프라이트의 pivot과 크기 정보
+                Vector2 pivot = sprite.pivot;
+                Vector2 spriteSize = sprite.rect.size;
+                float pixelsPerUnit = sprite.pixelsPerUnit;
+                
+                // 스프라이트의 실제 크기 (월드 단위)
+                Vector2 worldSpriteSize = spriteSize / pixelsPerUnit;
+                
+                // pivot이 스프라이트 내에서 차지하는 비율 계산
+                Vector2 pivotRatio = new Vector2(pivot.x / spriteSize.x, pivot.y / spriteSize.y);
+                
+                // 스프라이트의 바닥이 셀 바닥에 맞도록 Y 오프셋 계산
+                // pivot에서 스프라이트 바닥까지의 거리
+                float bottomOffset = pivotRatio.y * worldSpriteSize.y;
+                
+                // 최종 위치: 셀 바닥 + 스프라이트 바닥에서 pivot까지의 오프셋
+                Vector3 finalPosition = cellBottomPosition;
+                finalPosition.y += bottomOffset;
+                
+                // X 위치는 셀 중앙 유지
+                finalPosition.x = baseCenterPosition.x;
+                
+                if (debugMode)
+                    Debug.Log($"[GridFieldManager] 스프라이트 정렬 적용: {obj.name} - 셀바닥: {cellBottomPosition.y}, 오프셋: {bottomOffset}, 최종: {finalPosition}");
+                
+                return finalPosition;
+            }
+            
+            // 스프라이트가 없으면 셀 바닥에 중앙 정렬
+            cellBottomPosition.x = baseCenterPosition.x;
+            return cellBottomPosition;
         }
 
         /// <summary>
@@ -431,7 +492,7 @@ namespace Maglin.Battle
             gridObjects[gridPosition] = obj;
             objectPositions[obj] = gridPosition;
 
-            // 월드 위치 설정
+            // 월드 위치 설정 (스프라이트 pivot이 올바르게 설정되었으면 기본 그리드 위치 사용)
             Vector3 worldPosition = GridToWorldPosition(gridPosition);
             obj.transform.position = worldPosition;
 

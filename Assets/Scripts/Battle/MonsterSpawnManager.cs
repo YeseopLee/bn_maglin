@@ -1142,7 +1142,7 @@ namespace Maglin.Battle
                             var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
                             if (enemy != null)
                             {
-                                MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+                                MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, Maglin.Enemy.MonsterAnimationState.Idle);
                             }
                         }
                         
@@ -1680,7 +1680,7 @@ namespace Maglin.Battle
                 // Idle 애니메이션 설정
                 if (MonsterAnimationManager.Instance != null && enemy != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
 
                 // 스폰 애니메이션 실행
@@ -1709,7 +1709,7 @@ namespace Maglin.Battle
                 // Idle 애니메이션 설정
                 if (MonsterAnimationManager.Instance != null && enemy != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
                 
                 OnPatternMonsterSpawnCompleted(enemy);

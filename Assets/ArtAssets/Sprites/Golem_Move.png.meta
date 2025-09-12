@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 2cfee52c77785444b9a079c2a6e4f73d
+guid: da093adec7894f842b7e930ed53f7880
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -97,232 +97,358 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Skeleton_R_Death_0
+      name: Golem_Move_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 6d8839d675caa5d4eace972774551435
-      internalID: 929085400
+      spriteID: b12aed96ac9beeb488e9197d7c5cc20c
+      internalID: -1494079742
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_1
+      name: Golem_Move_1
       rect:
         serializedVersion: 2
-        x: 96
+        x: 128
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 1c0a2ad29c70edd49a2acd4ff8e96bb5
-      internalID: -1495256970
+      spriteID: 7fa568cf525043b49adcd86354ff5b6a
+      internalID: -933124554
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_2
+      name: Golem_Move_2
       rect:
         serializedVersion: 2
-        x: 192
+        x: 256
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: cb29b7813cf90194e89a1ebde1a3e543
-      internalID: -1769552073
+      spriteID: f726344065b8a4b4e8fa877c3444992b
+      internalID: 190479200
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_3
-      rect:
-        serializedVersion: 2
-        x: 288
-        y: 0
-        width: 96
-        height: 64
-      alignment: 9
-      pivot: {x: 0.4, y: 0.55}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 267d504ef98982b45bbcb6ed331f8930
-      internalID: -2146045641
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Skeleton_R_Death_4
+      name: Golem_Move_3
       rect:
         serializedVersion: 2
         x: 384
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 35e68ba8432b06b49a36ee848069a202
-      internalID: -819741122
+      spriteID: 3c9c537cf72da4942ae62ada70bb0f7e
+      internalID: -545033771
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_5
+      name: Golem_Move_4
       rect:
         serializedVersion: 2
-        x: 480
+        x: 512
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 869abe92c5ca94e4dbbaef95ac94c0f2
-      internalID: 899250479
+      spriteID: 00a6b53aa7d992f41910f420ed05c675
+      internalID: 1058384153
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_6
+      name: Golem_Move_5
       rect:
         serializedVersion: 2
-        x: 576
+        x: 640
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 17e2f7ddfeae1254ba9854945b2f52f6
-      internalID: -617374664
+      spriteID: 7e5fb461c64126348be7fb02d2ea446b
+      internalID: -663856742
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_7
-      rect:
-        serializedVersion: 2
-        x: 672
-        y: 0
-        width: 96
-        height: 64
-      alignment: 9
-      pivot: {x: 0.4, y: 0.55}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 27545099666ec87419a7da730a7d3c35
-      internalID: 715382633
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Skeleton_R_Death_8
+      name: Golem_Move_6
       rect:
         serializedVersion: 2
         x: 768
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: e06ce4f70c8ddbf4c8b0dcf7b4a20868
-      internalID: -234963839
+      spriteID: 7ce650441586ceb4683bb4772b5435cb
+      internalID: 1260825158
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_9
+      name: Golem_Move_7
       rect:
         serializedVersion: 2
-        x: 864
+        x: 896
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: f11f684f0a0750b4a8131d6b3702b31a
-      internalID: -2082177142
+      spriteID: 5e1b00a4485f93d48826cf4e66937210
+      internalID: 562943411
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Death_10
+      name: Golem_Move_8
       rect:
         serializedVersion: 2
-        x: 960
+        x: 1024
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 500f413cb114d164a9f57db48013ebaa
-      internalID: 602940640
+      spriteID: 8f28fea3bfc8abd46b4f10f59f1251e4
+      internalID: -1879076092
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_9
+      rect:
+        serializedVersion: 2
+        x: 1152
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2c6a9667a0483d3409d6f986136808b6
+      internalID: 608921393
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_10
+      rect:
+        serializedVersion: 2
+        x: 1280
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8ad1a3edfe9896c409556217e3527cc7
+      internalID: -1139341935
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_11
+      rect:
+        serializedVersion: 2
+        x: 1408
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8a1adff1a1bfa3741bd677fbf4d573f5
+      internalID: -455387696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_12
+      rect:
+        serializedVersion: 2
+        x: 1536
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 06ace8cbf3423ce4da3478b46493b093
+      internalID: 1274550816
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_13
+      rect:
+        serializedVersion: 2
+        x: 1664
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0ae50e86f9c04a24ba5b4f70bba21a06
+      internalID: -695440381
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_14
+      rect:
+        serializedVersion: 2
+        x: 1792
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e94f416096df2134ba0ea54f184d7ca5
+      internalID: -2126387607
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_15
+      rect:
+        serializedVersion: 2
+        x: 1920
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 576bd0225626b9c47949e6453efbf9c3
+      internalID: -394292204
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Move_16
+      rect:
+        serializedVersion: 2
+        x: 2048
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: dd7eacd6c849f8a41b699b3439c57952
+      internalID: -758818029
       vertices: []
       indices: 
       edges: []
@@ -338,17 +464,23 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      Skeleton_R_Death_0: 929085400
-      Skeleton_R_Death_1: -1495256970
-      Skeleton_R_Death_10: 602940640
-      Skeleton_R_Death_2: -1769552073
-      Skeleton_R_Death_3: -2146045641
-      Skeleton_R_Death_4: -819741122
-      Skeleton_R_Death_5: 899250479
-      Skeleton_R_Death_6: -617374664
-      Skeleton_R_Death_7: 715382633
-      Skeleton_R_Death_8: -234963839
-      Skeleton_R_Death_9: -2082177142
+      Golem_Move_0: -1494079742
+      Golem_Move_1: -933124554
+      Golem_Move_10: -1139341935
+      Golem_Move_11: -455387696
+      Golem_Move_12: 1274550816
+      Golem_Move_13: -695440381
+      Golem_Move_14: -2126387607
+      Golem_Move_15: -394292204
+      Golem_Move_16: -758818029
+      Golem_Move_2: 190479200
+      Golem_Move_3: -545033771
+      Golem_Move_4: 1058384153
+      Golem_Move_5: -663856742
+      Golem_Move_6: 1260825158
+      Golem_Move_7: 562943411
+      Golem_Move_8: -1879076092
+      Golem_Move_9: 608921393
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

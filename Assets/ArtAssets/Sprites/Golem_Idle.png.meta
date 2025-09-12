@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: f7f3ea1af235759459d9aa824795d208
+guid: 8840c3562a36abc46920d487e6708fe1
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -97,190 +97,169 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Skeleton_R_Atk_0
+      name: Golem_Idle_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 9e3f4de6bbbe30c4a9eecf20c74a7495
-      internalID: 25914208
+      spriteID: 8107f6f567bdcd24da5fcd7df9366700
+      internalID: 2006732672
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Atk_1
+      name: Golem_Idle_1
       rect:
         serializedVersion: 2
-        x: 96
+        x: 128
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 152758cf2b5d2114f90f160cdd2c618d
-      internalID: 1840830609
+      spriteID: 6a7d9309c2d287249929c4a59f59836b
+      internalID: 1563053726
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Atk_2
+      name: Golem_Idle_2
       rect:
         serializedVersion: 2
-        x: 192
+        x: 256
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: ec58367db9b7a1a4e88f7e7e43a9d8cf
-      internalID: 994833135
+      spriteID: a113c25113e31aa42a75b9d723fd753b
+      internalID: 675988307
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Atk_3
-      rect:
-        serializedVersion: 2
-        x: 288
-        y: 0
-        width: 96
-        height: 64
-      alignment: 9
-      pivot: {x: 0.4, y: 0.55}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 4a2ef6b43971a0043abe6b071ed2e170
-      internalID: 494194489
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Skeleton_R_Atk_4
+      name: Golem_Idle_3
       rect:
         serializedVersion: 2
         x: 384
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 6294e0a8aa3d9d446b6c4a0ce853d1a5
-      internalID: 1300526676
+      spriteID: 764d71d86bc021a43985503a9e3a31de
+      internalID: -166469477
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Atk_5
+      name: Golem_Idle_4
       rect:
         serializedVersion: 2
-        x: 480
+        x: 512
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: d14bc5f6fafb12e48a5d03fb44f197e6
-      internalID: -1304704710
+      spriteID: 2ff31ffb453e2f74ea156bdfb9fbaed2
+      internalID: 420870035
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Atk_6
+      name: Golem_Idle_5
       rect:
         serializedVersion: 2
-        x: 576
+        x: 640
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 6dcfb1fdd939cb944b0d6506fa8a00e3
-      internalID: 1882056472
+      spriteID: 664cb16c7e579ea4eb3ed768adb4bd3f
+      internalID: -755784235
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: Skeleton_R_Atk_7
-      rect:
-        serializedVersion: 2
-        x: 672
-        y: 0
-        width: 96
-        height: 64
-      alignment: 9
-      pivot: {x: 0.4, y: 0.55}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 271f5e8c64a905a4997488bb1bc22eef
-      internalID: -1467631120
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: Skeleton_R_Atk_8
+      name: Golem_Idle_6
       rect:
         serializedVersion: 2
         x: 768
         y: 0
-        width: 96
-        height: 64
+        width: 128
+        height: 112
       alignment: 9
-      pivot: {x: 0.4, y: 0.55}
+      pivot: {x: 0.4, y: 0.35}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 0a603db95ae902042ab324d9d0dca403
-      internalID: -1289391094
+      spriteID: e340a3743b38c084baa2bf8ae061c2ed
+      internalID: -682004868
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Golem_Idle_7
+      rect:
+        serializedVersion: 2
+        x: 896
+        y: 0
+        width: 128
+        height: 112
+      alignment: 9
+      pivot: {x: 0.4, y: 0.35}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5a2555ad31054e1429bebf31a9665e51
+      internalID: 108281698
       vertices: []
       indices: 
       edges: []
@@ -296,15 +275,14 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      Skeleton_R_Atk_0: 25914208
-      Skeleton_R_Atk_1: 1840830609
-      Skeleton_R_Atk_2: 994833135
-      Skeleton_R_Atk_3: 494194489
-      Skeleton_R_Atk_4: 1300526676
-      Skeleton_R_Atk_5: -1304704710
-      Skeleton_R_Atk_6: 1882056472
-      Skeleton_R_Atk_7: -1467631120
-      Skeleton_R_Atk_8: -1289391094
+      Golem_Idle_0: 2006732672
+      Golem_Idle_1: 1563053726
+      Golem_Idle_2: 675988307
+      Golem_Idle_3: -166469477
+      Golem_Idle_4: 420870035
+      Golem_Idle_5: -755784235
+      Golem_Idle_6: -682004868
+      Golem_Idle_7: 108281698
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

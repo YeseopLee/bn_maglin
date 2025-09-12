@@ -568,10 +568,16 @@ namespace Maglin.Player
                 ProcessCounterAttackEffects(attacker);
             }
 
-            // 피격 애니메이션 실행
+            // 피격 애니메이션 및 효과 실행
             if (currentHealth > 0)
             {
                 PlayHitAnimation();
+                
+                // 추가 피격 효과 실행 (화면 떨림 + 빨간 비네팅)
+                if (PlayerBattleManager.Instance != null)
+                {
+                    PlayerBattleManager.Instance.StartHitEffect();
+                }
             }
 
             // 사망 체크

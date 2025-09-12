@@ -10,29 +10,39 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5c5a97bf729a44666ad0d600a5799eb4, type: 3}
-  m_Name: Slime
+  m_Name: Golem_death
   m_EditorClassIdentifier: 
-  enemyName: Slime
+  enemyName: Golem_Death
   enemyType: 0
-  enemySprite: {fileID: 21300000, guid: 92ae4c07df1d34699855732ef137b4fb, type: 3}
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
-  maxHealth: 10
+  maxHealth: 3
   enemyElement: 0
-  attackDamage: 5
-  attackRange: 2
+  idleSprites:
+  - {fileID: 1473232068, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  moveSprites: []
+  attackSprites: []
+  hitSprites:
+  - {fileID: 1473232068, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
+  deathSprites: []
+  idleFrameRate: 1
+  moveFrameRate: 0
+  attackFrameRate: 0
+  hitFrameRate: 1
+  deathFrameRate: 0
+  flipSpritesHorizontally: 1
+  attackDamage: 0
+  attackPattern: 0
+  attackRange: 0
+  movementPattern: 4
   movementSpeed: 1
-  attackPattern: 1
-  movementPattern: 0
   sizeInTiles: 1
   canSummonObjects: 0
   hasSpecialMechanics: 0
   specialAbilityDescription: 
-  patterns:
-  - {fileID: 11400000, guid: dd0538012150b406da1aca48dd30b39f, type: 2}
-  - {fileID: 11400000, guid: 5e085f81d4c604abdbfd120505261691, type: 2}
-  isNeutralObject: 0
-  blocksMonsterMovement: 0
-  monstersAttackThis: 0
+  isNeutralObject: 1
+  blocksMonsterMovement: 1
+  monstersAttackThis: 1
   objectDescription: 
+  monsterPatterns: []
   goldReward: 0
   experienceReward: 0

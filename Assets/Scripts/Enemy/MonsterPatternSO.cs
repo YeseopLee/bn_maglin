@@ -21,7 +21,8 @@ namespace Maglin.Enemy
     {
         Player,                         // 플레이어만
         AllMonsters,                    // 모든 몬스터만
-        PlayerAndAllMonsters            // 플레이어 포함 모든 몬스터
+        PlayerAndAllMonsters,           // 플레이어 포함 모든 몬스터
+        Self                            // 자기자신 (패턴 실행하는 몬스터)
     }
 
     /// <summary>

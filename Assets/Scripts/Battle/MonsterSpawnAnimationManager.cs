@@ -210,7 +210,7 @@ namespace Maglin.Battle
             var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
             if (enemy != null && MonsterAnimationManager.Instance != null)
             {
-                MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+                MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, Maglin.Enemy.MonsterAnimationState.Idle);
             }
 
             // 스폰 애니메이션 시퀀스 생성
