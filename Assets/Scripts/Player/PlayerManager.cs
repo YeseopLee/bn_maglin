@@ -342,8 +342,18 @@ namespace Maglin.Player
                     // Walk 스프라이트가 없으면 Idle 스프라이트 사용
                     walkSprites = idleSprites;
                     if (debugMode)
-                        Debug.Log("[PlayerManager] Walk 스프라이트가 없어 Idle 스프라이트 사용");
+                        Debug.LogWarning("[PlayerManager] Walk 스프라이트가 Resources에서 찾을 수 없어 Idle 스프라이트 사용");
                 }
+                else
+                {
+                    if (debugMode)
+                        Debug.Log($"[PlayerManager] Resources에서 Walk 스프라이트 로드: {walkSprites.Length}개");
+                }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Inspector에서 할당된 Walk 스프라이트 사용: {walkSprites.Length}개");
             }
 
             if (attackSprites1 == null || attackSprites1.Length == 0)
@@ -1231,7 +1241,7 @@ namespace Maglin.Player
                 OnPlayerAnimationChanged?.Invoke(currentAnimationState);
 
                 // if (debugMode)
-                //     Debug.Log($"[PlayerManager] 플레이어 애니메이션 상태 변경: {newState}");
+                Debug.Log($"[PlayerManager] 플레이어 애니메이션 상태 변경: {newState}");
             }
         }
 
@@ -1536,10 +1546,20 @@ namespace Maglin.Player
         /// </summary>
         public void PlayWalkAnimation()
         {
+            if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] 이동 애니메이션 실행 요청 - 현재 상태: {currentAnimationState}");
+                Debug.Log($"[PlayerManager] Walk 스프라이트 배열: {walkSprites?.Length ?? 0}개");
+                if (walkSprites != null && walkSprites.Length > 0)
+                {
+                    Debug.Log($"[PlayerManager] Walk 스프라이트 [0]: {(walkSprites[0] != null ? walkSprites[0].name : "null")}");
+                }
+            }
+
             SetAnimationState(PlayerAnimationState.Walk);
 
             if (debugMode)
-                Debug.Log("[PlayerManager] 이동 애니메이션 실행");
+                Debug.Log($"[PlayerManager] 이동 애니메이션 설정 완료 - 새 상태: {currentAnimationState}");
         }
 
         /// <summary>

@@ -685,6 +685,8 @@ MonoBehaviour:
   hitFrameRate: 15
   deathFrameRate: 10
   debugMode: 1
+  deathSlowMotionScale: 0.3
+  deathSlowMotionDuration: 2
 --- !u!4 &246027729
 Transform:
   m_ObjectHideFlags: 0

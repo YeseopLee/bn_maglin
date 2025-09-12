@@ -33,7 +33,7 @@ namespace Maglin.Battle
         [SerializeField] private bool debugMode = true;
 
         [Header("플레이어 입장 애니메이션")]
-        [SerializeField] private float entranceAnimationDuration = 1.2f; // 입장 애니메이션 시간 (더 빠르게)
+        [SerializeField] private float entranceAnimationDuration = 2f; // 입장 애니메이션 시간 (더 빠르게)
         [SerializeField] private float entranceStartOffsetX = -50f; // 화면 왼쪽 시작 위치 오프셋 (화면 완전 밖에서부터)
 
         [Header("사망 카메라 효과")]
@@ -70,6 +70,9 @@ namespace Maglin.Battle
         // 플레이어 렌더러 레이어 관리용
         private SpriteRenderer playerSpriteRenderer;
         private int originalPlayerSortingOrder;
+
+        // 입장 애니메이션 상태 관리
+        private bool isPlayingEntranceAnimation = false;
 
         #region Unity Events
         private void Awake()
@@ -389,17 +392,29 @@ namespace Maglin.Battle
                 return;
             }
 
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 스프라이트 업데이트 요청 - 애니메이션 상태: {animationState}");
+
             // PlayerManager에서 현재 상태의 스프라이트 가져오기
             Sprite newSprite = null;
             if (PlayerManager.Instance != null)
             {
                 newSprite = PlayerManager.Instance.GetPlayerSprite();
+
+                if (debugMode)
+                {
+                    var currentState = PlayerManager.Instance.CurrentAnimationState;
+                    Debug.Log($"[PlayerBattleManager] PlayerManager 현재 상태: {currentState}");
+                    Debug.Log($"[PlayerBattleManager] 가져온 스프라이트: {(newSprite != null ? newSprite.name : "null")}");
+                }
             }
 
             // 스프라이트가 없으면 기본 스프라이트 사용
             if (newSprite == null)
             {
                 newSprite = CreateDefaultPlayerSprite();
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] 기본 스프라이트 사용");
             }
 
             // SpriteRenderer 컴포넌트 찾아서 스프라이트 업데이트
@@ -429,7 +444,8 @@ namespace Maglin.Battle
                 if (debugMode)
                 {
                     var currentState = PlayerManager.Instance?.CurrentAnimationState ?? PlayerManager.PlayerAnimationState.Idle;
-                    Debug.Log($"[PlayerBattleManager] 플레이어 스프라이트 업데이트: {currentState}");
+                    Debug.Log($"[PlayerBattleManager] 플레이어 스프라이트 업데이트 완료: {currentState} -> {newSprite.name}");
+                    Debug.Log($"[PlayerBattleManager] SpriteRenderer에 실제 적용된 스프라이트: {spriteRenderer.sprite.name}");
                 }
             }
             else
@@ -506,6 +522,14 @@ namespace Maglin.Battle
             // 한 프레임 대기 (플레이어 게임오브젝트 완전 생성 대기)
             yield return null;
 
+            // 입장 애니메이션 중에는 실행하지 않음
+            if (isPlayingEntranceAnimation)
+            {
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] 입장 애니메이션 중이므로 지연된 애니메이션 시작 건너뛰기");
+                yield break;
+            }
+
             if (PlayerManager.Instance != null)
             {
                 if (debugMode)
@@ -574,6 +598,9 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 플레이어 입장 애니메이션 시작");
 
+            // 입장 애니메이션 플래그 설정
+            isPlayingEntranceAnimation = true;
+
             // 최종 목표 위치 (그리드 위치)
             Vector3 targetWorldPosition = GetPlayerWorldPosition();
 
@@ -591,16 +618,50 @@ namespace Maglin.Battle
                 playerGameObject.transform.position = startPosition;
             }
 
+            // 생성/이동 후 현재 스프라이트 확인
+            if (debugMode && playerGameObject != null)
+            {
+                var spriteRenderer = playerGameObject.GetComponent<SpriteRenderer>();
+                if (spriteRenderer != null && spriteRenderer.sprite != null)
+                {
+                    Debug.Log($"[PlayerBattleManager] 현재 플레이어 스프라이트: {spriteRenderer.sprite.name}");
+                }
+            }
+
             if (playerGameObject == null)
             {
                 Debug.LogError("[PlayerBattleManager] 플레이어 게임오브젝트 생성 실패!");
                 yield break;
             }
 
-            // PlayerManager에 Walk 애니메이션 시작 알림
+            // 애니메이션 이벤트 구독이 되어 있는지 확인하고 설정
             if (PlayerManager.Instance != null)
             {
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] PlayerManager 인스턴스 찾음, 이벤트 구독 시작");
+
+                // 기존 구독 해제 후 재구독 (중복 방지)
+                PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
+                PlayerManager.OnPlayerAnimationChanged += UpdatePlayerSprite;
+
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] Walk 애니메이션 시작 전 이벤트 구독 설정 완료");
+
+                // PlayerManager에 Walk 애니메이션 시작 알림
                 PlayerManager.Instance.PlayWalkAnimation();
+
+                // 한 프레임 대기 후 스프라이트 즉시 업데이트
+                yield return null;
+
+                if (debugMode)
+                    Debug.Log("[PlayerBattleManager] 수동으로 UpdatePlayerSprite 호출");
+
+                UpdatePlayerSprite();
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogError("[PlayerBattleManager] PlayerManager.Instance가 null입니다!");
             }
 
             if (debugMode)
@@ -637,6 +698,9 @@ namespace Maglin.Battle
             {
                 PlayerManager.Instance.ReturnToIdle();
             }
+
+            // 입장 애니메이션 플래그 해제
+            isPlayingEntranceAnimation = false;
 
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 플레이어 입장 애니메이션 완료");
