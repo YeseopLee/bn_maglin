@@ -28,9 +28,10 @@ MonoBehaviour:
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
-  objectToSpawn: {fileID: 0}
-  spawnTargetPosition: -1
-  spawnAtTarget: 1
-  movementType: 2
+  movementType: 0
   movementDistance: 1
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 0}
+  summonPosition: 0
+  pushExistingMonster: 1
   requiredCombinations: []

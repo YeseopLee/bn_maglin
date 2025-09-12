@@ -32,7 +32,8 @@ namespace Maglin.Enemy
         InFrontOfSelf,                  // 자신 바로 앞
         SpecificPosition,               // 특정 위치 (gridPosition 사용)
         RightmostPosition,              // 우측 끝 칸
-        RandomEmpty                     // 빈 공간 중 랜덤
+        RandomEmpty,                    // 빈 공간 중 랜덤
+        AtDeathPosition                 // 사망한 몬스터의 위치 (사망 시 소환 전용)
     }
 
     [CreateAssetMenu(fileName = "New Monster Pattern", menuName = "Maglin/Enemy/MonsterPatternSO")]
@@ -65,6 +66,10 @@ namespace Maglin.Enemy
         [SerializeField] private int destructionDamage = 5;     // 파괴 시 주는 데미지
         [SerializeField] private AttackTargetType destructionTarget = AttackTargetType.PlayerAndAllMonsters;
 
+        [Header("패턴 전용 애니메이션")]
+        [SerializeField] private Sprite[] patternSprites;       // 패턴 실행 시 사용할 스프라이트
+        [SerializeField] private float patternAnimationSpeed = 0.2f; // 패턴 애니메이션 속도
+
         // Properties
         public string PatternName => patternName;
         public MonsterPatternType PatternType => patternType;
@@ -82,6 +87,8 @@ namespace Maglin.Enemy
         public EnemySO TargetDestroyType => targetDestroyType;
         public int DestructionDamage => destructionDamage;
         public AttackTargetType DestructionTarget => destructionTarget;
+        public Sprite[] PatternSprites => patternSprites;
+        public float PatternAnimationSpeed => patternAnimationSpeed;
 
         /// <summary>
         /// 패턴이 주기적 트리거인지 확인

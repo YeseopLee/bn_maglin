@@ -28,7 +28,7 @@ MonoBehaviour:
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
-  movementType: 3
+  movementType: 0
   movementDistance: 4
   enableMonsterSummon: 0
   monsterToSummon: {fileID: 0}

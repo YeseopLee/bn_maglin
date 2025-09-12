@@ -113,6 +113,9 @@ namespace Maglin.Battle
                 MonsterDeathAnimationManager.OnAllDeathAnimationsCompleted -= OnAllDeathAnimationsCompleted;
             }
 
+            // MonsterPatternExecutor 이벤트 구독 해제
+            MonsterPatternExecutor.OnAllDeathSpawnPatternsCompleted -= OnAllDeathSpawnPatternsCompleted;
+
             // PlayerManager 애니메이션 이벤트 구독 해제
             if (PlayerManager.Instance != null)
             {
@@ -731,6 +734,11 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log("[BattleTestController] MonsterDeathAnimationManager 이벤트 구독 완료");
             }
+
+            // MonsterPatternExecutor 이벤트 구독 (사망 소환 패턴 완료)
+            MonsterPatternExecutor.OnAllDeathSpawnPatternsCompleted += OnAllDeathSpawnPatternsCompleted;
+            if (debugMode)
+                Debug.Log("[BattleTestController] MonsterPatternExecutor 이벤트 구독 완료");
 
             if (debugMode)
             {
@@ -1873,18 +1881,28 @@ namespace Maglin.Battle
                 }
             }
 
-            // 적 몬스터가 모두 죽었으면 전투 승리 (사망 애니메이션 대기)
+            // 적 몬스터가 모두 죽었으면 전투 승리 (사망 애니메이션 및 소환 패턴 대기)
             if (aliveEnemyMonsters.Count == 0)
             {
                 if (debugMode)
-                    Debug.Log("[BattleTestController] 모든 적 몬스터 처치 완료! 사망 애니메이션 대기 중...");
+                    Debug.Log("[BattleTestController] 모든 적 몬스터 처치 완료! 사망 처리 대기 중...");
 
                 // 사망 애니메이션이 진행 중인지 확인
-                if (MonsterDeathAnimationManager.Instance != null &&
-                    MonsterDeathAnimationManager.Instance.HasActiveDeathAnimations())
+                bool hasActiveDeathAnimations = MonsterDeathAnimationManager.Instance != null &&
+                                               MonsterDeathAnimationManager.Instance.HasActiveDeathAnimations();
+
+                // 사망 소환 패턴이 진행 중인지 확인
+                bool hasActiveDeathSpawnPatterns = MonsterPatternExecutor.Instance != null &&
+                                                  MonsterPatternExecutor.Instance.HasActiveDeathSpawnPatterns();
+
+                if (hasActiveDeathAnimations || hasActiveDeathSpawnPatterns)
                 {
                     if (debugMode)
-                        Debug.Log("[BattleTestController] 사망 애니메이션 진행 중, 전투 종료 대기");
+                    {
+                        Debug.Log($"[BattleTestController] 사망 처리 진행 중, 전투 종료 대기");
+                        Debug.Log($"  - 사망 애니메이션: {hasActiveDeathAnimations}");
+                        Debug.Log($"  - 사망 소환 패턴: {hasActiveDeathSpawnPatterns}");
+                    }
 
                     pendingBattleEnd = true;
                     return false; // 아직 전투 종료하지 않음
@@ -1892,7 +1910,7 @@ namespace Maglin.Battle
                 else
                 {
                     if (debugMode)
-                        Debug.Log("[BattleTestController] 사망 애니메이션 없음, 즉시 전투 승리");
+                        Debug.Log("[BattleTestController] 모든 사망 처리 완료, 즉시 전투 승리");
 
                     EndBattle(true);
                     return true;
@@ -1923,43 +1941,62 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log("[BattleTestController] 전투 승리!");
 
-                // 테스트 모드에서만 직접 보상 표시, 프로덕션 모드에서는 FloorManager가 처리
-                if (useTestMode)
-                {
-                    if (debugMode)
-                        Debug.Log("[BattleTestController] 테스트 모드 - 보상을 표시합니다.");
-                    ShowBattleRewards();
-                }
-                else
-                {
-                    if (debugMode)
-                        Debug.Log("[BattleTestController] 프로덕션 모드 - FloorManager에게 층 완료 알림");
-
-                    // 프로덕션 모드: FloorManager에게 현재 층 완료 알림
-                    if (FloorManager.Instance != null)
-                    {
-                        Debug.Log($"[BattleTestController] FloorManager.Instance 존재, CompleteCurrentFloor 호출");
-                        FloorManager.Instance.CompleteCurrentFloor();
-                        Debug.Log($"[BattleTestController] CompleteCurrentFloor 호출 완료");
-                    }
-                    else
-                    {
-                        Debug.LogError("[BattleTestController] FloorManager.Instance가 null입니다! 테스트 모드로 폴백");
-                        ShowBattleRewards();
-                    }
-                }
+                // 승리 시 사망 애니메이션 완료 후 보상 표시
+                StartCoroutine(WaitForDeathAnimationsAndShowRewards());
             }
             else
             {
                 if (debugMode)
                     Debug.Log("[BattleTestController] 전투 패배! 게임 오버");
 
-                // 패배 시에는 플레이어 정리 (게임 오버이므로)
-                if (PlayerBattleManager.Instance != null)
-                {
-                    PlayerBattleManager.Instance.CleanupOnSceneTransition();
-                }
+                // 패배 시에도 플레이어 오브젝트 유지 (사망 상태 표시용)
+                // PlayerBattleManager.Instance.CleanupOnSceneTransition(); // 주석 처리
+                
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 플레이어 오브젝트 유지 (사망 상태)");
             }
+        }
+
+        /// <summary>
+        /// 사망 애니메이션 완료 후 보상 표시
+        /// </summary>
+        private System.Collections.IEnumerator WaitForDeathAnimationsAndShowRewards()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 사망 애니메이션 완료 대기 중...");
+
+            // 사망 애니메이션과 사망 소환 패턴이 모두 완료될 때까지 대기
+            while (true)
+            {
+                bool hasActiveDeathAnimations = MonsterDeathAnimationManager.Instance != null &&
+                                               MonsterDeathAnimationManager.Instance.HasActiveDeathAnimations();
+                
+                bool hasActiveDeathSpawnPatterns = MonsterPatternExecutor.Instance != null &&
+                                                 MonsterPatternExecutor.Instance.HasActiveDeathSpawnPatterns();
+
+                if (!hasActiveDeathAnimations && !hasActiveDeathSpawnPatterns)
+                {
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] 모든 사망 애니메이션 완료, 보상 표시 시작");
+                    break;
+                }
+
+                if (debugMode)
+                {
+                    Debug.Log($"[BattleTestController] 사망 처리 대기 중 - 애니메이션: {hasActiveDeathAnimations}, 소환 패턴: {hasActiveDeathSpawnPatterns}");
+                }
+
+                yield return new WaitForSeconds(0.1f); // 0.1초마다 체크
+            }
+
+            // 추가 안전 여유 시간 (사망 애니메이션 시각적 완료 보장)
+            yield return new WaitForSeconds(2.5f);
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] 보상 표시 준비 완료");
+
+            // 이제 보상 표시
+            ShowBattleRewards();
         }
 
         /// <summary>
@@ -1967,17 +2004,50 @@ namespace Maglin.Battle
         /// </summary>
         private void ShowBattleRewards()
         {
-            if (RewardManager.Instance == null)
+            // 테스트 모드에서만 직접 보상 표시, 프로덕션 모드에서는 FloorManager가 처리
+            if (useTestMode)
             {
-                Debug.LogError("[BattleTestController] RewardManager가 없습니다!");
-                return;
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 테스트 모드 - 보상을 표시합니다.");
+
+                if (RewardManager.Instance == null)
+                {
+                    Debug.LogError("[BattleTestController] RewardManager가 없습니다!");
+                    return;
+                }
+
+                if (debugMode)
+                    Debug.Log("[BattleTestController] RewardManager 확인됨, 보상 생성 시작");
+
+                // RewardManager를 통해 보상 생성 및 표시
+                RewardManager.Instance.ShowBattleRewards(currentFloor, currentFloorType);
             }
+            else
+            {
+                if (debugMode)
+                    Debug.Log("[BattleTestController] 프로덕션 모드 - FloorManager에게 층 완료 알림");
 
-            if (debugMode)
-                Debug.Log("[BattleTestController] RewardManager 확인됨, 보상 생성 시작");
-
-            // RewardManager를 통해 보상 생성 및 표시
-            RewardManager.Instance.ShowBattleRewards(currentFloor, currentFloorType);
+                // 프로덕션 모드: FloorManager에게 현재 층 완료 알림
+                if (FloorManager.Instance != null)
+                {
+                    Debug.Log($"[BattleTestController] FloorManager.Instance 존재, CompleteCurrentFloor 호출");
+                    FloorManager.Instance.CompleteCurrentFloor();
+                    Debug.Log($"[BattleTestController] CompleteCurrentFloor 호출 완료");
+                }
+                else
+                {
+                    Debug.LogError("[BattleTestController] FloorManager.Instance가 null입니다! 테스트 모드로 폴백");
+                    
+                    if (RewardManager.Instance != null)
+                    {
+                        RewardManager.Instance.ShowBattleRewards(currentFloor, currentFloorType);
+                    }
+                    else
+                    {
+                        Debug.LogError("[BattleTestController] RewardManager도 없습니다!");
+                    }
+                }
+            }
         }
 
         #region Reward Event Handlers
@@ -2177,11 +2247,22 @@ namespace Maglin.Battle
             // 대기 중인 전투 종료가 있으면 실행
             if (pendingBattleEnd)
             {
-                if (debugMode)
-                    Debug.Log("[BattleTestController] 대기 중이던 전투 종료 실행");
+                StartCoroutine(CheckBattleEndAfterDelay());
+            }
+        }
 
-                pendingBattleEnd = false;
-                EndBattle(true);
+        /// <summary>
+        /// 모든 사망 소환 패턴 완료 이벤트 처리
+        /// </summary>
+        private void OnAllDeathSpawnPatternsCompleted()
+        {
+            if (debugMode)
+                Debug.Log("[BattleTestController] 모든 사망 소환 패턴 완료됨");
+
+            // 대기 중인 전투 종료가 있으면 실행
+            if (pendingBattleEnd)
+            {
+                StartCoroutine(CheckBattleEndAfterDelay());
             }
         }
 

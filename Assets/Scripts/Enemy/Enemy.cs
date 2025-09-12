@@ -290,6 +290,15 @@ namespace Maglin.Enemy
                 hitEffect.PlayHitEffect(actualDamage);
             }
 
+            // Hit 애니메이션 재생 (사망하지 않은 경우)
+            if (actualDamage > 0 && currentHealth > 0)
+            {
+                if (MonsterBattleManager.Instance != null)
+                {
+                    MonsterBattleManager.Instance.PlayHitAnimation(this);
+                }
+            }
+
             // 사망 처리
             if (currentHealth <= 0)
             {
@@ -441,6 +450,18 @@ namespace Maglin.Enemy
         private void Die()
         {
             SetState(EnemyState.Dead);
+
+            // 사망 패턴 처리 (사망 시 소환 등)
+            if (MonsterBattleManager.Instance != null)
+            {
+                MonsterBattleManager.Instance.HandleMonsterDeathPatterns(this);
+            }
+
+            // Death 애니메이션 재생
+            if (MonsterBattleManager.Instance != null)
+            {
+                MonsterBattleManager.Instance.PlayDeathAnimation(this);
+            }
 
             if (debugMode)
                 Debug.Log($"[Enemy] {EnemyName} 사망");

@@ -104,11 +104,38 @@ namespace Maglin.Battle
         {
             if (monster == null) return;
 
+            var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
+            if (enemy == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[MonsterDeathAnimationManager] {monster.name}에 Enemy 컴포넌트가 없습니다.");
+                return;
+            }
+
+            // Death 스프라이트가 있는지 확인
+            bool hasDeathSprites = enemy.EnemyData != null && 
+                                  enemy.EnemyData.DeathSprites != null && 
+                                  enemy.EnemyData.DeathSprites.Length > 0;
+
+            if (hasDeathSprites)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterDeathAnimationManager] {monster.name}은 Death 스프라이트가 있어 조각 애니메이션을 실행하지 않습니다.");
+
+                // Death 스프라이트가 있으면 MonsterAnimationManager에서만 처리
+                // 조각나는 효과는 실행하지 않음
+                return;
+            }
+
+            // Death 스프라이트가 없는 경우에만 조각나는 효과 실행
+            if (debugMode)
+                Debug.Log($"[MonsterDeathAnimationManager] {monster.name}은 Death 스프라이트가 없어 조각 애니메이션을 실행합니다.");
+
             // 활성 애니메이션 카운터 증가
             activeDeathAnimations++;
 
             if (debugMode)
-                Debug.Log($"[MonsterDeathAnimationManager] 사망 애니메이션 시작: {monster.name}, 현재 활성 애니메이션: {activeDeathAnimations}");
+                Debug.Log($"[MonsterDeathAnimationManager] 조각 애니메이션 시작: {monster.name}, 현재 활성 애니메이션: {activeDeathAnimations}");
 
             StartCoroutine(ExecuteDeathAnimation(monster));
         }
@@ -136,14 +163,14 @@ namespace Maglin.Battle
 
         #region Private Methods
         /// <summary>
-        /// 개별 몬스터 사망 애니메이션 실행
+        /// 개별 몬스터 조각 애니메이션 실행 (Death 스프라이트가 없는 몬스터만)
         /// </summary>
         private IEnumerator ExecuteDeathAnimation(GameObject monster)
         {
             if (monster == null) yield break;
 
             if (debugMode)
-                Debug.Log($"[MonsterDeathAnimationManager] 사망 애니메이션 시작: {monster.name}");
+                Debug.Log($"[MonsterDeathAnimationManager] 조각 애니메이션 시작: {monster.name}");
 
             // 이벤트 발생
             OnDeathAnimationStarted?.Invoke(monster);
@@ -154,6 +181,9 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.LogWarning($"[MonsterDeathAnimationManager] {monster.name}에 SpriteRenderer나 Sprite가 없습니다.");
+                
+                // 실패한 경우에도 카운터 감소
+                activeDeathAnimations--;
                 yield break;
             }
 
@@ -162,8 +192,7 @@ namespace Maglin.Battle
             Vector3 originalPosition = monster.transform.position;
             Vector3 originalScale = monster.transform.localScale;
 
-
-
+            // 바로 조각 애니메이션 실행 (Death 스프라이트 대기 없음)
             // 원본 몬스터 숨기기 (조각들로 대체)
             originalRenderer.enabled = false;
 
@@ -192,7 +221,7 @@ namespace Maglin.Battle
             activeDeathAnimations--;
 
             if (debugMode)
-                Debug.Log($"[MonsterDeathAnimationManager] 사망 애니메이션 완료: {monster.name}, 남은 활성 애니메이션: {activeDeathAnimations}");
+                Debug.Log($"[MonsterDeathAnimationManager] 조각 애니메이션 완료: {monster.name}, 남은 활성 애니메이션: {activeDeathAnimations}");
 
             // 이벤트 발생
             OnDeathAnimationCompleted?.Invoke(monster);
@@ -201,7 +230,7 @@ namespace Maglin.Battle
             if (activeDeathAnimations <= 0)
             {
                 if (debugMode)
-                    Debug.Log("[MonsterDeathAnimationManager] 모든 사망 애니메이션 완료");
+                    Debug.Log("[MonsterDeathAnimationManager] 모든 조각 애니메이션 완료");
 
                 OnAllDeathAnimationsCompleted?.Invoke();
             }

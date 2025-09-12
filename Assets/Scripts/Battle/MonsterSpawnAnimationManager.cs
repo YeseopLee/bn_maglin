@@ -206,6 +206,13 @@ namespace Maglin.Battle
             Vector3 originalPosition = monster.transform.position;
             SetupInitialState(monster, originalPosition);
 
+            // 몬스터 애니메이션 시스템에 Idle 상태 설정
+            var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
+            if (enemy != null && MonsterAnimationManager.Instance != null)
+            {
+                MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+            }
+
             // 스폰 애니메이션 시퀀스 생성
             Sequence spawnSequence = DOTween.Sequence();
 

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 026e49195558d404792446ddcd723847
+guid: 1a0bf8b0d2ea0c344bd631aee9ad376e
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -93,42 +93,16 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
-    buildTarget: iPhone
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
-    buildTarget: Android
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: move_0
+      name: Skeleton_M_Idle_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -137,19 +111,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 746c36c244e4242e6806b597b9a96246
-      internalID: 989510090
+      spriteID: a24c6b67af2be144da3d24ece0697de8
+      internalID: 833233887
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_1
+      name: Skeleton_M_Idle_1
       rect:
         serializedVersion: 2
-        x: 112
+        x: 96
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -158,19 +132,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 584288bcb36274446b11a742f2f8452b
-      internalID: 1804280731
+      spriteID: 36fef81a9cb3bab4fb7b79880cf38bad
+      internalID: -1235141899
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_2
+      name: Skeleton_M_Idle_2
       rect:
         serializedVersion: 2
-        x: 224
+        x: 192
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -179,19 +153,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 5a1d000eab84c4990a02866178edc2cb
-      internalID: -1650115660
+      spriteID: 3b6ed41a379a0a94c8c26e126e5735e1
+      internalID: -1200046626
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_3
+      name: Skeleton_M_Idle_3
       rect:
         serializedVersion: 2
-        x: 336
+        x: 288
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -200,19 +174,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c1b5b0bfecfe9401d97f5d446d30082a
-      internalID: 1836560941
+      spriteID: 76ba337a2f7ec4c48b27cf5ec639b965
+      internalID: 1215245765
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_4
+      name: Skeleton_M_Idle_4
       rect:
         serializedVersion: 2
-        x: 448
+        x: 384
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -221,19 +195,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 60a17e1ebe2b44cd08b3667120d418f9
-      internalID: -380439441
+      spriteID: c6300fbf0ff1ff3488c6d9c4b9eb3843
+      internalID: -975075041
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_5
+      name: Skeleton_M_Idle_5
       rect:
         serializedVersion: 2
-        x: 560
+        x: 480
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -242,19 +216,40 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: dbf742144f8264173ab4634f642ec215
-      internalID: 530458468
+      spriteID: a3fdc7e5f7ab3ad49a421c0cb50840f4
+      internalID: -411489189
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_6
+      name: Skeleton_M_Idle_6
+      rect:
+        serializedVersion: 2
+        x: 576
+        y: 0
+        width: 96
+        height: 80
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b7670bd25d241914187ab41472f35df2
+      internalID: -633661920
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Skeleton_M_Idle_7
       rect:
         serializedVersion: 2
         x: 672
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -263,50 +258,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b654cb67988c840568faf7d31af9f09c
-      internalID: -1148060631
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: move_7
-      rect:
-        serializedVersion: 2
-        x: 784
-        y: 0
-        width: 112
-        height: 80
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 3af90b50916be434481d18a7858df4ec
-      internalID: 1980002434
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: move_8
-      rect:
-        serializedVersion: 2
-        x: 896
-        y: 0
-        width: 112
-        height: 80
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      outline: []
-      physicsShape: []
-      tessellationDetail: 0
-      bones: []
-      spriteID: 68d0789ac529241ca817bbf7ffe86e5f
-      internalID: 88212127
+      spriteID: 4aec2c50265dc114bb4d521c95f17b99
+      internalID: 1323750552
       vertices: []
       indices: 
       edges: []
@@ -322,15 +275,14 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      move_0: 989510090
-      move_1: 1804280731
-      move_2: -1650115660
-      move_3: 1836560941
-      move_4: -380439441
-      move_5: 530458468
-      move_6: -1148060631
-      move_7: 1980002434
-      move_8: 88212127
+      Skeleton_M_Idle_0: 833233887
+      Skeleton_M_Idle_1: -1235141899
+      Skeleton_M_Idle_2: -1200046626
+      Skeleton_M_Idle_3: 1215245765
+      Skeleton_M_Idle_4: -975075041
+      Skeleton_M_Idle_5: -411489189
+      Skeleton_M_Idle_6: -633661920
+      Skeleton_M_Idle_7: 1323750552
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

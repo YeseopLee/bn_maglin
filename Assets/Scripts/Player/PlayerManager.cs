@@ -1344,22 +1344,20 @@ namespace Maglin.Player
                 {
                     if (!isPlayingAnimation) break; // 애니메이션이 중지되면 바로 종료
 
+                    int previousFrameIndex = currentFrameIndex;
                     currentFrameIndex = i;
-                    OnPlayerAnimationChanged?.Invoke(currentAnimationState);
+                    
+                    // 프레임이 실제로 바뀐 경우에만 이벤트 발생 (최적화)
+                    if (previousFrameIndex != currentFrameIndex)
+                    {
+                        OnPlayerAnimationChanged?.Invoke(currentAnimationState);
+                    }
 
                     if (debugMode && isDeathAnimation)
                         Debug.Log($"[PlayerManager] 사망 애니메이션 프레임: [{i}/{sprites.Length - 1}]");
 
-                    // 사망 애니메이션의 경우 슬로우 모션 영향을 받도록 WaitForSeconds 사용
-                    // 다른 애니메이션은 일반적인 시간 기준 사용
-                    if (isDeathAnimation)
-                    {
-                        yield return new WaitForSeconds(frameDuration);
-                    }
-                    else
-                    {
-                        yield return new WaitForSeconds(frameDuration);
-                    }
+                    // 프레임 시간 대기
+                    yield return new WaitForSeconds(frameDuration);
                 }
             } while (isLooping && isPlayingAnimation);
 

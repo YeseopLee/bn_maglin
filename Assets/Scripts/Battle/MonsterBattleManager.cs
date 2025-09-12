@@ -171,6 +171,12 @@ namespace Maglin.Battle
 
             if (newPosition != monster.GridPosition)
             {
+                // Move 애니메이션 시작
+                if (MonsterAnimationManager.Instance != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Move);
+                }
+
                 // 위치 이동
                 SetMonsterGridPosition(monster, newPosition);
                 UpdateMonsterPosition(monster);
@@ -186,6 +192,12 @@ namespace Maglin.Battle
 
                 // 부드러운 이동 완료까지 대기
                 yield return new WaitForSeconds(0.4f);
+
+                // 이동 완료 후 Idle 애니메이션으로 복귀
+                if (MonsterAnimationManager.Instance != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                }
             }
             else
             {
@@ -214,8 +226,23 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 패턴 실행: {patternResult.description}");
 
+                // 패턴 애니메이션 재생
+                if (MonsterAnimationManager.Instance != null)
+                {
+                    // 실행된 패턴 정보 가져오기
+                    var executedPattern = GetCurrentExecutablePattern(monster);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Pattern, executedPattern);
+                }
+
                 // 패턴 실행 애니메이션 대기
-                yield return new WaitForSeconds(0.3f);
+                float patternAnimationDuration = GetPatternAnimationDuration(monster);
+                yield return new WaitForSeconds(patternAnimationDuration);
+
+                // 패턴 완료 후 Idle로 복귀
+                if (MonsterAnimationManager.Instance != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                }
 
                 // 패턴이 일반 행동을 차단하는 경우 여기서 종료
                 if (patternResult.blockNormalActions)
@@ -236,14 +263,27 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log($"[MonsterBattleManager] {monster.EnemyName}이 중립 오브젝트 {targetObject.EnemyName}를 공격! 데미지: {damage}");
 
-                // 오브젝트 공격 애니메이션
-                yield return StartCoroutine(PerformObjectAttack(monster, targetObject.GridPosition));
+                // Attack 애니메이션 재생
+                if (MonsterAnimationManager.Instance != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Attack);
+                }
+
+                // 공격 애니메이션 완료까지 대기
+                float attackAnimationDuration = GetAttackAnimationDuration(monster);
+                yield return new WaitForSeconds(attackAnimationDuration);
 
                 // 중립 오브젝트에게 데미지
                 targetObject.TakeDamage(damage, monster.Element);
 
                 // 공격 완료 이벤트 발생
                 OnMonsterAttacked?.Invoke(monster);
+
+                // 공격 완료 후 Idle 애니메이션으로 복귀
+                if (MonsterAnimationManager.Instance != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                }
 
                 // 공격 후 잠시 대기
                 yield return new WaitForSeconds(0.2f);
@@ -258,22 +298,15 @@ namespace Maglin.Battle
                 if (debugMode)
                     Debug.Log($"[MonsterBattleManager] {monster.EnemyName}이 플레이어를 공격! 데미지: {damage}");
 
-                // 공격 타입에 따라 다른 애니메이션 실행
-                if (monster.EnemyData.AttackPattern == Maglin.Enemy.AttackPatternType.Melee)
+                // Attack 애니메이션 재생
+                if (MonsterAnimationManager.Instance != null)
                 {
-                    // 근접 공격: 돌격 애니메이션
-                    yield return StartCoroutine(PerformChargeAttack(monster, playerGridPosition));
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Attack);
                 }
-                else if (monster.EnemyData.AttackPattern == Maglin.Enemy.AttackPatternType.Ranged)
-                {
-                    // 원거리 공격: 제자리에서 살짝 움직이는 애니메이션
-                    yield return StartCoroutine(PerformRangedAttack(monster, playerGridPosition));
-                }
-                else
-                {
-                    // 특수 공격: 기본 애니메이션
-                    yield return StartCoroutine(PerformSpecialAttack(monster, playerGridPosition));
-                }
+
+                // 공격 애니메이션 완료까지 대기
+                float attackAnimationDuration = GetAttackAnimationDuration(monster);
+                yield return new WaitForSeconds(attackAnimationDuration);
 
                 // 플레이어에게 데미지 (공격자 정보 포함)
                 if (PlayerManager.Instance != null)
@@ -283,6 +316,12 @@ namespace Maglin.Battle
 
                 // 공격 완료 이벤트 발생
                 OnMonsterAttacked?.Invoke(monster);
+
+                // 공격 완료 후 Idle 애니메이션으로 복귀
+                if (MonsterAnimationManager.Instance != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
+                }
 
                 // 공격 후 잠시 대기
                 yield return new WaitForSeconds(0.2f);
@@ -537,205 +576,100 @@ namespace Maglin.Battle
             return null;
         }
 
-        #region Attack Animations
+        #region Animation Helper Methods
         /// <summary>
-        /// 돌격 공격 애니메이션 실행
+        /// 공격 애니메이션 지속 시간 계산
         /// </summary>
-        private IEnumerator PerformChargeAttack(Maglin.Enemy.Enemy monster, Vector2Int targetPosition)
+        private float GetAttackAnimationDuration(Maglin.Enemy.Enemy monster)
         {
-            if (monster == null) yield break;
-
-            Vector3 originalPosition = monster.transform.position;
-            Vector3 targetWorldPos = GridFieldManager.Instance != null
-                ? GridFieldManager.Instance.GridToWorldPosition(targetPosition)
-                : new Vector3(targetPosition.x + 0.5f, targetPosition.y + 0.5f, 0f);
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 돌격 공격 시작: {originalPosition} -> {targetWorldPos}");
-
-            // 1. 뒤로 물러나기 (준비 자세)
-            Vector3 backPosition = originalPosition + Vector3.right * 0.3f; // 뒤로 0.3f 이동
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, backPosition, 0.1f));
-
-            // 2. 잠시 대기 (돌격 준비)
-            yield return new WaitForSeconds(0.1f);
-
-            // 3. 플레이어에게 돌격
-            Vector3 chargeTarget = new Vector3(targetWorldPos.x, targetWorldPos.y, -1f);
-            yield return StartCoroutine(SmoothChargeToPosition(monster.gameObject, chargeTarget, 0.1f));
-
-            // 4. 공격 효과 (약간의 흔들림)
-            yield return StartCoroutine(ShakeEffect(monster.gameObject, 0.2f, 0.15f));
-
-            // 5. 원래 위치로 돌아가기
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, originalPosition, 0.2f));
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 돌격 공격 완료");
-        }
-
-        /// <summary>
-        /// 빠른 돌격 이동 (돌격용)
-        /// </summary>
-        private IEnumerator SmoothChargeToPosition(GameObject monster, Vector3 targetPosition, float duration)
-        {
-            if (monster == null) yield break;
-
-            Vector3 startPosition = monster.transform.position;
-            float elapsedTime = 0f;
-
-            while (elapsedTime < duration)
+            if (monster?.EnemyData?.AttackSprites == null || monster.EnemyData.AttackSprites.Length == 0)
             {
-                if (monster == null) yield break;
-
-                elapsedTime += Time.deltaTime;
-                float progress = elapsedTime / duration;
-
-                // 돌격용 Ease In 효과 (빠르게 시작해서 빠르게 끝남)
-                progress = progress * progress;
-
-                monster.transform.position = Vector3.Lerp(startPosition, targetPosition, progress);
-
-                yield return null;
+                return 0.5f; // 기본 지속 시간
             }
 
-            // 최종 위치 보장
-            if (monster != null)
+            return monster.EnemyData.AttackSprites.Length * monster.EnemyData.AnimationSpeed;
+        }
+
+        /// <summary>
+        /// 현재 실행 가능한 패턴 가져오기 (애니메이션용)
+        /// </summary>
+        private MonsterPatternSO GetCurrentExecutablePattern(Maglin.Enemy.Enemy monster)
+        {
+            if (monster?.EnemyData?.MonsterPatterns == null || monster.EnemyData.MonsterPatterns.Count == 0)
+                return null;
+
+            // 패턴 스프라이트가 있는 첫 번째 패턴을 반환
+            foreach (var pattern in monster.EnemyData.MonsterPatterns)
             {
-                monster.transform.position = targetPosition;
+                if (pattern?.PatternSprites != null && pattern.PatternSprites.Length > 0)
+                {
+                    return pattern;
+                }
+            }
+
+            // 스프라이트가 있는 패턴이 없으면 첫 번째 패턴 반환 (폴백)
+            return monster.EnemyData.MonsterPatterns.FirstOrDefault();
+        }
+
+        /// <summary>
+        /// 패턴 애니메이션 지속 시간 계산
+        /// </summary>
+        private float GetPatternAnimationDuration(Maglin.Enemy.Enemy monster)
+        {
+            // 현재 실행 가능한 패턴의 애니메이션 정보 사용
+            var currentPattern = GetCurrentExecutablePattern(monster);
+            if (currentPattern?.PatternSprites != null && currentPattern.PatternSprites.Length > 0)
+            {
+                return currentPattern.PatternSprites.Length * currentPattern.PatternAnimationSpeed;
+            }
+
+            // 패턴이 없거나 스프라이트가 없는 경우 기본 지속 시간
+            return 0.3f;
+        }
+
+        /// <summary>
+        /// 몬스터 Hit 애니메이션 재생
+        /// </summary>
+        public void PlayHitAnimation(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null || MonsterAnimationManager.Instance == null) return;
+
+            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Hit);
+            
+            // Hit 애니메이션 후 Idle로 복귀 (코루틴으로 처리)
+            StartCoroutine(ReturnToIdleAfterHit(monster));
+        }
+
+        /// <summary>
+        /// Hit 애니메이션 후 Idle로 복귀
+        /// </summary>
+        private IEnumerator ReturnToIdleAfterHit(Maglin.Enemy.Enemy monster)
+        {
+            if (monster?.EnemyData?.HitSprites != null && monster.EnemyData.HitSprites.Length > 0)
+            {
+                float hitAnimationDuration = monster.EnemyData.HitSprites.Length * monster.EnemyData.AnimationSpeed;
+                yield return new WaitForSeconds(hitAnimationDuration);
+            }
+            else
+            {
+                yield return new WaitForSeconds(0.3f); // 기본 지속 시간
+            }
+
+            // Idle 애니메이션으로 복귀
+            if (monster != null && monster.IsAlive && MonsterAnimationManager.Instance != null)
+            {
+                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Idle);
             }
         }
 
         /// <summary>
-        /// 원거리 공격 애니메이션 실행
+        /// 몬스터 Death 애니메이션 재생
         /// </summary>
-        private IEnumerator PerformRangedAttack(Maglin.Enemy.Enemy monster, Vector2Int targetPosition)
+        public void PlayDeathAnimation(Maglin.Enemy.Enemy monster)
         {
-            if (monster == null) yield break;
+            if (monster == null || MonsterAnimationManager.Instance == null) return;
 
-            Vector3 originalPosition = monster.transform.position;
-            Vector3 targetWorldPos = GridFieldManager.Instance != null
-                ? GridFieldManager.Instance.GridToWorldPosition(targetPosition)
-                : new Vector3(targetPosition.x + 0.5f, targetPosition.y + 0.5f, 0f);
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 원거리 공격 시작: {originalPosition}");
-
-            // 1. 플레이어 방향으로 더 많이 이동 (준비 자세)
-            Vector3 leanPosition = originalPosition + Vector3.left * 0.15f; // 플레이어 방향으로 0.15f 이동
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, leanPosition, 0.2f));
-
-            // 2. 잠시 대기 (공격 준비)
-            yield return new WaitForSeconds(0.15f);
-
-            // 3. 공격 효과 (약간의 흔들림, duration: 0.15f, intensity: 0.1f)
-            yield return StartCoroutine(ShakeEffect(monster.gameObject, 0.15f, 0.1f));
-
-            // 4. 원래 위치로 돌아가기
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, originalPosition, 0.2f));
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 원거리 공격 완료");
-        }
-
-        /// <summary>
-        /// 특수 공격 애니메이션 실행
-        /// </summary>
-        private IEnumerator PerformSpecialAttack(Maglin.Enemy.Enemy monster, Vector2Int targetPosition)
-        {
-            if (monster == null) yield break;
-
-            Vector3 originalPosition = monster.transform.position;
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 특수 공격 시작");
-
-            // 1. 위로 살짝 올라가기 (특수 공격 준비)
-            Vector3 upPosition = originalPosition + Vector3.up * 0.3f;
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, upPosition, 0.2f));
-
-            // 2. 잠시 대기 (특수 효과 준비)
-            yield return new WaitForSeconds(0.2f);
-
-            // 3. 강한 흔들림 효과 (특수 공격 임팩트)
-            yield return StartCoroutine(ShakeEffect(monster.gameObject, 0.3f, 0.15f));
-
-            // 4. 원래 위치로 돌아가기
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, originalPosition, 0.3f));
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 특수 공격 완료");
-        }
-
-        /// <summary>
-        /// 오브젝트 공격 애니메이션 실행
-        /// </summary>
-        private IEnumerator PerformObjectAttack(Maglin.Enemy.Enemy monster, Vector2Int targetPosition)
-        {
-            if (monster == null) yield break;
-
-            Vector3 originalPosition = monster.transform.position;
-            Vector3 targetWorldPos = GridFieldManager.Instance != null
-                ? GridFieldManager.Instance.GridToWorldPosition(targetPosition)
-                : new Vector3(targetPosition.x + 0.5f, targetPosition.y + 0.5f, 0f);
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 오브젝트 공격 시작: {originalPosition} -> {targetWorldPos}");
-
-            // 1. 오브젝트 방향으로 살짝 이동 (준비 자세)
-            Vector3 attackPosition = originalPosition + Vector3.left * 0.2f; // 오브젝트 방향으로 0.2f 이동
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, attackPosition, 0.15f));
-
-            // 2. 잠시 대기 (공격 준비)
-            yield return new WaitForSeconds(0.1f);
-
-            // 3. 공격 효과 (약간의 흔들림)
-            yield return StartCoroutine(ShakeEffect(monster.gameObject, 0.2f, 0.12f));
-
-            // 4. 원래 위치로 돌아가기
-            yield return StartCoroutine(SmoothMoveToPosition(monster.gameObject, originalPosition, 0.2f));
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 오브젝트 공격 완료");
-        }
-
-        /// <summary>
-        /// 흔들림 효과
-        /// </summary>
-        private IEnumerator ShakeEffect(GameObject target, float duration, float intensity)
-        {
-            if (target == null) yield break;
-
-            Vector3 originalPosition = target.transform.position;
-            float elapsedTime = 0f;
-
-            while (elapsedTime < duration)
-            {
-                if (target == null) yield break;
-
-                elapsedTime += Time.deltaTime;
-                float progress = elapsedTime / duration;
-
-                // 흔들림 강도가 시간이 지날수록 줄어듦
-                float currentIntensity = intensity * (1f - progress);
-
-                // 랜덤한 방향으로 흔들림
-                Vector3 shakeOffset = new Vector3(
-                    Random.Range(-currentIntensity, currentIntensity),
-                    Random.Range(-currentIntensity, currentIntensity),
-                    0f
-                );
-
-                target.transform.position = originalPosition + shakeOffset;
-
-                yield return null;
-            }
-
-            // 원래 위치로 복원
-            if (target != null)
-            {
-                target.transform.position = originalPosition;
-            }
+            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, MonsterAnimationState.Death);
         }
         #endregion
         #endregion

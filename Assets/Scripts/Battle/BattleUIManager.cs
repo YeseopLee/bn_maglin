@@ -1542,19 +1542,51 @@ namespace Maglin.Battle
                 // 타겟 스프라이트 업데이트
                 if (targetEnemySprite != null)
                 {
-                    var spriteRenderer = currentTarget.GetComponent<SpriteRenderer>();
-                    if (spriteRenderer != null && spriteRenderer.sprite != null)
+                    // 항상 Idle의 0번 스프라이트 사용
+                    if (currentTarget.EnemyData != null)
                     {
-                        targetEnemySprite.sprite = spriteRenderer.sprite;
-
-                        // EnemySO의 색상 설정 반영
-                        if (currentTarget.EnemyData != null)
+                        Sprite spriteToShow = null;
+                        
+                        // Idle 스프라이트의 첫 번째 프레임 사용
+                        if (currentTarget.EnemyData.IdleSprites != null && 
+                            currentTarget.EnemyData.IdleSprites.Length > 0 && 
+                            currentTarget.EnemyData.IdleSprites[0] != null)
                         {
-                            targetEnemySprite.color = currentTarget.EnemyData.Color;
+                            spriteToShow = currentTarget.EnemyData.IdleSprites[0];
                         }
-                        else
+                        else if (currentTarget.EnemyData.Sprite != null)
                         {
-                            // EnemyData가 없는 경우 SpriteRenderer의 색상 사용
+                            // 호환성을 위해 기본 스프라이트 사용
+                            spriteToShow = currentTarget.EnemyData.Sprite;
+                        }
+
+                        if (spriteToShow != null)
+                        {
+                            targetEnemySprite.sprite = spriteToShow;
+                            
+                            // 좌우반전 설정 적용
+                            var rectTransform = targetEnemySprite.rectTransform;
+                            if (rectTransform != null)
+                            {
+                                Vector3 scale = rectTransform.localScale;
+                                scale.x = currentTarget.EnemyData.FlipSpritesHorizontally ? -Mathf.Abs(scale.x) : Mathf.Abs(scale.x);
+                                rectTransform.localScale = scale;
+                            }
+                            
+                            // EnemySO의 색상 설정 반영
+                            targetEnemySprite.color = currentTarget.EnemyData.Color;
+                            
+                            if (debugMode)
+                                Debug.Log($"[BattleUIManager] 타겟 스프라이트 업데이트: {spriteToShow.name} (flipX: {currentTarget.EnemyData.FlipSpritesHorizontally})");
+                        }
+                    }
+                    else
+                    {
+                        // EnemyData가 없는 경우 폴백
+                        var spriteRenderer = currentTarget.GetComponent<SpriteRenderer>();
+                        if (spriteRenderer != null && spriteRenderer.sprite != null)
+                        {
+                            targetEnemySprite.sprite = spriteRenderer.sprite;
                             targetEnemySprite.color = spriteRenderer.color;
                         }
                     }

@@ -1644,7 +1644,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5817b1c5711b34617893464438106619, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  debugMode: 1
+  debugMode: 0
   entranceAnimationDuration: 2
   entranceStartOffsetX: -5
   deathCameraZoomScale: 0.5
@@ -2373,7 +2373,7 @@ MonoBehaviour:
   maxMana: 30
   manaRecoveryPerTurn: 10
   maxHandSize: 6
-  currentHealth: 100
+  currentHealth: 50
   currentMana: 30
   currentGold: 100
   currentRelics: []
@@ -2431,9 +2431,9 @@ MonoBehaviour:
   idleFrameRate: 8
   walkFrameRate: 9
   attackFrameRate: 12
-  hitFrameRate: 12
+  hitFrameRate: 4
   deathFrameRate: 12
-  debugMode: 1
+  debugMode: 0
   deathSlowMotionScale: 0.3
   deathSlowMotionDuration: 2
 --- !u!4 &494234833

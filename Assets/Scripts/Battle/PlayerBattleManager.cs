@@ -30,10 +30,10 @@ namespace Maglin.Battle
         }
 
         [Header("디버그")]
-        [SerializeField] private bool debugMode = true;
+        [SerializeField] private bool debugMode = false;
 
         [Header("플레이어 입장 애니메이션")]
-        [SerializeField] private float entranceAnimationDuration = 2f; // 입장 애니메이션 시간 (더 빠르게)
+        [SerializeField] private float entranceAnimationDuration = 50f; // 입장 애니메이션 시간 (여유롭게)
         [SerializeField] private float entranceStartOffsetX = -50f; // 화면 왼쪽 시작 위치 오프셋 (화면 완전 밖에서부터)
 
         [Header("사망 카메라 효과")]

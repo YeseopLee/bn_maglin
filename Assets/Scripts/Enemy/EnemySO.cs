@@ -42,10 +42,20 @@ namespace Maglin.Enemy
         [Header("몬스터 기본 정보")]
         [SerializeField] private string enemyName;
         [SerializeField] private EnemyType enemyType;
-        [SerializeField] private Sprite enemySprite;
         [SerializeField] private Color enemyColor = Color.white;  // 스프라이트 색상 (기본값: 흰색 = 원본 색상)
         [SerializeField] private int maxHealth;
         [SerializeField] private ElementType enemyElement;
+
+        [Header("애니메이션 스프라이트")]
+        [SerializeField] private Sprite[] idleSprites;        // 기본 상태 스프라이트
+        [SerializeField] private Sprite[] moveSprites;        // 이동 애니메이션 스프라이트
+        [SerializeField] private Sprite[] attackSprites;      // 공격 애니메이션 스프라이트
+        [SerializeField] private Sprite[] hitSprites;         // 피격 애니메이션 스프라이트
+        [SerializeField] private Sprite[] deathSprites;       // 사망 애니메이션 스프라이트
+
+        [Header("애니메이션 설정")]
+        [SerializeField] private float animationSpeed = 0.2f; // 애니메이션 프레임 간격
+        [SerializeField] private bool flipSpritesHorizontally = false; // 모든 스프라이트 좌우 반전
 
         [Header("공격 정보")]
         [SerializeField] private int attackDamage;
@@ -84,10 +94,21 @@ namespace Maglin.Enemy
         // Properties
         public string EnemyName => enemyName;
         public EnemyType Type => enemyType;
-        public Sprite Sprite => enemySprite;
         public Color Color => enemyColor;
         public int MaxHealth => maxHealth;
         public ElementType Element => enemyElement;
+        
+        // 애니메이션 스프라이트 Properties
+        public Sprite[] IdleSprites => idleSprites;
+        public Sprite[] MoveSprites => moveSprites;
+        public Sprite[] AttackSprites => attackSprites;
+        public Sprite[] HitSprites => hitSprites;
+        public Sprite[] DeathSprites => deathSprites;
+        public float AnimationSpeed => animationSpeed;
+        public bool FlipSpritesHorizontally => flipSpritesHorizontally;
+        
+        // 호환성을 위한 기본 스프라이트 (Idle의 첫 번째 프레임)
+        public Sprite Sprite => (idleSprites != null && idleSprites.Length > 0) ? idleSprites[0] : null;
         public int AttackDamage => attackDamage;
         public AttackPatternType AttackPattern => attackPattern;
         public int AttackRange => attackRange;

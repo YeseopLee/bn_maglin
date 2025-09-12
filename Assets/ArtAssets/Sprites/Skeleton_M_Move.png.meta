@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 026e49195558d404792446ddcd723847
+guid: eff7c9867962ace4ebf545f4c1b2aa74
 TextureImporter:
   internalIDToNameTable: []
   externalObjects: {}
@@ -93,42 +93,16 @@ TextureImporter:
     ignorePlatformSupport: 0
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
-    buildTarget: iPhone
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
-  - serializedVersion: 3
-    buildTarget: Android
-    maxTextureSize: 2048
-    resizeAlgorithm: 0
-    textureFormat: -1
-    textureCompression: 1
-    compressionQuality: 50
-    crunchedCompression: 0
-    allowsAlphaSplitting: 0
-    overridden: 0
-    ignorePlatformSupport: 0
-    androidETC2FallbackOverride: 0
-    forceMaximumCompressionQuality_BC6H_BC7: 0
   spriteSheet:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: move_0
+      name: Skeleton_M_Move_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -137,19 +111,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 746c36c244e4242e6806b597b9a96246
-      internalID: 989510090
+      spriteID: 7ec5fd8cfa033ad4d957c76e7ab31600
+      internalID: 394343266
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_1
+      name: Skeleton_M_Move_1
       rect:
         serializedVersion: 2
-        x: 112
+        x: 96
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -158,19 +132,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 584288bcb36274446b11a742f2f8452b
-      internalID: 1804280731
+      spriteID: da6aee677f6d27d4296fc6aca8de86ca
+      internalID: -909854418
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_2
+      name: Skeleton_M_Move_2
       rect:
         serializedVersion: 2
-        x: 224
+        x: 192
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -179,19 +153,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 5a1d000eab84c4990a02866178edc2cb
-      internalID: -1650115660
+      spriteID: 6dc5d0b73e84cba449b0a36b89a02493
+      internalID: 1751051441
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_3
+      name: Skeleton_M_Move_3
       rect:
         serializedVersion: 2
-        x: 336
+        x: 288
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -200,19 +174,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: c1b5b0bfecfe9401d97f5d446d30082a
-      internalID: 1836560941
+      spriteID: 6a7dfb61c7b5fb14695a8450d475b950
+      internalID: 2061332481
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_4
+      name: Skeleton_M_Move_4
       rect:
         serializedVersion: 2
-        x: 448
+        x: 384
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -221,19 +195,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 60a17e1ebe2b44cd08b3667120d418f9
-      internalID: -380439441
+      spriteID: 40a8f4a65319b834496b5853bd1563ee
+      internalID: 745015070
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_5
+      name: Skeleton_M_Move_5
       rect:
         serializedVersion: 2
-        x: 560
+        x: 480
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -242,19 +216,40 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: dbf742144f8264173ab4634f642ec215
-      internalID: 530458468
+      spriteID: 621c34058f95ff24bae4f4b3539fd124
+      internalID: -1877999740
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_6
+      name: Skeleton_M_Move_6
+      rect:
+        serializedVersion: 2
+        x: 576
+        y: 0
+        width: 96
+        height: 80
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 2e2ebfea23027fc4ea75a9f7e0180c1e
+      internalID: -1441228736
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Skeleton_M_Move_7
       rect:
         serializedVersion: 2
         x: 672
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -263,19 +258,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: b654cb67988c840568faf7d31af9f09c
-      internalID: -1148060631
+      spriteID: 0c97bf5f0e3e5a8499d6f3aa85f362f1
+      internalID: 615038013
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_7
+      name: Skeleton_M_Move_8
       rect:
         serializedVersion: 2
-        x: 784
+        x: 768
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -284,19 +279,19 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 3af90b50916be434481d18a7858df4ec
-      internalID: 1980002434
+      spriteID: e4c6496cd01c3f54abb2a06265c6bc0f
+      internalID: -1224070377
       vertices: []
       indices: 
       edges: []
       weights: []
     - serializedVersion: 2
-      name: move_8
+      name: Skeleton_M_Move_9
       rect:
         serializedVersion: 2
-        x: 896
+        x: 864
         y: 0
-        width: 112
+        width: 96
         height: 80
       alignment: 0
       pivot: {x: 0, y: 0}
@@ -305,8 +300,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 68d0789ac529241ca817bbf7ffe86e5f
-      internalID: 88212127
+      spriteID: 4257336e04709794bb464ff03be879fc
+      internalID: 333583104
       vertices: []
       indices: 
       edges: []
@@ -322,15 +317,16 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     nameFileIdTable:
-      move_0: 989510090
-      move_1: 1804280731
-      move_2: -1650115660
-      move_3: 1836560941
-      move_4: -380439441
-      move_5: 530458468
-      move_6: -1148060631
-      move_7: 1980002434
-      move_8: 88212127
+      Skeleton_M_Move_0: 394343266
+      Skeleton_M_Move_1: -909854418
+      Skeleton_M_Move_2: 1751051441
+      Skeleton_M_Move_3: 2061332481
+      Skeleton_M_Move_4: 745015070
+      Skeleton_M_Move_5: -1877999740
+      Skeleton_M_Move_6: -1441228736
+      Skeleton_M_Move_7: 615038013
+      Skeleton_M_Move_8: -1224070377
+      Skeleton_M_Move_9: 333583104
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

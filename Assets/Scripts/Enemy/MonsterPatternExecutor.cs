@@ -62,6 +62,16 @@ namespace Maglin.Enemy
 
         private Dictionary<Enemy, Dictionary<MonsterPatternSO, int>> chargeStates =
             new Dictionary<Enemy, Dictionary<MonsterPatternSO, int>>();
+
+        // 진행 중인 사망 소환 패턴 추적
+        private int activeDeathSpawnPatterns = 0;
+        #endregion
+
+        #region Events
+        /// <summary>
+        /// 모든 사망 소환 패턴이 완료되었을 때 발생하는 이벤트
+        /// </summary>
+        public static event System.Action OnAllDeathSpawnPatternsCompleted;
         #endregion
 
         #region Unity Lifecycle
@@ -149,6 +159,14 @@ namespace Maglin.Enemy
 
             // 사망한 몬스터의 패턴 상태 정리
             CleanupMonsterPatterns(deadMonster);
+        }
+
+        /// <summary>
+        /// 현재 진행 중인 사망 소환 패턴이 있는지 확인
+        /// </summary>
+        public bool HasActiveDeathSpawnPatterns()
+        {
+            return activeDeathSpawnPatterns > 0;
         }
 
         /// <summary>
@@ -398,17 +416,232 @@ namespace Maglin.Enemy
             {
                 if (pattern.SpawnedMonsterData != null)
                 {
-                    Vector2Int spawnPosition = CalculateSpawnPosition(deadMonster, pattern);
-                    SpawnMonster(pattern.SpawnedMonsterData, spawnPosition);
-
+                    // 진행 중인 사망 소환 패턴 카운터 증가
+                    activeDeathSpawnPatterns++;
+                    
                     if (debugMode)
-                        Debug.Log($"[MonsterPatternExecutor] {deadMonster.EnemyName} 사망 시 {pattern.SpawnedMonsterData.EnemyName} 소환");
+                        Debug.Log($"[MonsterPatternExecutor] 사망 소환 패턴 시작: {deadMonster.EnemyName} (진행 중: {activeDeathSpawnPatterns})");
+
+                    // 사망 애니메이션 완료 후 소환하도록 코루틴 시작
+                    StartCoroutine(ExecuteDeathSpawnAfterAnimation(deadMonster, pattern));
                 }
             }
         }
 
         /// <summary>
-        /// 소환 위치 계산
+        /// 사망 애니메이션 완료 후 몬스터 소환
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteDeathSpawnAfterAnimation(Enemy deadMonster, MonsterPatternSO pattern)
+        {
+            if (deadMonster == null || pattern?.SpawnedMonsterData == null)
+            {
+                // 실패시에도 카운터 감소
+                activeDeathSpawnPatterns--;
+                yield break;
+            }
+
+            Vector2Int deadMonsterPosition = deadMonster.GridPosition;
+
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {deadMonster.EnemyName} 사망 시 소환 패턴 시작 - 사망 애니메이션 대기 중...");
+
+            // 사망 애니메이션 완료 대기
+            yield return WaitForDeathAnimationComplete(deadMonster);
+
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {deadMonster.EnemyName} 사망 애니메이션 완료 - 소환 시작");
+
+            // 소환 위치 계산 (사망한 몬스터의 위치 정보 전달)
+            Vector2Int spawnPosition = CalculateDeathSpawnPosition(deadMonsterPosition, pattern);
+
+            // 위치가 유효한지 확인
+            if (!IsValidSpawnPosition(spawnPosition))
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[MonsterPatternExecutor] {deadMonster.EnemyName}의 사망 소환 패턴: 위치 {spawnPosition}이 유효하지 않음");
+
+                // 대체 위치 찾기
+                spawnPosition = FindRandomEmptyPosition();
+                if (!IsValidSpawnPosition(spawnPosition))
+                {
+                    if (debugMode)
+                        Debug.LogWarning($"[MonsterPatternExecutor] {deadMonster.EnemyName}의 사망 소환 패턴: 소환 가능한 빈 공간 없음");
+                    
+                    // 실패시에도 카운터 감소
+                    activeDeathSpawnPatterns--;
+                    if (activeDeathSpawnPatterns <= 0)
+                    {
+                        NotifyDeathSpawnPatternsCompleted();
+                    }
+                    yield break;
+                }
+            }
+
+            // 몬스터 소환
+            var spawnedMonster = SpawnMonster(pattern.SpawnedMonsterData, spawnPosition);
+
+            if (spawnedMonster != null)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] {deadMonster.EnemyName} 사망 시 {pattern.SpawnedMonsterData.EnemyName}을 {spawnPosition}에 소환 완료!");
+
+                // 스폰 애니메이션 완료까지 대기
+                yield return WaitForSpawnAnimationComplete(spawnedMonster);
+                
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 완료 - 패턴 완료");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[MonsterPatternExecutor] {deadMonster.EnemyName} 사망 시 몬스터 소환 실패");
+            }
+
+            // 스폰이 완전히 완료된 후 카운터 감소
+            activeDeathSpawnPatterns--;
+            
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] 사망 소환 패턴 완료: {deadMonster.EnemyName} (남은 진행 중: {activeDeathSpawnPatterns})");
+
+            // 모든 사망 소환 패턴이 완료되었으면 전투 종료 조건 재확인
+            if (activeDeathSpawnPatterns <= 0)
+            {
+                if (debugMode)
+                    Debug.Log("[MonsterPatternExecutor] 모든 사망 소환 패턴 완료 - 전투 종료 조건 재확인 요청");
+
+                // BattleTestController에게 전투 종료 조건 재확인 요청
+                NotifyDeathSpawnPatternsCompleted();
+            }
+        }
+
+        /// <summary>
+        /// 사망 애니메이션 완료 대기
+        /// </summary>
+        private System.Collections.IEnumerator WaitForDeathAnimationComplete(Enemy deadMonster)
+        {
+            if (deadMonster?.EnemyData?.DeathSprites != null && deadMonster.EnemyData.DeathSprites.Length > 0)
+            {
+                // Death 스프라이트 애니메이션 시간 계산
+                float deathAnimationDuration = deadMonster.EnemyData.DeathSprites.Length * deadMonster.EnemyData.AnimationSpeed;
+                
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] 사망 애니메이션 대기: {deathAnimationDuration:F2}초");
+
+                yield return new WaitForSeconds(deathAnimationDuration);
+            }
+            else
+            {
+                // Death 스프라이트가 없으면 기본 대기 시간
+                yield return new WaitForSeconds(0.5f);
+            }
+
+            // 추가 여유 시간 (안전장치)
+            yield return new WaitForSeconds(0.2f);
+        }
+
+        /// <summary>
+        /// 스폰 애니메이션 완료 대기
+        /// </summary>
+        private System.Collections.IEnumerator WaitForSpawnAnimationComplete(Enemy spawnedMonster)
+        {
+            if (spawnedMonster == null) yield break;
+
+            // MonsterSpawnAnimationManager에서 스폰 애니메이션을 사용하는지 확인
+            if (MonsterSpawnManager.Instance != null && MonsterSpawnAnimationManager.Instance != null)
+            {
+                bool animationCompleted = false;
+                
+                // 스폰 애니메이션 완료 이벤트 구독 (일회성)
+                System.Action<GameObject> onSpawnAnimationCompleted = null;
+                onSpawnAnimationCompleted = (completedMonster) =>
+                {
+                    if (completedMonster == spawnedMonster.gameObject)
+                    {
+                        animationCompleted = true;
+                        // 이벤트 구독 해제
+                        MonsterSpawnAnimationManager.OnSpawnAnimationCompleted -= onSpawnAnimationCompleted;
+                        
+                        if (debugMode)
+                            Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 완료 이벤트 수신");
+                    }
+                };
+
+                MonsterSpawnAnimationManager.OnSpawnAnimationCompleted += onSpawnAnimationCompleted;
+
+                // 스폰 애니메이션 완료까지 대기 (최대 5초)
+                float waitTime = 0f;
+                while (!animationCompleted && waitTime < 5f)
+                {
+                    yield return new WaitForSeconds(0.1f);
+                    waitTime += 0.1f;
+                }
+
+                // 이벤트 구독 해제 (안전장치)
+                MonsterSpawnAnimationManager.OnSpawnAnimationCompleted -= onSpawnAnimationCompleted;
+
+                if (debugMode)
+                {
+                    if (animationCompleted)
+                        Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 대기 완료 (대기시간: {waitTime:F1}초)");
+                    else
+                        Debug.LogWarning($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 대기 시간 초과 (대기시간: {waitTime:F1}초)");
+                }
+            }
+            else
+            {
+                // 스폰 애니메이션 매니저가 없으면 기본 대기 시간
+                yield return new WaitForSeconds(0.5f);
+                
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 매니저 없음 - 기본 대기 완료");
+            }
+
+            // 추가 안전 여유 시간
+            yield return new WaitForSeconds(0.1f);
+        }
+
+        /// <summary>
+        /// 사망 시 소환 위치 계산 (사망한 몬스터의 위치 기반)
+        /// </summary>
+        private Vector2Int CalculateDeathSpawnPosition(Vector2Int deadMonsterPosition, MonsterPatternSO pattern)
+        {
+            // GridFieldManager에서 실제 그리드 크기 가져오기
+            int gridWidth = 10;
+
+            if (GridFieldManager.Instance != null)
+            {
+                gridWidth = GridFieldManager.Instance.GridWidth;
+            }
+
+            switch (pattern.SpawnLocation)
+            {
+                case SpawnLocationType.AtDeathPosition:
+                    // 사망한 몬스터의 정확한 위치에 소환
+                    return deadMonsterPosition;
+
+                case SpawnLocationType.InFrontOfSelf:
+                    // 사망한 몬스터 앞(왼쪽)에 소환
+                    return new Vector2Int(deadMonsterPosition.x - 1, 0);
+
+                case SpawnLocationType.SpecificPosition:
+                    // 특정 위치로 소환
+                    return new Vector2Int(pattern.SpecificSpawnPosition.x, 0);
+
+                case SpawnLocationType.RightmostPosition:
+                    // 우측 끝 칸
+                    return new Vector2Int(gridWidth - 1, 0);
+
+                case SpawnLocationType.RandomEmpty:
+                    return FindRandomEmptyPosition();
+
+                default:
+                    // 기본값: 사망한 위치
+                    return deadMonsterPosition;
+            }
+        }
+
+        /// <summary>
+        /// 소환 위치 계산 (생존 몬스터 기반)
         /// </summary>
         private Vector2Int CalculateSpawnPosition(Enemy monster, MonsterPatternSO pattern)
         {
@@ -436,6 +669,12 @@ namespace Maglin.Enemy
 
                 case SpawnLocationType.RandomEmpty:
                     return FindRandomEmptyPosition();
+
+                case SpawnLocationType.AtDeathPosition:
+                    // 사망 시 소환 전용이므로 일반 패턴에서는 사용하지 않음
+                    if (debugMode)
+                        Debug.LogWarning($"[MonsterPatternExecutor] AtDeathPosition은 사망 시 소환 패턴에서만 사용 가능합니다. 기본 위치로 대체합니다.");
+                    return new Vector2Int(monster.GridPosition.x, 0);
 
                 default:
                     // 기본값도 y=0으로 조정
@@ -574,6 +813,14 @@ namespace Maglin.Enemy
                     // 차징 카운터는 HandleChargingPattern에서 감소
                 }
             }
+        }
+
+        /// <summary>
+        /// 사망 소환 패턴 완료 알림
+        /// </summary>
+        private void NotifyDeathSpawnPatternsCompleted()
+        {
+            OnAllDeathSpawnPatternsCompleted?.Invoke();
         }
 
         /// <summary>

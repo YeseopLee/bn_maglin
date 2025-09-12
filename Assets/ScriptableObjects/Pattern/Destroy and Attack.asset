@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a2017d8aa583b4876861a47598542d44, type: 3}
-  m_Name: SummonWall
+  m_Name: Destroy and Attack
   m_EditorClassIdentifier: 
   patternName: "\uBAAC\uC2A4\uD130\uC18C\uD658"
-  patternType: 1
+  patternType: 3
   priority: 1
   description: 
   triggerInterval: 2
@@ -22,9 +22,16 @@ MonoBehaviour:
   chargeDuration: 2
   chargeDamage: 10
   chargeTarget: 0
-  spawnedMonsterData: {fileID: 11400000, guid: a7963180f13f245f0817a3d7ca67c00b, type: 2}
+  spawnedMonsterData: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
   spawnLocation: 3
   specificSpawnPosition: {x: 0, y: 0}
   targetDestroyType: {fileID: 0}
   destructionDamage: 5
   destructionTarget: 2
+  patternSprites:
+  - {fileID: -1225048931, guid: 8e827d1621bfdcd46839efd58b5330af, type: 3}
+  - {fileID: -604023406, guid: 8e827d1621bfdcd46839efd58b5330af, type: 3}
+  - {fileID: -647718011, guid: 8e827d1621bfdcd46839efd58b5330af, type: 3}
+  - {fileID: -604023406, guid: 8e827d1621bfdcd46839efd58b5330af, type: 3}
+  - {fileID: -1225048931, guid: 8e827d1621bfdcd46839efd58b5330af, type: 3}
+  patternAnimationSpeed: 0.1

@@ -539,13 +539,26 @@ namespace Maglin.Battle
                 monsterObj.SetActive(false);
                 shouldActivateAfterSetup = true;
 
-                // 스프라이트 설정 (EnemySO에서 가져오기)
+                // 스프라이트 설정 (EnemySO에서 기본 Idle 스프라이트 가져오기)
                 var spriteRenderer = monsterObj.GetComponent<SpriteRenderer>();
-                if (spriteRenderer != null && enemyData != null && enemyData.Sprite != null)
+                if (spriteRenderer != null && enemyData != null)
                 {
-                    spriteRenderer.sprite = enemyData.Sprite;
-                    if (debugMode)
-                        Debug.Log($"[MonsterSpawnManager] EnemySO 스프라이트 적용: {enemyData.Sprite.name}");
+                    // Idle 스프라이트의 첫 번째 프레임을 기본으로 설정
+                    if (enemyData.IdleSprites != null && enemyData.IdleSprites.Length > 0 && enemyData.IdleSprites[0] != null)
+                    {
+                        spriteRenderer.sprite = enemyData.IdleSprites[0];
+                        spriteRenderer.flipX = enemyData.FlipSpritesHorizontally;
+                        if (debugMode)
+                            Debug.Log($"[MonsterSpawnManager] EnemySO Idle 스프라이트 적용: {enemyData.IdleSprites[0].name} (flipX: {spriteRenderer.flipX})");
+                    }
+                    else if (enemyData.Sprite != null)
+                    {
+                        // 호환성을 위해 기본 스프라이트도 체크
+                        spriteRenderer.sprite = enemyData.Sprite;
+                        spriteRenderer.flipX = enemyData.FlipSpritesHorizontally;
+                        if (debugMode)
+                            Debug.Log($"[MonsterSpawnManager] EnemySO 기본 스프라이트 적용: {enemyData.Sprite.name} (flipX: {spriteRenderer.flipX})");
+                    }
                 }
 
                 if (debugMode)
@@ -562,13 +575,30 @@ namespace Maglin.Battle
                 spriteRenderer.color = Color.red;
                 spriteRenderer.sortingOrder = 10;
 
-                if (enemyData != null && enemyData.Sprite != null)
+                if (enemyData != null)
                 {
-                    spriteRenderer.sprite = enemyData.Sprite;
+                    // Idle 스프라이트의 첫 번째 프레임을 기본으로 설정
+                    if (enemyData.IdleSprites != null && enemyData.IdleSprites.Length > 0 && enemyData.IdleSprites[0] != null)
+                    {
+                        spriteRenderer.sprite = enemyData.IdleSprites[0];
+                        spriteRenderer.flipX = enemyData.FlipSpritesHorizontally;
+                    }
+                    else if (enemyData.Sprite != null)
+                    {
+                        // 호환성을 위해 기본 스프라이트도 체크
+                        spriteRenderer.sprite = enemyData.Sprite;
+                        spriteRenderer.flipX = enemyData.FlipSpritesHorizontally;
+                    }
+                    else
+                    {
+                        if (debugMode)
+                            Debug.LogWarning($"[MonsterSpawnManager] {enemyData.EnemyName}에 사용할 스프라이트가 없습니다.");
+                    }
                 }
                 else
                 {
-                    spriteRenderer.sprite = CreateDefaultSprite();
+                    if (debugMode)
+                        Debug.LogWarning($"[MonsterSpawnManager] EnemyData가 없어 스프라이트를 설정할 수 없습니다.");
                 }
 
                 monsterObj.AddComponent<Maglin.Enemy.Enemy>();
@@ -1105,6 +1135,17 @@ namespace Maglin.Battle
                     if (monster != null)
                     {
                         monster.SetActive(true);
+                        
+                        // Idle 애니메이션 설정
+                        if (MonsterAnimationManager.Instance != null)
+                        {
+                            var enemy = monster.GetComponent<Maglin.Enemy.Enemy>();
+                            if (enemy != null)
+                            {
+                                MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+                            }
+                        }
+                        
                         MonsterSpawnAnimationManager.Instance.PlaySpawnAnimation(monster);
                     }
                 }
@@ -1633,8 +1674,16 @@ namespace Maglin.Battle
             // 애니메이션이 활성화되어 있다면 애니메이션 실행
             if (enableSpawnAnimations && MonsterSpawnAnimationManager.Instance != null)
             {
-                // 몬스터를 활성화하고 애니메이션 실행
+                // 몬스터를 활성화하고 Idle 애니메이션 시작
                 monsterObj.SetActive(true);
+                
+                // Idle 애니메이션 설정
+                if (MonsterAnimationManager.Instance != null && enemy != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+                }
+
+                // 스폰 애니메이션 실행
                 MonsterSpawnAnimationManager.Instance.PlaySpawnAnimation(monsterObj);
 
                 // 애니메이션 완료 이벤트 구독 (일회성)
@@ -1656,6 +1705,13 @@ namespace Maglin.Battle
             {
                 // 애니메이션 없이 즉시 활성화
                 monsterObj.SetActive(true);
+                
+                // Idle 애니메이션 설정
+                if (MonsterAnimationManager.Instance != null && enemy != null)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, MonsterAnimationState.Idle);
+                }
+                
                 OnPatternMonsterSpawnCompleted(enemy);
             }
 
