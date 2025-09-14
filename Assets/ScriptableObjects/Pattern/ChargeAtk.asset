@@ -12,16 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a2017d8aa583b4876861a47598542d44, type: 3}
   m_Name: ChargeAtk
   m_EditorClassIdentifier: 
-  patternName: attack_back
-  patternType: 4
-  priority: 2
+  patternName: ChargeAtk
+  patternType: 2
+  priority: 1
   description: 
-  triggerInterval: 1
+  triggerInterval: 2
   turnOffset: 1
   blockNormalAttack: 1
   chargeDuration: 2
-  chargeDamage: 10
+  chargeDamage: 11
   chargeTarget: 0
+  chargeEffectColor: {r: 1, g: 0, b: 0, a: 1}
   spawnedMonsterData: {fileID: 0}
   spawnLocation: 0
   specificSpawnPosition: {x: 0, y: 0}
@@ -36,9 +37,21 @@ MonoBehaviour:
   moveDirection: 1
   moveDistance: 1
   patternSprites:
+  - {fileID: 1012130553, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
+  - {fileID: 683530879, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
+  - {fileID: 1442444899, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
   - {fileID: 656314794, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
   - {fileID: 1573417906, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
   - {fileID: -1820687616, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
   - {fileID: -899366303, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
   - {fileID: 1182767203, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  patternFrameRate: 10
+  - {fileID: -192573861, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: -115815883, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: -870078111, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: -1137046802, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: 318921127, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: -924720180, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: 701486726, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: -537997426, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  - {fileID: -1550228606, guid: e17a876f2ef304c46bc0da580cd5a342, type: 3}
+  patternFrameRate: 17

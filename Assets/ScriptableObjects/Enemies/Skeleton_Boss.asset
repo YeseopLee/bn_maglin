@@ -83,8 +83,6 @@ MonoBehaviour:
   blocksMonsterMovement: 0
   monstersAttackThis: 0
   objectDescription: 
-  monsterPatterns:
-  - {fileID: 11400000, guid: 3a70abcdf596d4f4cb350588a500a097, type: 2}
-  - {fileID: 11400000, guid: ff1554ace61cc4f7b9df08e76b10d58a, type: 2}
+  monsterPatterns: []
   goldReward: 0
   experienceReward: 0
