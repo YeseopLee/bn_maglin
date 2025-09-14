@@ -27,23 +27,14 @@ MonoBehaviour:
   - {fileID: -682004868, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
   - {fileID: 108281698, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
   moveSprites:
-  - {fileID: -1494079742, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -933124554, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: 190479200, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -545033771, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: 1058384153, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -663856742, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: 1260825158, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: 562943411, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -1879076092, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: 608921393, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -1139341935, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -455387696, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: 1274550816, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -695440381, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -2126387607, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -394292204, guid: da093adec7894f842b7e930ed53f7880, type: 3}
-  - {fileID: -758818029, guid: da093adec7894f842b7e930ed53f7880, type: 3}
+  - {fileID: 2006732672, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 1563053726, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 675988307, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: -166469477, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 420870035, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: -755784235, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: -682004868, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
+  - {fileID: 108281698, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
   attackSprites:
   - {fileID: -538201816, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
   - {fileID: -2017041456, guid: f06bb15aaf5d44e45b2aa9bbb6af9fad, type: 3}
@@ -73,7 +64,7 @@ MonoBehaviour:
   - {fileID: 1598419037, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
   - {fileID: 1473232068, guid: ca8af32341bd0bd4db4b1774bab55c37, type: 3}
   idleFrameRate: 8
-  moveFrameRate: 17
+  moveFrameRate: 8
   attackFrameRate: 16
   hitFrameRate: 1
   deathFrameRate: 8

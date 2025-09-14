@@ -1624,13 +1624,39 @@ namespace Maglin.Battle
                         {
                             targetEnemySprite.sprite = spriteToShow;
                             
-                            // 좌우반전 설정 적용
+                            // 스프라이트 pivot을 기준으로 정렬 설정
                             var rectTransform = targetEnemySprite.rectTransform;
                             if (rectTransform != null)
                             {
-                                Vector3 scale = rectTransform.localScale;
-                                scale.x = currentTarget.EnemyData.FlipSpritesHorizontally ? -Mathf.Abs(scale.x) : Mathf.Abs(scale.x);
+                                // 스프라이트의 pivot 정보 가져오기
+                                Vector2 spritePivot = spriteToShow.pivot;
+                                Vector2 spriteSize = new Vector2(spriteToShow.rect.width, spriteToShow.rect.height);
+                                float pixelsPerUnit = spriteToShow.pixelsPerUnit;
+                                
+                                // pivot을 normalized 좌표로 변환 (0~1)
+                                Vector2 normalizedPivot = new Vector2(
+                                    spritePivot.x / spriteSize.x,
+                                    spritePivot.y / spriteSize.y
+                                );
+                                
+                                // RectTransform의 pivot을 스프라이트 pivot에 맞게 설정
+                                rectTransform.pivot = normalizedPivot;
+                                
+                                // anchor를 중앙으로 설정하여 부모 컨테이너 중앙에 배치
+                                rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                                rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                                rectTransform.anchoredPosition = Vector2.zero;
+                                
+                                // Image 컴포넌트의 preserveAspect 설정으로 비율 유지
+                                targetEnemySprite.preserveAspect = true;
+                                
+                                // 좌우반전 설정 적용 (1.2배 크기)
+                                Vector3 scale = Vector3.one * 1.2f; // 1.2배 크기로 설정
+                                scale.x = currentTarget.EnemyData.FlipSpritesHorizontally ? -1.2f : 1.2f;
                                 rectTransform.localScale = scale;
+                                
+                                if (debugMode)
+                                    Debug.Log($"[BattleUIManager] 스프라이트 정보 - pivot: {normalizedPivot}, 크기: {spriteSize}, PPU: {pixelsPerUnit}, preserveAspect: true");
                             }
                             
                             // EnemySO의 색상 설정 반영
@@ -1648,6 +1674,41 @@ namespace Maglin.Battle
                         {
                             targetEnemySprite.sprite = spriteRenderer.sprite;
                             targetEnemySprite.color = spriteRenderer.color;
+                            
+                            // 스프라이트 pivot을 기준으로 정렬 설정 (폴백)
+                            var rectTransform = targetEnemySprite.rectTransform;
+                            if (rectTransform != null)
+                            {
+                                var spriteToShow = spriteRenderer.sprite;
+                                
+                                // 스프라이트의 pivot 정보 가져오기
+                                Vector2 spritePivot = spriteToShow.pivot;
+                                Vector2 spriteSize = new Vector2(spriteToShow.rect.width, spriteToShow.rect.height);
+                                float pixelsPerUnit = spriteToShow.pixelsPerUnit;
+                                
+                                // pivot을 normalized 좌표로 변환 (0~1)
+                                Vector2 normalizedPivot = new Vector2(
+                                    spritePivot.x / spriteSize.x,
+                                    spritePivot.y / spriteSize.y
+                                );
+                                
+                                // RectTransform의 pivot을 스프라이트 pivot에 맞게 설정
+                                rectTransform.pivot = normalizedPivot;
+                                
+                                // anchor를 중앙으로 설정하여 부모 컨테이너 중앙에 배치
+                                rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+                                rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+                                rectTransform.anchoredPosition = Vector2.zero;
+                                
+                                // Image 컴포넌트의 preserveAspect 설정으로 비율 유지 (폴백)
+                                targetEnemySprite.preserveAspect = true;
+                                
+                                // 기본 스케일로 설정 (폴백이므로 반전 없음, 1.2배 크기)
+                                rectTransform.localScale = Vector3.one * 1.2f;
+                                
+                                if (debugMode)
+                                    Debug.Log($"[BattleUIManager] 폴백 스프라이트 정보 - pivot: {normalizedPivot}, 크기: {spriteSize}, PPU: {pixelsPerUnit}, preserveAspect: true");
+                            }
                         }
                     }
                 }
@@ -2599,7 +2660,7 @@ namespace Maglin.Battle
             // 기본 spacing: 5장일 때 -30
             // 카드가 늘어날 때마다 -30씩 추가: 6장(-60), 7장(-90), ...
             float baseSpacing = -30f; // 5장 기준
-            float additionalSpacing = -20f; // 추가 카드당 spacing
+            float additionalSpacing = -10f; // 추가 카드당 spacing
 
             float newSpacing;
             if (cardCount <= 5)

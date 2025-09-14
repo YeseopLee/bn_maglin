@@ -10,19 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a2017d8aa583b4876861a47598542d44, type: 3}
-  m_Name: Summon
+  m_Name: Attack_and_Back
   m_EditorClassIdentifier: 
-  patternName: "\uBAAC\uC2A4\uD130\uC18C\uD658"
-  patternType: 1
-  priority: 1
+  patternName: attack_back
+  patternType: 4
+  priority: 2
   description: 
-  triggerInterval: 2
+  triggerInterval: 1
   turnOffset: 1
   blockNormalAttack: 1
   chargeDuration: 2
   chargeDamage: 10
   chargeTarget: 0
-  spawnedMonsterData: {fileID: 11400000, guid: 0f034612c271e4d42811db7930c75caf, type: 2}
+  spawnedMonsterData: {fileID: 0}
   spawnLocation: 0
   specificSpawnPosition: {x: 0, y: 0}
   skipSpawnAnimation: 0
@@ -33,13 +33,12 @@ MonoBehaviour:
   attackAndMoveType: 0
   attackAndMoveRange: 1
   attackAndMoveTarget: 0
-  moveDirection: 0
+  moveDirection: 1
   moveDistance: 1
   patternSprites:
-  - {fileID: 1692213498, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: -1061353778, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: 6500360, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: 236244896, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: -1714560327, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: 1012130553, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  patternFrameRate: 12
+  - {fileID: 656314794, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
+  - {fileID: 1573417906, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
+  - {fileID: -1820687616, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
+  - {fileID: -899366303, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
+  - {fileID: 1182767203, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
+  patternFrameRate: 10

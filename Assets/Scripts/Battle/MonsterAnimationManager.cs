@@ -165,6 +165,15 @@ namespace Maglin.Battle
                 return;
             }
             
+            // 이미 Idle 상태이면 중복 호출 방지
+            var currentState = GetMonsterAnimationState(monster);
+            if (currentState == Maglin.Enemy.MonsterAnimationState.Idle)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterAnimationManager] {monster.EnemyName}는 이미 Idle 상태입니다. 중복 호출 방지");
+                return;
+            }
+            
             SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
         }
 
@@ -243,7 +252,7 @@ namespace Maglin.Battle
                 if (pattern?.PatternSprites != null && pattern.PatternSprites.Length > 0)
                 {
                     // AnimationSpeed는 프레임 간격(초)이므로 프레임 레이트로 변환
-                    return 1f / Mathf.Max(0.01f, pattern.PatternAnimationSpeed);
+                    return pattern.PatternFrameRate;
                 }
             }
 

@@ -46,9 +46,9 @@ namespace Maglin.Battle
 
         [Header("피격 효과")]
         [SerializeField] private float hitShakeDuration = 0.3f; // 화면 떨림 지속 시간
-        [SerializeField] private float hitShakeIntensity = 0.15f; // 화면 떨림 강도
+        [SerializeField] private float hitShakeIntensity = 0.1f; // 화면 떨림 강도
         [SerializeField] private float hitVignetteFadeTime = 0.4f; // 빨간 비네팅 페이드 시간
-        [SerializeField] private float hitVignetteMaxAlpha = 0.4f; // 빨간 비네팅 최대 투명도
+        [SerializeField] private float hitVignetteMaxAlpha = 0.2f; // 빨간 비네팅 최대 투명도
 
         // 플레이어 위치 설정 (Grid 기반)
         private Vector2Int playerGridPosition = new Vector2Int(0, 0);
@@ -1489,7 +1489,7 @@ namespace Maglin.Battle
             Color[] pixels = new Color[width * height];
 
             Vector2 center = new Vector2(width * 0.5f, height * 0.5f);
-            float maxDistance = Mathf.Min(width, height) * 0.5f;
+            float maxDistance = Mathf.Min(width, height) * 0.8f; // 0.5f에서 0.3f로 줄여서 효과 범위 축소
 
             for (int y = 0; y < height; y++)
             {

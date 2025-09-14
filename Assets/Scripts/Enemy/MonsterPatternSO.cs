@@ -11,7 +11,8 @@ namespace Maglin.Enemy
         OnDeath_SpawnMonster,           // 사망시 특정 위치에 새로운 몬스터 소환
         Periodic_SpawnMonster,          // N턴마다 몬스터 바로 앞에 새로운 몬스터 소환
         Periodic_ChargeAttack,          // N턴마다 M턴동안 차지 이후 공격 (차징 중 모든 행동 중단)
-        Periodic_DestroyAndAttack       // N턴마다 특정 몬스터 파괴 후 특정 대상에게 공격
+        Periodic_DestroyAndAttack,      // N턴마다 특정 몬스터 파괴 후 특정 대상에게 공격
+        Periodic_AttackAndMove          // N턴마다 공격 후 뒤로 이동
     }
 
     /// <summary>
@@ -37,6 +38,15 @@ namespace Maglin.Enemy
         AtDeathPosition                 // 사망한 몬스터의 위치 (사망 시 소환 전용)
     }
 
+    /// <summary>
+    /// 이동 방향 타입
+    /// </summary>
+    public enum MoveDirectionType
+    {
+        BackwardN,                      // 뒤로 N칸 이동
+        BackToEnd                       // 맨 뒤칸으로 이동
+    }
+
     [CreateAssetMenu(fileName = "New Monster Pattern", menuName = "Maglin/Enemy/MonsterPatternSO")]
     public class MonsterPatternSO : ScriptableObject
     {
@@ -56,20 +66,30 @@ namespace Maglin.Enemy
         [SerializeField] private int chargeDuration = 2;        // M턴 동안 차지
         [SerializeField] private int chargeDamage = 10;         // 차지 공격 데미지
         [SerializeField] private AttackTargetType chargeTarget = AttackTargetType.Player;
+        [SerializeField] private Color chargeEffectColor = Color.red; // 차지 중 색상 효과
 
         [Header("몬스터 소환 설정 (SpawnMonster 전용)")]
         [SerializeField] private EnemySO spawnedMonsterData;    // 소환할 몬스터 데이터
         [SerializeField] private SpawnLocationType spawnLocation = SpawnLocationType.InFrontOfSelf;
         [SerializeField] private Vector2Int specificSpawnPosition = Vector2Int.zero; // SpecificPosition용
+        [SerializeField] private bool skipSpawnAnimation = false; // 소환 애니메이션 스킵 여부 (사망 소환에만 적용)
 
         [Header("파괴 및 공격 설정 (DestroyAndAttack 전용)")]
         [SerializeField] private EnemySO targetDestroyType;     // 파괴할 몬스터 타입 (null이면 모든 중립 몬스터)
         [SerializeField] private int destructionDamage = 5;     // 파괴 시 주는 데미지
         [SerializeField] private AttackTargetType destructionTarget = AttackTargetType.PlayerAndAllMonsters;
 
+        [Header("공격 후 이동 설정 (AttackAndMove 전용)")]
+        [SerializeField] private int attackAndMoveDamage = 10;          // 공격 데미지
+        [SerializeField] private AttackPatternType attackAndMoveType = AttackPatternType.Melee;  // 공격 타입 (근접/원거리)
+        [SerializeField] private int attackAndMoveRange = 1;            // 공격 범위
+        [SerializeField] private AttackTargetType attackAndMoveTarget = AttackTargetType.Player; // 공격 대상
+        [SerializeField] private MoveDirectionType moveDirection = MoveDirectionType.BackwardN;  // 이동 방향
+        [SerializeField] private int moveDistance = 1;                  // 이동 거리 (BackwardN 타입일 때)
+
         [Header("패턴 전용 애니메이션")]
         [SerializeField] private Sprite[] patternSprites;       // 패턴 실행 시 사용할 스프라이트
-        [SerializeField] private float patternAnimationSpeed = 0.2f; // 패턴 애니메이션 속도
+        [SerializeField] private float patternFrameRate = 8f;   // 패턴 애니메이션 프레임 레이트 (FPS)
 
         // Properties
         public string PatternName => patternName;
@@ -82,14 +102,28 @@ namespace Maglin.Enemy
         public int ChargeDuration => chargeDuration;
         public int ChargeDamage => chargeDamage;
         public AttackTargetType ChargeTarget => chargeTarget;
+        public Color ChargeEffectColor => chargeEffectColor;
         public EnemySO SpawnedMonsterData => spawnedMonsterData;
         public SpawnLocationType SpawnLocation => spawnLocation;
         public Vector2Int SpecificSpawnPosition => specificSpawnPosition;
+        public bool SkipSpawnAnimation => skipSpawnAnimation;
         public EnemySO TargetDestroyType => targetDestroyType;
         public int DestructionDamage => destructionDamage;
         public AttackTargetType DestructionTarget => destructionTarget;
+        public int AttackAndMoveDamage => attackAndMoveDamage;
+        public AttackPatternType AttackAndMoveType => attackAndMoveType;
+        public int AttackAndMoveRange => attackAndMoveRange;
+        public AttackTargetType AttackAndMoveTarget => attackAndMoveTarget;
+        public MoveDirectionType MoveDirection => moveDirection;
+        public int MoveDistance => moveDistance;
         public Sprite[] PatternSprites => patternSprites;
-        public float PatternAnimationSpeed => patternAnimationSpeed;
+        public float PatternFrameRate => patternFrameRate;
+        
+        /// <summary>
+        /// 이전 버전 호환성을 위한 AnimationSpeed (Deprecated)
+        /// </summary>
+        [System.Obsolete("PatternAnimationSpeed는 더 이상 사용되지 않습니다. PatternFrameRate를 사용하세요.")]
+        public float PatternAnimationSpeed => 1f / patternFrameRate;
 
         /// <summary>
         /// 패턴이 주기적 트리거인지 확인
@@ -133,5 +167,10 @@ namespace Maglin.Enemy
         /// 파괴 및 공격 패턴인지 확인
         /// </summary>
         public bool IsDestroyAndAttackPattern => patternType == MonsterPatternType.Periodic_DestroyAndAttack;
+
+        /// <summary>
+        /// 공격 후 이동 패턴인지 확인
+        /// </summary>
+        public bool IsAttackAndMovePattern => patternType == MonsterPatternType.Periodic_AttackAndMove;
     }
 }

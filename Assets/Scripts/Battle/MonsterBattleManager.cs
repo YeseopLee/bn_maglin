@@ -198,6 +198,9 @@ namespace Maglin.Battle
                 {
                     MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
+
+                // 이동 후 다음 행동 사이의 딜레이 (0.2초)
+                yield return new WaitForSeconds(0.2f);
             }
             else
             {
@@ -229,18 +232,39 @@ namespace Maglin.Battle
                 // 패턴 애니메이션 재생
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    // 실행된 패턴 정보 가져오기
-                    var executedPattern = GetCurrentExecutablePattern(monster);
-                    // Pattern 상태가 제거되었으므로 Attack 상태로 패턴 애니메이션 실행
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack, executedPattern);
+                    // 실행된 패턴 정보 사용 (PatternExecutionResult에서 가져옴)
+                    var executedPattern = patternResult.executedPattern;
+                    
+                    // 차지 패턴의 경우 패턴 스프라이트를 사용하지 않음 (StartChargeEffects에서 처리)
+                    if (executedPattern != null && executedPattern.IsChargePattern)
+                    {
+                        // 차지 패턴은 StartChargeEffects에서 애니메이션 처리하므로 여기서는 아무것도 하지 않음
+                        if (debugMode)
+                            Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 차지 패턴 애니메이션은 StartChargeEffects에서 처리됨");
+                    }
+                    else
+                    {
+                        // 일반 패턴은 Attack 상태로 패턴 애니메이션 실행
+                        MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack, executedPattern);
+                    }
                 }
 
                 // 패턴 실행 애니메이션 대기
-                float patternAnimationDuration = GetPatternAnimationDuration(monster);
-                yield return new WaitForSeconds(patternAnimationDuration);
+                if (patternResult.executedPattern == null || !patternResult.executedPattern.IsChargePattern)
+                {
+                    // 차지 패턴이 아닌 경우에만 애니메이션 대기
+                    float patternAnimationDuration = GetPatternAnimationDuration(patternResult.executedPattern);
+                    yield return new WaitForSeconds(patternAnimationDuration);
+                }
+                else
+                {
+                    // 차지 패턴의 경우 짧은 대기만 (StartChargeEffects 처리 시간)
+                    yield return new WaitForSeconds(0.1f);
+                }
 
-                // 패턴 완료 후 Idle로 복귀
-                if (MonsterAnimationManager.Instance != null)
+                // 패턴 완료 후 Idle로 복귀 (차지 패턴은 제외 - StartChargeEffects에서 처리)
+                if (MonsterAnimationManager.Instance != null && 
+                    (patternResult.executedPattern == null || !patternResult.executedPattern.IsChargePattern))
                 {
                     MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
@@ -279,11 +303,8 @@ namespace Maglin.Battle
                 // 공격 완료 이벤트 발생
                 OnMonsterAttacked?.Invoke(monster);
 
-                // 공격 완료 후 Idle 애니메이션으로 복귀
-                if (MonsterAnimationManager.Instance != null)
-                {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
-                }
+                // 공격 완료 후 Idle 애니메이션으로 복귀 (MonsterAnimationManager에서 자동 처리)
+                // MonsterAnimationManager.OnAnimationCompleted에서 Attack 완료 시 자동으로 Idle로 복귀
 
                 // 공격 후 잠시 대기
                 yield return new WaitForSeconds(0.2f);
@@ -316,11 +337,8 @@ namespace Maglin.Battle
                 // 공격 완료 이벤트 발생
                 OnMonsterAttacked?.Invoke(monster);
 
-                // 공격 완료 후 Idle 애니메이션으로 복귀
-                if (MonsterAnimationManager.Instance != null)
-                {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
-                }
+                // 공격 완료 후 Idle 애니메이션으로 복귀 (MonsterAnimationManager에서 자동 처리)
+                // MonsterAnimationManager.OnAnimationCompleted에서 Attack 완료 시 자동으로 Idle로 복귀
 
                 // 공격 후 잠시 대기
                 yield return new WaitForSeconds(0.2f);
@@ -618,13 +636,12 @@ namespace Maglin.Battle
         /// <summary>
         /// 패턴 애니메이션 지속 시간 계산
         /// </summary>
-        private float GetPatternAnimationDuration(Maglin.Enemy.Enemy monster)
+        private float GetPatternAnimationDuration(MonsterPatternSO executedPattern)
         {
-            // 현재 실행 가능한 패턴의 애니메이션 정보 사용
-            var currentPattern = GetCurrentExecutablePattern(monster);
-            if (currentPattern?.PatternSprites != null && currentPattern.PatternSprites.Length > 0)
+            // 실행된 패턴의 애니메이션 정보 사용
+            if (executedPattern?.PatternSprites != null && executedPattern.PatternSprites.Length > 0)
             {
-                return currentPattern.PatternSprites.Length * currentPattern.PatternAnimationSpeed;
+                return executedPattern.PatternSprites.Length / executedPattern.PatternFrameRate;
             }
 
             // 패턴이 없거나 스프라이트가 없는 경우 기본 지속 시간

@@ -25,6 +25,7 @@ MonoBehaviour:
   spawnedMonsterData: {fileID: 11400000, guid: 883729ef8b7ea3140806d26c1542a0eb, type: 2}
   spawnLocation: 4
   specificSpawnPosition: {x: 0, y: 0}
+  skipSpawnAnimation: 1
   targetDestroyType: {fileID: 0}
   destructionDamage: 5
   destructionTarget: 2
