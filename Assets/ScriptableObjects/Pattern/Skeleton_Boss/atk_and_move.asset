@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a2017d8aa583b4876861a47598542d44, type: 3}
-  m_Name: Attack_and_Back
+  m_Name: atk_and_move
   m_EditorClassIdentifier: 
   patternName: attack_back
   patternType: 4
@@ -21,7 +21,10 @@ MonoBehaviour:
   blockNormalAttack: 1
   chargeDuration: 2
   chargeDamage: 10
+  chargeAttackType: 0
+  chargeAttackRange: 1
   chargeTarget: 0
+  chargeEffectColor: {r: 1, g: 0, b: 0, a: 1}
   spawnedMonsterData: {fileID: 0}
   spawnLocation: 0
   specificSpawnPosition: {x: 0, y: 0}
@@ -35,6 +38,16 @@ MonoBehaviour:
   attackAndMoveTarget: 0
   moveDirection: 1
   moveDistance: 1
+  attackAndMoveSpeed: 5
+  attackAndMoveMustMove: 1
+  chargeAttackAndMoveDamage: 15
+  chargeAttackAndMoveType: 0
+  chargeAttackAndMoveRange: 1
+  chargeAttackAndMoveTarget: 0
+  chargeAttackMoveDirection: 0
+  chargeAttackMoveDistance: 5
+  chargeAttackAndMoveSpeed: 5
+  chargeAttackAndMoveMustMove: 0
   patternSprites:
   - {fileID: 656314794, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
   - {fileID: 1573417906, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}

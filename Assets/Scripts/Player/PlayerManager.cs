@@ -95,6 +95,7 @@ namespace Maglin.Player
         [SerializeField] private Sprite[] attackSprites1;
         [SerializeField] private Sprite[] attackSprites2;
         [SerializeField] private Sprite[] attackSprites3;
+        [SerializeField] private Sprite[] attackingSprites; // 카드 사용 중 공격 상태 스프라이트 (루프)
         [SerializeField] private Sprite[] hitSprites;
         [SerializeField] private Sprite[] deathSprites;
 
@@ -102,6 +103,7 @@ namespace Maglin.Player
         [SerializeField] private float idleFrameRate = 8f;
         [SerializeField] private float walkFrameRate = 10f; // 이동 애니메이션 프레임 레이트 추가
         [SerializeField] private float attackFrameRate = 12f;
+        [SerializeField] private float attackingFrameRate = 10f; // 카드 사용 중 공격 상태 프레임 레이트
         [SerializeField] private float hitFrameRate = 15f;
         [SerializeField] private float deathFrameRate = 10f;
 
@@ -140,6 +142,7 @@ namespace Maglin.Player
             Attack1,
             Attack2,
             Attack3,
+            Attacking, // 카드 사용 중 공격 상태 (루프)
             Hit,
             Death
         }
@@ -318,11 +321,11 @@ namespace Maglin.Player
         }
 
         /// <summary>
-        /// 기본 스프라이트 로드/생성
+        /// 스프라이트 로드/생성 (Inspector 할당값 우선, 없으면 Resources에서 로드, 그것도 없으면 기본 스프라이트 생성)
         /// </summary>
         private void LoadDefaultSprites()
         {
-            // Resources에서 플레이어 스프라이트 배열 로드 시도
+            // 인스펙터에 할당되지 않은 경우에만 Resources에서 로드 시도
             if (idleSprites == null || idleSprites.Length == 0)
             {
                 idleSprites = Resources.LoadAll<Sprite>("Player/PlayerIdle");
@@ -332,6 +335,14 @@ namespace Maglin.Player
                     if (debugMode)
                         Debug.Log("[PlayerManager] 기본 대기 스프라이트 생성");
                 }
+                else if (debugMode)
+                {
+                    Debug.Log($"[PlayerManager] Resources에서 Idle 스프라이트 로드: {idleSprites.Length}개");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Idle 스프라이트 사용: {idleSprites.Length}개");
             }
 
             if (walkSprites == null || walkSprites.Length == 0)
@@ -344,18 +355,17 @@ namespace Maglin.Player
                     if (debugMode)
                         Debug.LogWarning("[PlayerManager] Walk 스프라이트가 Resources에서 찾을 수 없어 Idle 스프라이트 사용");
                 }
-                else
+                else if (debugMode)
                 {
-                    if (debugMode)
-                        Debug.Log($"[PlayerManager] Resources에서 Walk 스프라이트 로드: {walkSprites.Length}개");
+                    Debug.Log($"[PlayerManager] Resources에서 Walk 스프라이트 로드: {walkSprites.Length}개");
                 }
             }
-            else
+            else if (debugMode)
             {
-                if (debugMode)
-                    Debug.Log($"[PlayerManager] Inspector에서 할당된 Walk 스프라이트 사용: {walkSprites.Length}개");
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Walk 스프라이트 사용: {walkSprites.Length}개");
             }
 
+            // 인스펙터에 할당되지 않은 경우에만 Resources에서 로드 시도
             if (attackSprites1 == null || attackSprites1.Length == 0)
             {
                 attackSprites1 = Resources.LoadAll<Sprite>("Player/PlayerAttack1");
@@ -365,6 +375,14 @@ namespace Maglin.Player
                     if (debugMode)
                         Debug.Log("[PlayerManager] 기본 공격1 스프라이트 생성");
                 }
+                else if (debugMode)
+                {
+                    Debug.Log($"[PlayerManager] Resources에서 Attack1 스프라이트 로드: {attackSprites1.Length}개");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Attack1 스프라이트 사용: {attackSprites1.Length}개");
             }
 
             if (attackSprites2 == null || attackSprites2.Length == 0)
@@ -373,7 +391,17 @@ namespace Maglin.Player
                 if (attackSprites2 == null || attackSprites2.Length == 0)
                 {
                     attackSprites2 = new Sprite[] { CreateDefaultSprite(Color.yellow) };
+                    if (debugMode)
+                        Debug.Log("[PlayerManager] 기본 공격2 스프라이트 생성");
                 }
+                else if (debugMode)
+                {
+                    Debug.Log($"[PlayerManager] Resources에서 Attack2 스프라이트 로드: {attackSprites2.Length}개");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Attack2 스프라이트 사용: {attackSprites2.Length}개");
             }
 
             if (attackSprites3 == null || attackSprites3.Length == 0)
@@ -382,7 +410,36 @@ namespace Maglin.Player
                 if (attackSprites3 == null || attackSprites3.Length == 0)
                 {
                     attackSprites3 = new Sprite[] { CreateDefaultSprite(Color.green) };
+                    if (debugMode)
+                        Debug.Log("[PlayerManager] 기본 공격3 스프라이트 생성");
                 }
+                else if (debugMode)
+                {
+                    Debug.Log($"[PlayerManager] Resources에서 Attack3 스프라이트 로드: {attackSprites3.Length}개");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Attack3 스프라이트 사용: {attackSprites3.Length}개");
+            }
+
+            if (attackingSprites == null || attackingSprites.Length == 0)
+            {
+                attackingSprites = Resources.LoadAll<Sprite>("Player/PlayerAttacking");
+                if (attackingSprites == null || attackingSprites.Length == 0)
+                {
+                    attackingSprites = new Sprite[] { CreateDefaultSprite(Color.cyan) };
+                    if (debugMode)
+                        Debug.Log("[PlayerManager] 기본 Attacking 스프라이트 생성");
+                }
+                else if (debugMode)
+                {
+                    Debug.Log($"[PlayerManager] Resources에서 Attacking 스프라이트 로드: {attackingSprites.Length}개");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Attacking 스프라이트 사용: {attackingSprites.Length}개");
             }
 
             if (hitSprites == null || hitSprites.Length == 0)
@@ -391,7 +448,17 @@ namespace Maglin.Player
                 if (hitSprites == null || hitSprites.Length == 0)
                 {
                     hitSprites = new Sprite[] { CreateDefaultSprite(Color.magenta) };
+                    if (debugMode)
+                        Debug.Log("[PlayerManager] 기본 Hit 스프라이트 생성");
                 }
+                else if (debugMode)
+                {
+                    Debug.Log($"[PlayerManager] Resources에서 Hit 스프라이트 로드: {hitSprites.Length}개");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Hit 스프라이트 사용: {hitSprites.Length}개");
             }
 
             if (deathSprites == null || deathSprites.Length == 0)
@@ -401,18 +468,16 @@ namespace Maglin.Player
                 {
                     deathSprites = new Sprite[] { CreateDefaultSprite(Color.black) };
                     if (debugMode)
-                        Debug.Log("[PlayerManager] Resources에서 Death 스프라이트를 찾을 수 없어 기본 스프라이트 생성");
+                        Debug.Log("[PlayerManager] 기본 Death 스프라이트 생성");
                 }
-                else
+                else if (debugMode)
                 {
-                    if (debugMode)
-                        Debug.Log($"[PlayerManager] Resources에서 Death 스프라이트 로드: {deathSprites.Length}개");
+                    Debug.Log($"[PlayerManager] Resources에서 Death 스프라이트 로드: {deathSprites.Length}개");
                 }
             }
-            else
+            else if (debugMode)
             {
-                if (debugMode)
-                    Debug.Log($"[PlayerManager] Inspector에서 할당된 Death 스프라이트 사용: {deathSprites.Length}개");
+                Debug.Log($"[PlayerManager] Inspector에서 할당된 Death 스프라이트 사용: {deathSprites.Length}개");
             }
 
             if (debugMode)
@@ -423,6 +488,7 @@ namespace Maglin.Player
                 Debug.Log($"  - Attack1 스프라이트: {attackSprites1?.Length ?? 0}개");
                 Debug.Log($"  - Attack2 스프라이트: {attackSprites2?.Length ?? 0}개");
                 Debug.Log($"  - Attack3 스프라이트: {attackSprites3?.Length ?? 0}개");
+                Debug.Log($"  - Attacking 스프라이트: {attackingSprites?.Length ?? 0}개");
                 Debug.Log($"  - Hit 스프라이트: {hitSprites?.Length ?? 0}개");
                 Debug.Log($"  - Death 스프라이트: {deathSprites?.Length ?? 0}개");
             }
@@ -572,7 +638,7 @@ namespace Maglin.Player
             if (currentHealth > 0)
             {
                 PlayHitAnimation();
-                
+
                 // 추가 피격 효과 실행 (화면 떨림 + 빨간 비네팅)
                 if (PlayerBattleManager.Instance != null)
                 {
@@ -1321,6 +1387,8 @@ namespace Maglin.Player
                 case PlayerAnimationState.Attack2:
                 case PlayerAnimationState.Attack3:
                     return attackFrameRate;
+                case PlayerAnimationState.Attacking:
+                    return attackingFrameRate;
                 case PlayerAnimationState.Hit:
                     return hitFrameRate;
                 case PlayerAnimationState.Death:
@@ -1352,7 +1420,7 @@ namespace Maglin.Player
 
                     int previousFrameIndex = currentFrameIndex;
                     currentFrameIndex = i;
-                    
+
                     // 프레임이 실제로 바뀐 경우에만 이벤트 발생 (최적화)
                     if (previousFrameIndex != currentFrameIndex)
                     {
@@ -1389,6 +1457,8 @@ namespace Maglin.Player
                     return true; // 대기 애니메이션은 루프
                 case PlayerAnimationState.Walk:
                     return true; // 이동 애니메이션은 루프
+                case PlayerAnimationState.Attacking:
+                    return true; // 카드 사용 중 공격 상태는 루프
                 case PlayerAnimationState.Attack1:
                 case PlayerAnimationState.Attack2:
                 case PlayerAnimationState.Attack3:
@@ -1435,6 +1505,8 @@ namespace Maglin.Player
                     return attackSprites2;
                 case PlayerAnimationState.Attack3:
                     return attackSprites3;
+                case PlayerAnimationState.Attacking:
+                    return attackingSprites;
                 case PlayerAnimationState.Hit:
                     return hitSprites;
                 case PlayerAnimationState.Death:
@@ -1459,6 +1531,8 @@ namespace Maglin.Player
                     return Color.yellow;
                 case PlayerAnimationState.Attack3:
                     return Color.green;
+                case PlayerAnimationState.Attacking:
+                    return Color.cyan;
                 case PlayerAnimationState.Hit:
                     return Color.magenta;
                 case PlayerAnimationState.Death:
@@ -1488,6 +1562,9 @@ namespace Maglin.Player
                 case PlayerAnimationState.Attack3:
                     sprites = attackSprites3;
                     break;
+                case PlayerAnimationState.Attacking:
+                    sprites = attackingSprites;
+                    break;
                 case PlayerAnimationState.Hit:
                     sprites = hitSprites;
                     break;
@@ -1510,12 +1587,13 @@ namespace Maglin.Player
         /// <summary>
         /// 스프라이트 배열 설정
         /// </summary>
-        public void SetSpriteArrays(Sprite[] idle, Sprite[] attack1, Sprite[] attack2 = null, Sprite[] attack3 = null, Sprite[] hit = null, Sprite[] death = null)
+        public void SetSpriteArrays(Sprite[] idle, Sprite[] attack1, Sprite[] attack2 = null, Sprite[] attack3 = null, Sprite[] attacking = null, Sprite[] hit = null, Sprite[] death = null)
         {
             idleSprites = idle;
             attackSprites1 = attack1;
             if (attack2 != null) attackSprites2 = attack2;
             if (attack3 != null) attackSprites3 = attack3;
+            if (attacking != null) attackingSprites = attacking;
             if (hit != null) hitSprites = hit;
             if (death != null) deathSprites = death;
 
@@ -1529,12 +1607,13 @@ namespace Maglin.Player
         /// <summary>
         /// 단일 스프라이트 설정 (이전 버전 호환용)
         /// </summary>
-        public void SetSprites(Sprite idle, Sprite attack1, Sprite attack2 = null, Sprite attack3 = null, Sprite hit = null, Sprite death = null)
+        public void SetSprites(Sprite idle, Sprite attack1, Sprite attack2 = null, Sprite attack3 = null, Sprite attacking = null, Sprite hit = null, Sprite death = null)
         {
             idleSprites = idle != null ? new Sprite[] { idle } : null;
             attackSprites1 = attack1 != null ? new Sprite[] { attack1 } : null;
             if (attack2 != null) attackSprites2 = new Sprite[] { attack2 };
             if (attack3 != null) attackSprites3 = new Sprite[] { attack3 };
+            if (attacking != null) attackingSprites = new Sprite[] { attacking };
             if (hit != null) hitSprites = new Sprite[] { hit };
             if (death != null) deathSprites = new Sprite[] { death };
 
@@ -1699,6 +1778,32 @@ namespace Maglin.Player
         {
             // 강제로 Idle 애니메이션 재시작 (이미 Idle 상태여도 루프 애니메이션 재시작)
             ForceSetAnimationState(PlayerAnimationState.Idle);
+        }
+
+        /// <summary>
+        /// 카드 사용 중 공격 애니메이션 시작
+        /// </summary>
+        public void StartCardAttackingAnimation()
+        {
+            if (debugMode)
+                Debug.Log("[PlayerManager] 카드 사용 중 공격 애니메이션 시작");
+
+            SetAnimationState(PlayerAnimationState.Attacking);
+        }
+
+        /// <summary>
+        /// 카드 사용 중 공격 애니메이션 종료 (Idle로 복귀)
+        /// </summary>
+        public void EndCardAttackingAnimation()
+        {
+            if (debugMode)
+                Debug.Log("[PlayerManager] 카드 사용 중 공격 애니메이션 종료");
+
+            // 현재 Attacking 상태일 때만 Idle로 복귀
+            if (currentAnimationState == PlayerAnimationState.Attacking)
+            {
+                ReturnToIdle();
+            }
         }
 
         /// <summary>

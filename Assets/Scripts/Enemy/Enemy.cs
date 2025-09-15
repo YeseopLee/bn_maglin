@@ -69,8 +69,11 @@ namespace Maglin.Enemy
         [SerializeField] private bool isCharging = false;        // 차징 중인지 여부
         [SerializeField] private bool patternExecutedThisTurn = false; // 이번 턴에 패턴을 실행했는지
 
+        [Header("이동 휴식 상태")]
+        [SerializeField] private int movementRestCounter = 0;    // 현재 이동 휴식 카운터 (0이면 이동 가능)
+
         [Header("디버그")]
-        [SerializeField] private bool debugMode = false;
+        [SerializeField] private bool debugMode = true;
 
         // 참조
         private SpriteRenderer spriteRenderer;
@@ -173,6 +176,16 @@ namespace Maglin.Enemy
         /// 몬스터가 이 오브젝트를 공격하는지 여부
         /// </summary>
         public bool MonstersAttackThis => enemyData?.MonstersAttackThis ?? false;
+
+        /// <summary>
+        /// 현재 이동 휴식 중인지 여부
+        /// </summary>
+        public bool IsMovementResting => movementRestCounter > 0;
+
+        /// <summary>
+        /// 남은 이동 휴식 턴 수
+        /// </summary>
+        public int MovementRestCounter => movementRestCounter;
 
         /// <summary>
         /// 글로벌 턴 카운터 (몬스터 생성 이후 턴 수)
@@ -388,8 +401,11 @@ namespace Maglin.Enemy
                 }
             }
 
+            // 이동 휴식 카운터 감소
+            UpdateMovementRest();
+
             if (debugMode)
-                Debug.Log($"[Enemy] {EnemyName} 턴 종료 - 기절: {isStunned}({stunDuration}), 마지막 공격: {turnsSinceLastAttack}턴 전, 총 턴: {globalTurnCounter}");
+                Debug.Log($"[Enemy] {EnemyName} 턴 종료 - 기절: {isStunned}({stunDuration}), 마지막 공격: {turnsSinceLastAttack}턴 전, 총 턴: {globalTurnCounter}, 이동 휴식: {movementRestCounter}");
         }
 
         /// <summary>
@@ -417,7 +433,20 @@ namespace Maglin.Enemy
         /// </summary>
         public bool CanMove()
         {
-            return IsAlive && !isStunned && !hasActedThisTurn;
+            bool canMove = IsAlive && !isStunned && !hasActedThisTurn && !IsMovementResting;
+
+            if (debugMode && !canMove)
+            {
+                string reason = "";
+                if (!IsAlive) reason += "사망 ";
+                if (isStunned) reason += "기절 ";
+                if (hasActedThisTurn) reason += "이번턴행동완료 ";
+                if (IsMovementResting) reason += $"이동휴식중({movementRestCounter}턴) ";
+
+                Debug.Log($"[Enemy] {EnemyName} 이동 불가 - 이유: {reason}");
+            }
+
+            return canMove;
         }
 
         /// <summary>
@@ -440,6 +469,45 @@ namespace Maglin.Enemy
 
             if (debugMode)
                 Debug.Log($"[Enemy] {EnemyName} 패턴 실행 완료");
+        }
+
+        /// <summary>
+        /// 이동 완료 시 휴식 시작
+        /// </summary>
+        public void StartMovementRest()
+        {
+            if (enemyData != null && enemyData.MovementRestTurns > 0)
+            {
+                // 이동한 턴의 종료 시 카운터 감소를 고려하여 +1 설정
+                movementRestCounter = enemyData.MovementRestTurns + 1;
+
+                if (debugMode)
+                    Debug.Log($"[Enemy] {EnemyName} 이동 휴식 시작: {movementRestCounter}턴 (설정된 휴식 턴: {enemyData.MovementRestTurns}, 실제 카운터: {movementRestCounter})");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log($"[Enemy] {EnemyName} 이동 휴식 시작 안함 - enemyData: {enemyData != null}, MovementRestTurns: {enemyData?.MovementRestTurns ?? -1}");
+            }
+        }
+
+        /// <summary>
+        /// 이동 휴식 카운터 감소 (턴 종료 시 호출)
+        /// </summary>
+        public void UpdateMovementRest()
+        {
+            if (movementRestCounter > 0)
+            {
+                movementRestCounter--;
+
+                if (debugMode)
+                    Debug.Log($"[Enemy] {EnemyName} 이동 휴식 카운터 감소: {movementRestCounter + 1} -> {movementRestCounter} (남은 휴식 턴: {movementRestCounter})");
+            }
+            else
+            {
+                if (debugMode && movementRestCounter == 0)
+                    Debug.Log($"[Enemy] {EnemyName} 이동 휴식 완료 - 이제 이동 가능!");
+            }
         }
         #endregion
 

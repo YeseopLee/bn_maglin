@@ -635,7 +635,7 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 116236569}
   m_CullTransparentMesh: 1
---- !u!1 &246027727
+--- !u!1 &135362191
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -643,8 +643,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 246027729}
-  - component: {fileID: 246027728}
+  - component: {fileID: 135362193}
+  - component: {fileID: 135362192}
   m_Layer: 0
   m_Name: PlayerManager
   m_TagString: Untagged
@@ -652,13 +652,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &246027728
+--- !u!114 &135362192
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 246027727}
+  m_GameObject: {fileID: 135362191}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 829f2ff37929a443984888233446df6a, type: 3}
@@ -667,36 +667,107 @@ MonoBehaviour:
   maxHealth: 100
   maxMana: 30
   manaRecoveryPerTurn: 10
-  maxHandSize: 5
-  currentHealth: 0
-  currentMana: 0
-  currentGold: 0
+  maxHandSize: 6
+  currentHealth: 50
+  currentMana: 30
+  currentGold: 100
   currentRelics: []
-  idleSprites: []
-  walkSprites: []
-  attackSprites1: []
-  attackSprites2: []
-  attackSprites3: []
-  hitSprites: []
-  deathSprites: []
+  idleSprites:
+  - {fileID: -468431993, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  - {fileID: -380589731, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  - {fileID: -24940974, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  - {fileID: 683940624, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  - {fileID: 871187099, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  - {fileID: -1807981674, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  - {fileID: 1524562957, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  - {fileID: -1543360708, guid: 72248c03867e34ca4be5cdd6d5a6888c, type: 3}
+  walkSprites:
+  - {fileID: 989510090, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: 1804280731, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: -1650115660, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: 1836560941, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: -380439441, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: 530458468, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: -1148060631, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: 1980002434, guid: 026e49195558d404792446ddcd723847, type: 3}
+  - {fileID: 88212127, guid: 026e49195558d404792446ddcd723847, type: 3}
+  attackSprites1:
+  - {fileID: -1218307458, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -1571348082, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -860852771, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -545825979, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -298959021, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 100679261, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 2138802525, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 1293243789, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -496305517, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  attackSprites2:
+  - {fileID: -1218307458, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -1571348082, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -860852771, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -545825979, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -298959021, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 100679261, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 2138802525, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 1293243789, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -496305517, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -2091917784, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -1532670452, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  attackSprites3:
+  - {fileID: -1218307458, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -1571348082, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -860852771, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -545825979, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -298959021, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 100679261, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 2138802525, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 1293243789, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -496305517, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -2091917784, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -1532670452, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  attackingSprites:
+  - {fileID: -298959021, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 100679261, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 2138802525, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: 1293243789, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  - {fileID: -496305517, guid: 5bc76abee1e9d443888363d0a823d775, type: 3}
+  hitSprites:
+  - {fileID: 1948966122, guid: a11e6f4d910b64fee9280a48cdf2843f, type: 3}
+  - {fileID: -1369147628, guid: a11e6f4d910b64fee9280a48cdf2843f, type: 3}
+  - {fileID: 494612589, guid: a11e6f4d910b64fee9280a48cdf2843f, type: 3}
+  - {fileID: -1018437535, guid: a11e6f4d910b64fee9280a48cdf2843f, type: 3}
+  deathSprites:
+  - {fileID: 1320575812, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: -1265756519, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: 2869849, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: 718777713, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: -1648287517, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: -719552271, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: 1660998948, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: -1639436087, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: 956628647, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: 2126829785, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: -2036484066, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
+  - {fileID: 479458743, guid: 1d44a7b765625469dae65a1e16428d77, type: 3}
   idleFrameRate: 8
-  walkFrameRate: 10
-  attackFrameRate: 12
-  hitFrameRate: 6
-  deathFrameRate: 10
+  walkFrameRate: 9
+  attackFrameRate: 9
+  attackingFrameRate: 10
+  hitFrameRate: 4
+  deathFrameRate: 12
   debugMode: 0
   deathSlowMotionScale: 0.3
   deathSlowMotionDuration: 2
---- !u!4 &246027729
+--- !u!4 &135362193
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 246027727}
+  m_GameObject: {fileID: 135362191}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 281.66098, y: 252.9118, z: 85251.64}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -2219,5 +2290,5 @@ SceneRoots:
   - {fileID: 417326407}
   - {fileID: 1199951751}
   - {fileID: 576807119}
-  - {fileID: 246027729}
   - {fileID: 984511352}
+  - {fileID: 135362193}

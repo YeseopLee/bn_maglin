@@ -1,0 +1,95 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c5a97bf729a44666ad0d600a5799eb4, type: 3}
+  m_Name: Centaur
+  m_EditorClassIdentifier: 
+  enemyName: Centaur
+  enemyType: 0
+  enemyColor: {r: 1, g: 1, b: 1, a: 1}
+  maxHealth: 5
+  enemyElement: 0
+  idleSprites:
+  - {fileID: 452589155, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  - {fileID: 987799206, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  - {fileID: 958166247, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  - {fileID: 498211836, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  - {fileID: 1815860313, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  - {fileID: 1328324271, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  - {fileID: 1590701111, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  - {fileID: 1522657549, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  moveSprites:
+  - {fileID: 1809915766, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: -689831441, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: -235963784, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: 2063943032, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: 1460045086, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: -545154241, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: 613520812, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: -525756807, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: 2056918185, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  - {fileID: 2006244888, guid: 22bc0d9aa464540eda13ab68cb5a8b88, type: 3}
+  attackSprites:
+  - {fileID: 466756558, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -2029870868, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -114265733, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -520407671, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -927569067, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -881474950, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 766381605, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 338648484, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 103086816, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 1015665019, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 116819185, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 1640851401, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -838633186, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -19122354, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -42888415, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -485630017, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 358721004, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  hitSprites:
+  - {fileID: 452589155, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}
+  deathSprites:
+  - {fileID: 51173022, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: -1249107946, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: 773570587, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: -629437028, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: 2107765602, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: 1618023124, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: 88955643, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: 1678849820, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: 849828386, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: -1066678280, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  - {fileID: -417194072, guid: c09a3173bc0cb4764957f3c15b8b84a6, type: 3}
+  idleFrameRate: 8
+  moveFrameRate: 10
+  attackFrameRate: 17
+  hitFrameRate: 1
+  deathFrameRate: 11
+  flipSpritesHorizontally: 1
+  attackDamage: 5
+  attackPattern: 0
+  attackRange: 1
+  movementPattern: 3
+  moveSpeed: 3
+  movementRestTurns: 1
+  sizeInTiles: 1
+  canSummonObjects: 0
+  hasSpecialMechanics: 0
+  specialAbilityDescription: 
+  isNeutralObject: 0
+  blocksMonsterMovement: 0
+  monstersAttackThis: 0
+  objectDescription: 
+  monsterPatterns:
+  - {fileID: 11400000, guid: 4fabbfbc415b9439587d73e4c21c119c, type: 2}
+  goldReward: 0
+  experienceReward: 0

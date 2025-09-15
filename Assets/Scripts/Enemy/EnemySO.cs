@@ -80,7 +80,8 @@ namespace Maglin.Enemy
 
         [Header("이동 정보")]
         [SerializeField] private MovementPatternType movementPattern;
-        [SerializeField] private int movementSpeed = 1;   // 이동 속도 (칸 수)
+        [SerializeField] private float moveSpeed = 1.0f;   // 이동 속도 배율 (1.0 = 기본 속도, 2.0 = 2배 빠름, 0.5 = 절반 속도)
+        [SerializeField] private int movementRestTurns = 0;  // 이동 후 쉬는 턴 수 (0 = 매턴 이동 가능)
 
         [Header("크기 정보")]
         [SerializeField] private int sizeInTiles = 1;     // 차지하는 칸 수
@@ -113,14 +114,14 @@ namespace Maglin.Enemy
         public Color Color => enemyColor;
         public int MaxHealth => maxHealth;
         public ElementType Element => enemyElement;
-        
+
         // 애니메이션 스프라이트 Properties
         public Sprite[] IdleSprites => idleSprites;
         public Sprite[] MoveSprites => moveSprites;
         public Sprite[] AttackSprites => attackSprites;
         public Sprite[] HitSprites => hitSprites;
         public Sprite[] DeathSprites => deathSprites;
-        
+
         // 애니메이션 프레임 레이트 Properties
         public float IdleFrameRate => idleFrameRate;
         public float MoveFrameRate => moveFrameRate;
@@ -128,18 +129,19 @@ namespace Maglin.Enemy
         public float HitFrameRate => hitFrameRate;
         public float DeathFrameRate => deathFrameRate;
         public bool FlipSpritesHorizontally => flipSpritesHorizontally;
-        
+
         // 이전 버전 호환성을 위한 AnimationSpeed (Deprecated)
         [System.Obsolete("AnimationSpeed는 더 이상 사용되지 않습니다. 각 상태별 FrameRate를 사용하세요.")]
         public float AnimationSpeed => 1f / idleFrameRate; // 기본적으로 Idle 프레임 레이트 기준
-        
+
         // 호환성을 위한 기본 스프라이트 (Idle의 첫 번째 프레임)
         public Sprite Sprite => (idleSprites != null && idleSprites.Length > 0) ? idleSprites[0] : null;
         public int AttackDamage => attackDamage;
         public AttackPatternType AttackPattern => attackPattern;
         public int AttackRange => attackRange;
         public MovementPatternType MovementPattern => movementPattern;
-        public int MovementSpeed => movementSpeed;
+        public float MoveSpeed => moveSpeed;
+        public int MovementRestTurns => movementRestTurns;
         public int SizeInTiles => sizeInTiles;
         public bool CanSummonObjects => canSummonObjects;
         public bool HasSpecialMechanics => hasSpecialMechanics;

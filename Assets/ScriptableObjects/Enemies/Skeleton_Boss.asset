@@ -73,8 +73,9 @@ MonoBehaviour:
   attackDamage: 10
   attackPattern: 0
   attackRange: 1
-  movementPattern: 1
-  movementSpeed: 1
+  movementPattern: 2
+  moveSpeed: 1
+  movementRestTurns: 0
   sizeInTiles: 1
   canSummonObjects: 0
   hasSpecialMechanics: 0
@@ -83,6 +84,8 @@ MonoBehaviour:
   blocksMonsterMovement: 0
   monstersAttackThis: 0
   objectDescription: 
-  monsterPatterns: []
+  monsterPatterns:
+  - {fileID: 11400000, guid: 3a70abcdf596d4f4cb350588a500a097, type: 2}
+  - {fileID: 11400000, guid: ff1554ace61cc4f7b9df08e76b10d58a, type: 2}
   goldReward: 0
   experienceReward: 0

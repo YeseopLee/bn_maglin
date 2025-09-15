@@ -65,6 +65,10 @@ namespace Maglin.Enemy
         private Dictionary<Enemy, Dictionary<MonsterPatternSO, int>> chargeStates =
             new Dictionary<Enemy, Dictionary<MonsterPatternSO, int>>();
 
+        // 차징 시작 시 플레이어 위치 저장 (차지 완료 시 범위 체크용)
+        private Dictionary<Enemy, Dictionary<MonsterPatternSO, Vector2Int>> chargePlayerPositions =
+            new Dictionary<Enemy, Dictionary<MonsterPatternSO, Vector2Int>>();
+
         // 진행 중인 사망 소환 패턴 추적
         private int activeDeathSpawnPatterns = 0;
         #endregion
@@ -237,6 +241,7 @@ namespace Maglin.Enemy
             {
                 patternTurnCounters[monster] = new Dictionary<MonsterPatternSO, int>();
                 chargeStates[monster] = new Dictionary<MonsterPatternSO, int>();
+                chargePlayerPositions[monster] = new Dictionary<MonsterPatternSO, Vector2Int>();
             }
 
             foreach (var pattern in patterns)
@@ -246,6 +251,7 @@ namespace Maglin.Enemy
                     // 패턴 카운터를 1로 시작 (첫 몬스터 턴이 1턴)
                     patternTurnCounters[monster][pattern] = 1;
                     chargeStates[monster][pattern] = 0;
+                    chargePlayerPositions[monster][pattern] = Vector2Int.zero;
 
                     if (debugMode)
                         Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName}의 패턴 '{pattern.PatternName}' 카운터 초기화: 1턴");
@@ -284,13 +290,16 @@ namespace Maglin.Enemy
                     return ExecuteSpawnMonsterPattern(monster, pattern);
 
                 case MonsterPatternType.Periodic_ChargeAttack:
-                    return StartChargeAttackPattern(monster, pattern);
+                    return StartChargeAttackPattern(monster, pattern, playerPosition);
 
                 case MonsterPatternType.Periodic_DestroyAndAttack:
                     return ExecuteDestroyAndAttackPattern(monster, pattern, playerPosition);
 
                 case MonsterPatternType.Periodic_AttackAndMove:
                     return ExecuteAttackAndMovePattern(monster, pattern, playerPosition);
+
+                case MonsterPatternType.Periodic_ChargeAttackAndMove:
+                    return StartChargeAttackAndMovePattern(monster, pattern, playerPosition);
 
                 default:
                     return new PatternExecutionResult(false, false, "알 수 없는 패턴 타입");
@@ -314,7 +323,7 @@ namespace Maglin.Enemy
             {
                 // 차징 중 - 애니메이션 업데이트 및 이펙트 유지
                 UpdateChargeEffects(monster, pattern, remainingTurns);
-                
+
                 if (debugMode)
                     Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차징 중... (남은 턴: {remainingTurns})");
 
@@ -325,9 +334,21 @@ namespace Maglin.Enemy
         /// <summary>
         /// 차지 공격 시작
         /// </summary>
-        private PatternExecutionResult StartChargeAttackPattern(Enemy monster, MonsterPatternSO pattern)
+        private PatternExecutionResult StartChargeAttackPattern(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
         {
+            // 공격 범위 확인
+            bool canAttack = CheckChargeAttackRange(monster, pattern, playerPosition);
+
+            if (!canAttack)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 범위 벗어남 - 패턴 실행 실패");
+                return new PatternExecutionResult(false, false, "차지 공격 범위 벗어남");
+            }
+
             chargeStates[monster][pattern] = pattern.ChargeDuration;
+            // 차징 시작 시 플레이어 위치 저장 (차지 완료 시 범위 체크용)
+            chargePlayerPositions[monster][pattern] = playerPosition;
 
             // 차지 시작 애니메이션 및 이펙트 적용
             StartChargeEffects(monster, pattern);
@@ -339,6 +360,34 @@ namespace Maglin.Enemy
         }
 
         /// <summary>
+        /// 차지 공격 후 이동 패턴 시작
+        /// </summary>
+        private PatternExecutionResult StartChargeAttackAndMovePattern(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
+        {
+            // 공격 범위 확인
+            bool canAttack = CheckChargeAttackAndMoveRange(monster, pattern, playerPosition);
+
+            if (!canAttack)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 후 이동 범위 벗어남 - 패턴 실행 실패");
+                return new PatternExecutionResult(false, false, "차지 공격 후 이동 범위 벗어남");
+            }
+
+            chargeStates[monster][pattern] = pattern.ChargeDuration;
+            // 차징 시작 시 플레이어 위치 저장 (차지 완료 시 범위 체크용)
+            chargePlayerPositions[monster][pattern] = playerPosition;
+
+            // 차지 시작 애니메이션 및 이펙트 적용
+            StartChargeEffects(monster, pattern);
+
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 후 이동 시작 - {pattern.ChargeDuration}턴 차지");
+
+            return new PatternExecutionResult(true, pattern.BlockNormalAttack, $"차지 공격 후 이동 준비 시작 ({pattern.ChargeDuration}턴)", pattern);
+        }
+
+        /// <summary>
         /// 차지 공격 실행
         /// </summary>
         private PatternExecutionResult ExecuteChargeAttack(Enemy monster, MonsterPatternSO pattern)
@@ -346,13 +395,44 @@ namespace Maglin.Enemy
             if (debugMode)
                 Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 완료 - 공격 실행!");
 
+            // 저장된 플레이어 위치를 가져와서 최종 범위 체크
+            Vector2Int chargeStartPlayerPosition = Vector2Int.zero;
+            if (chargePlayerPositions.ContainsKey(monster) && chargePlayerPositions[monster].ContainsKey(pattern))
+            {
+                chargeStartPlayerPosition = chargePlayerPositions[monster][pattern];
+            }
+
+            // 차지 시작 시점의 플레이어 위치로 범위 체크
+            bool canAttack = pattern.IsChargeAttackAndMovePattern ?
+                CheckChargeAttackAndMoveRange(monster, pattern, chargeStartPlayerPosition) :
+                CheckChargeAttackRange(monster, pattern, chargeStartPlayerPosition);
+
+            if (!canAttack)
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 완료했지만 공격 범위 벗어남 - 공격 실패");
+
+                // 차지 이펙트 제거
+                EndChargeEffects(monster, pattern);
+                return new PatternExecutionResult(true, pattern.BlockNormalAttack, "차지 완료했지만 공격 범위 벗어남", pattern);
+            }
+
             // 차지 이펙트 제거 및 공격 애니메이션 시작
             EndChargeEffects(monster, pattern);
 
-            // 차지 공격 애니메이션과 함께 데미지 적용
-            StartCoroutine(ExecuteChargeAttackCoroutine(monster, pattern));
-
-            return new PatternExecutionResult(true, pattern.BlockNormalAttack, $"차지 공격 완료! 데미지: {pattern.ChargeDamage}", pattern);
+            // 패턴 타입에 따라 다른 코루틴 실행
+            if (pattern.IsChargeAttackAndMovePattern)
+            {
+                // 차지 공격 후 이동 코루틴
+                StartCoroutine(ExecuteChargeAttackAndMoveCoroutine(monster, pattern, chargeStartPlayerPosition));
+                return new PatternExecutionResult(true, pattern.BlockNormalAttack, $"차지 공격 후 이동 완료! 데미지: {pattern.ChargeAttackAndMoveDamage}", pattern);
+            }
+            else
+            {
+                // 기본 차지 공격 코루틴
+                StartCoroutine(ExecuteChargeAttackCoroutine(monster, pattern, chargeStartPlayerPosition));
+                return new PatternExecutionResult(true, pattern.BlockNormalAttack, $"차지 공격 완료! 데미지: {pattern.ChargeDamage}", pattern);
+            }
         }
 
         /// <summary>
@@ -414,7 +494,7 @@ namespace Maglin.Enemy
 
             // 1. 파괴할 몬스터들 찾기
             var monstersToDestroy = GetMonstersToDestroy(monster, pattern);
-            
+
             if (monstersToDestroy.Count == 0)
             {
                 if (debugMode)
@@ -429,7 +509,7 @@ namespace Maglin.Enemy
                 {
                     if (debugMode)
                         Debug.Log($"[MonsterPatternExecutor] {targetMonster.EnemyName} 파괴");
-                    
+
                     // 몬스터를 즉시 죽임 (사망 애니메이션과 효과 포함)
                     targetMonster.TakeDamage(targetMonster.CurrentHealth);
                 }
@@ -454,7 +534,7 @@ namespace Maglin.Enemy
 
             // 1. 공격 범위 확인
             bool canAttack = CheckAttackRange(monster, pattern, playerPosition);
-            
+
             if (!canAttack)
             {
                 if (debugMode)
@@ -464,8 +544,8 @@ namespace Maglin.Enemy
 
             // 2. 애니메이션과 함께 공격 후 이동 코루틴 시작
             StartCoroutine(ExecuteAttackAndMovePatternCoroutine(monster, pattern, playerPosition));
-            
-            return new PatternExecutionResult(true, pattern.BlockNormalAttack, 
+
+            return new PatternExecutionResult(true, pattern.BlockNormalAttack,
                 $"공격 후 이동 패턴 시작 (데미지: {pattern.AttackAndMoveDamage})", pattern);
         }
 
@@ -480,7 +560,7 @@ namespace Maglin.Enemy
                 {
                     // 진행 중인 사망 소환 패턴 카운터 증가
                     activeDeathSpawnPatterns++;
-                    
+
                     if (debugMode)
                         Debug.Log($"[MonsterPatternExecutor] 사망 소환 패턴 시작: {deadMonster.EnemyName} (진행 중: {activeDeathSpawnPatterns})");
 
@@ -528,7 +608,7 @@ namespace Maglin.Enemy
                 {
                     if (debugMode)
                         Debug.LogWarning($"[MonsterPatternExecutor] {deadMonster.EnemyName}의 사망 소환 패턴: 소환 가능한 빈 공간 없음");
-                    
+
                     // 실패시에도 카운터 감소
                     activeDeathSpawnPatterns--;
                     if (activeDeathSpawnPatterns <= 0)
@@ -558,7 +638,7 @@ namespace Maglin.Enemy
                     if (debugMode)
                         Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 스킵됨 (패턴: {pattern.PatternName})");
                 }
-                
+
                 if (debugMode)
                     Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 완료 - 패턴 완료");
             }
@@ -570,7 +650,7 @@ namespace Maglin.Enemy
 
             // 스폰이 완전히 완료된 후 카운터 감소
             activeDeathSpawnPatterns--;
-            
+
             if (debugMode)
                 Debug.Log($"[MonsterPatternExecutor] 사망 소환 패턴 완료: {deadMonster.EnemyName} (남은 진행 중: {activeDeathSpawnPatterns})");
 
@@ -594,7 +674,7 @@ namespace Maglin.Enemy
             {
                 // Death 스프라이트 애니메이션 시간 계산
                 float deathAnimationDuration = deadMonster.EnemyData.DeathSprites.Length * deadMonster.EnemyData.AnimationSpeed;
-                
+
                 if (debugMode)
                     Debug.Log($"[MonsterPatternExecutor] 사망 애니메이션 대기: {deathAnimationDuration:F2}초");
 
@@ -621,7 +701,7 @@ namespace Maglin.Enemy
             if (MonsterSpawnManager.Instance != null && MonsterSpawnAnimationManager.Instance != null)
             {
                 bool animationCompleted = false;
-                
+
                 // 스폰 애니메이션 완료 이벤트 구독 (일회성)
                 System.Action<GameObject> onSpawnAnimationCompleted = null;
                 onSpawnAnimationCompleted = (completedMonster) =>
@@ -631,7 +711,7 @@ namespace Maglin.Enemy
                         animationCompleted = true;
                         // 이벤트 구독 해제
                         MonsterSpawnAnimationManager.OnSpawnAnimationCompleted -= onSpawnAnimationCompleted;
-                        
+
                         if (debugMode)
                             Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 완료 이벤트 수신");
                     }
@@ -662,7 +742,7 @@ namespace Maglin.Enemy
             {
                 // 스폰 애니메이션 매니저가 없으면 기본 대기 시간
                 yield return new WaitForSeconds(0.5f);
-                
+
                 if (debugMode)
                     Debug.Log($"[MonsterPatternExecutor] {spawnedMonster.EnemyName} 스폰 애니메이션 매니저 없음 - 기본 대기 완료");
             }
@@ -842,21 +922,21 @@ namespace Maglin.Enemy
             {
                 // 패턴에서 애니메이션 스킵 설정 확인
                 bool shouldSkipAnimation = pattern != null && pattern.SkipSpawnAnimation;
-                
+
                 if (shouldSkipAnimation)
                 {
                     // 애니메이션 일시적으로 비활성화
                     MonsterSpawnManager.Instance.SetSpawnAnimationEnabled(false);
-                    
+
                     if (debugMode)
                         Debug.Log($"[MonsterPatternExecutor] 소환 애니메이션 스킵: {monsterData.EnemyName} (패턴: {pattern.PatternName})");
-                    
+
                     // 몬스터 소환
                     var spawnedMonster = MonsterSpawnManager.Instance.SpawnMonsterForPattern(monsterData, position);
-                    
+
                     // 애니메이션 설정 복원 (기본값인 true로 복원)
                     MonsterSpawnManager.Instance.SetSpawnAnimationEnabled(true);
-                    
+
                     return spawnedMonster;
                 }
                 else
@@ -907,6 +987,7 @@ namespace Maglin.Enemy
                 if (monsterEntry == null || !monsterEntry.IsAlive)
                 {
                     chargeStates.Remove(monsterEntry);
+                    chargePlayerPositions.Remove(monsterEntry);
                     continue;
                 }
 
@@ -934,6 +1015,7 @@ namespace Maglin.Enemy
 
             patternTurnCounters.Remove(monster);
             chargeStates.Remove(monster);
+            chargePlayerPositions.Remove(monster);
 
             if (debugMode)
                 Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName}의 패턴 상태 정리 완료");
@@ -945,16 +1027,16 @@ namespace Maglin.Enemy
         private List<Enemy> GetMonstersToDestroy(Enemy executingMonster, MonsterPatternSO pattern)
         {
             var monstersToDestroy = new List<Enemy>();
-            
+
             if (MonsterSpawnManager.Instance == null) return monstersToDestroy;
-            
+
             var allMonsters = MonsterSpawnManager.Instance.GetAllMonsters();
-            
+
             foreach (var monster in allMonsters)
             {
                 if (monster == null || !monster.IsAlive) continue;
                 if (monster == executingMonster) continue; // 자기 자신은 제외
-                
+
                 // 타겟 타입 확인
                 if (pattern.TargetDestroyType == null)
                 {
@@ -973,7 +1055,7 @@ namespace Maglin.Enemy
                     }
                 }
             }
-            
+
             return monstersToDestroy;
         }
 
@@ -1028,7 +1110,7 @@ namespace Maglin.Enemy
         private void ApplyDamageToAllMonsters(Enemy executingMonster, int damage)
         {
             if (MonsterSpawnManager.Instance == null) return;
-            
+
             var allMonsters = MonsterSpawnManager.Instance.GetAllMonsters();
             foreach (var monster in allMonsters)
             {
@@ -1043,7 +1125,7 @@ namespace Maglin.Enemy
 
 
         /// <summary>
-        /// 공격 범위 확인
+        /// 공격 범위 확인 (AttackAndMove 패턴용)
         /// </summary>
         private bool CheckAttackRange(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
         {
@@ -1058,6 +1140,58 @@ namespace Maglin.Enemy
                 case AttackPatternType.Ranged:
                     // 원거리 공격: 범위 내에 있어야 함
                     return distance <= pattern.AttackAndMoveRange;
+
+                case AttackPatternType.Special:
+                    // 특수 공격: 항상 가능 (보스 기믹 등)
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// 차지 공격 범위 확인 (ChargeAttack 패턴용)
+        /// </summary>
+        private bool CheckChargeAttackRange(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
+        {
+            int distance = Mathf.Abs(monster.GridPosition.x - playerPosition.x);
+
+            switch (pattern.ChargeAttackType)
+            {
+                case AttackPatternType.Melee:
+                    // 근접 공격: 정확히 범위 내에 있어야 함
+                    return distance <= pattern.ChargeAttackRange;
+
+                case AttackPatternType.Ranged:
+                    // 원거리 공격: 범위 내에 있어야 함
+                    return distance <= pattern.ChargeAttackRange;
+
+                case AttackPatternType.Special:
+                    // 특수 공격: 항상 가능 (보스 기믹 등)
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// 차지 공격 후 이동 범위 확인 (ChargeAttackAndMove 패턴용)
+        /// </summary>
+        private bool CheckChargeAttackAndMoveRange(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
+        {
+            int distance = Mathf.Abs(monster.GridPosition.x - playerPosition.x);
+
+            switch (pattern.ChargeAttackAndMoveType)
+            {
+                case AttackPatternType.Melee:
+                    // 근접 공격: 정확히 범위 내에 있어야 함
+                    return distance <= pattern.ChargeAttackAndMoveRange;
+
+                case AttackPatternType.Ranged:
+                    // 원거리 공격: 범위 내에 있어야 함
+                    return distance <= pattern.ChargeAttackAndMoveRange;
 
                 case AttackPatternType.Special:
                     // 특수 공격: 항상 가능 (보스 기믹 등)
@@ -1112,7 +1246,7 @@ namespace Maglin.Enemy
         private Vector2Int CalculateMovePosition(Enemy monster, MonsterPatternSO pattern)
         {
             Vector2Int currentPos = monster.GridPosition;
-            
+
             // GridFieldManager에서 실제 그리드 크기 가져오기
             int gridWidth = 10;
             if (GridFieldManager.Instance != null)
@@ -1138,26 +1272,119 @@ namespace Maglin.Enemy
         }
 
         /// <summary>
+        /// 차지 공격 후 이동 위치 계산 (ChargeAttackAndMove 전용)
+        /// </summary>
+        private Vector2Int CalculateChargeAttackMovePosition(Enemy monster, MonsterPatternSO pattern)
+        {
+            Vector2Int currentPos = monster.GridPosition;
+
+            // GridFieldManager에서 실제 그리드 크기 가져오기
+            int gridWidth = 10;
+            if (GridFieldManager.Instance != null)
+            {
+                gridWidth = GridFieldManager.Instance.GridWidth;
+            }
+
+            switch (pattern.ChargeAttackMoveDirection)
+            {
+                case MoveDirectionType.BackwardN:
+                    // 뒤로 N칸 이동
+                    int newX = currentPos.x + pattern.ChargeAttackMoveDistance;
+                    newX = Mathf.Clamp(newX, 0, gridWidth - 1);
+                    return new Vector2Int(newX, 0);
+
+                case MoveDirectionType.BackToEnd:
+                    // 맨 뒤칸으로 이동
+                    return new Vector2Int(gridWidth - 1, 0);
+
+                default:
+                    return currentPos;
+            }
+        }
+
+        /// <summary>
         /// 패턴 이동 실행
         /// </summary>
         private bool ExecutePatternMove(Enemy monster, Vector2Int newPosition)
         {
+            return ExecutePatternMove(monster, newPosition, null);
+        }
+
+        /// <summary>
+        /// 패턴 이동 실행 (커스텀 속도 지원)
+        /// </summary>
+        private bool ExecutePatternMove(Enemy monster, Vector2Int newPosition, MonsterPatternSO pattern)
+        {
+            Vector2Int finalPosition = newPosition;
+
             // 새 위치가 유효한지 확인
             if (!IsValidMovePosition(newPosition, monster))
             {
-                if (debugMode)
-                    Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 이동 실패 - 유효하지 않은 위치: {newPosition}");
-                return false;
+                // 강제 이동 설정 확인
+                bool mustMove = false;
+
+                if (pattern != null)
+                {
+                    if (pattern.IsAttackAndMovePattern && pattern.AttackAndMoveMustMove)
+                    {
+                        mustMove = true;
+                    }
+                    else if (pattern.IsChargeAttackAndMovePattern && pattern.ChargeAttackAndMoveMustMove)
+                    {
+                        mustMove = true;
+                    }
+                }
+
+                if (mustMove)
+                {
+                    // 강제 이동: 가장 가까운 빈 자리 찾기
+                    finalPosition = FindNearestValidPosition(newPosition, monster);
+
+                    if (finalPosition == monster.GridPosition)
+                    {
+                        if (debugMode)
+                            Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 강제 이동 실패 - 빈 자리 없음: 목표 {newPosition}");
+                        return false;
+                    }
+
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 강제 이동: 목표 {newPosition} → 대체 위치 {finalPosition}");
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 이동 실패 - 유효하지 않은 위치: {newPosition}");
+                    return false;
+                }
             }
 
-            // MonsterBattleManager를 통해 이동 요청
+            // MonsterBattleManager를 통해 이동 요청 (패턴 속도 고려)
             if (MonsterBattleManager.Instance != null)
             {
-                MonsterBattleManager.Instance.RequestMonsterMovement(monster, newPosition);
-                
-                if (debugMode)
-                    Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 패턴 이동: {monster.GridPosition} → {newPosition}");
-                
+                // AttackAndMove 패턴이면 커스텀 속도 사용
+                if (pattern != null && pattern.IsAttackAndMovePattern)
+                {
+                    MonsterBattleManager.Instance.RequestMonsterMovement(monster, finalPosition, pattern.AttackAndMoveSpeed);
+
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 공격 후 이동 (커스텀 속도 {pattern.AttackAndMoveSpeed}): {monster.GridPosition} → {finalPosition}");
+                }
+                // ChargeAttackAndMove 패턴이면 해당 커스텀 속도 사용
+                else if (pattern != null && pattern.IsChargeAttackAndMovePattern)
+                {
+                    MonsterBattleManager.Instance.RequestMonsterMovement(monster, finalPosition, pattern.ChargeAttackAndMoveSpeed);
+
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 후 이동 (커스텀 속도 {pattern.ChargeAttackAndMoveSpeed}): {monster.GridPosition} → {finalPosition}");
+                }
+                else
+                {
+                    MonsterBattleManager.Instance.RequestMonsterMovement(monster, finalPosition);
+
+                    if (debugMode)
+                        Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 패턴 이동: {monster.GridPosition} → {finalPosition}");
+                }
+
                 return true;
             }
 
@@ -1192,12 +1419,62 @@ namespace Maglin.Enemy
             {
                 // 이동하는 몬스터가 현재 해당 위치에 있다면 이동 가능
                 bool isOccupied = MonsterSpawnManager.Instance.IsPositionOccupied(position);
-                
+
                 // 점유되어 있지 않거나, 점유된 위치가 자기 자신의 현재 위치라면 이동 가능
                 return !isOccupied || position == movingMonster.GridPosition;
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// 목표 위치에서 가장 가까운 빈 자리 찾기 (강제 이동용)
+        /// </summary>
+        private Vector2Int FindNearestValidPosition(Vector2Int targetPosition, Enemy movingMonster)
+        {
+            // GridFieldManager에서 실제 그리드 크기 가져오기
+            int gridWidth = 10;
+            if (GridFieldManager.Instance != null)
+            {
+                gridWidth = GridFieldManager.Instance.GridWidth;
+            }
+
+            // 목표 위치가 유효하면 그대로 반환
+            if (IsValidMovePosition(targetPosition, movingMonster))
+            {
+                return targetPosition;
+            }
+
+            // 목표 위치에서 가장 가까운 빈 자리를 찾기 (거리순으로 탐색)
+            for (int distance = 1; distance < gridWidth; distance++)
+            {
+                // 목표 위치의 왼쪽과 오른쪽 탐색
+                int leftX = targetPosition.x - distance;
+                int rightX = targetPosition.x + distance;
+
+                // 왼쪽 위치 확인 (더 왼쪽 우선)
+                if (leftX >= 0)
+                {
+                    Vector2Int leftPos = new Vector2Int(leftX, targetPosition.y);
+                    if (IsValidMovePosition(leftPos, movingMonster))
+                    {
+                        return leftPos;
+                    }
+                }
+
+                // 오른쪽 위치 확인
+                if (rightX < gridWidth)
+                {
+                    Vector2Int rightPos = new Vector2Int(rightX, targetPosition.y);
+                    if (IsValidMovePosition(rightPos, movingMonster))
+                    {
+                        return rightPos;
+                    }
+                }
+            }
+
+            // 빈 자리를 찾지 못한 경우 현재 위치 반환
+            return movingMonster.GridPosition;
         }
 
         /// <summary>
@@ -1226,7 +1503,7 @@ namespace Maglin.Enemy
                 // 패턴 스프라이트가 없으면 몬스터의 기본 공격 애니메이션 시간 사용
                 var attackSprites = monster.EnemyData.GetSpritesForState(Maglin.Enemy.MonsterAnimationState.Attack);
                 float attackFrameRate = monster.EnemyData.GetFrameRateForState(Maglin.Enemy.MonsterAnimationState.Attack);
-                
+
                 if (attackSprites != null && attackSprites.Length > 0)
                 {
                     animationDuration = attackSprites.Length / attackFrameRate;
@@ -1248,14 +1525,14 @@ namespace Maglin.Enemy
             {
                 int damage = pattern.AttackAndMoveDamage;
                 ApplyPatternDamage(monster, pattern.AttackAndMoveTarget, damage);
-                
+
                 if (debugMode)
                     Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 패턴 공격 hit 판정 완료 - 데미지: {damage}");
             }
 
-            // 4. 이동 실행
+            // 4. 이동 실행 (패턴 정보 전달)
             Vector2Int newPosition = CalculateMovePosition(monster, pattern);
-            bool moveExecuted = ExecutePatternMove(monster, newPosition);
+            bool moveExecuted = ExecutePatternMove(monster, newPosition, pattern);
 
             if (debugMode)
                 Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 공격 후 이동 완료 - 이동: {(moveExecuted ? "성공" : "실패")}");
@@ -1310,7 +1587,7 @@ namespace Maglin.Enemy
 
             // 차지 중에는 애니메이션 상태를 변경하지 않음 (계속 실행 중인 Idle 애니메이션 유지)
             // 색상 효과만 업데이트
-            
+
             // 차지 색상 이펙트 깜빡임 효과 (남은 턴이 적을수록 빠르게)
             float flickerIntensity = Mathf.Lerp(1f, 0.3f, (float)remainingTurns / pattern.ChargeDuration);
             ApplyChargeColorEffect(monster, pattern, true, flickerIntensity);
@@ -1328,7 +1605,7 @@ namespace Maglin.Enemy
 
             // 차지 완료 시에는 애니메이션 상태를 변경하지 않음
             // Attack 애니메이션으로 전환될 예정이므로 불필요한 Idle 설정 방지
-            
+
             // 차지 색상 이펙트 제거
             ApplyChargeColorEffect(monster, pattern, false);
 
@@ -1363,7 +1640,7 @@ namespace Maglin.Enemy
         /// <summary>
         /// 차지 공격 실행 코루틴
         /// </summary>
-        private System.Collections.IEnumerator ExecuteChargeAttackCoroutine(Enemy monster, MonsterPatternSO pattern)
+        private System.Collections.IEnumerator ExecuteChargeAttackCoroutine(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
         {
             if (debugMode)
                 Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 애니메이션 시작");
@@ -1395,7 +1672,7 @@ namespace Maglin.Enemy
                 // 패턴 스프라이트가 없으면 몬스터의 기본 공격 애니메이션 시간 사용
                 var attackSprites = monster.EnemyData.GetSpritesForState(Maglin.Enemy.MonsterAnimationState.Attack);
                 float attackFrameRate = monster.EnemyData.GetFrameRateForState(Maglin.Enemy.MonsterAnimationState.Attack);
-                
+
                 if (attackSprites != null && attackSprites.Length > 0)
                 {
                     animationDuration = attackSprites.Length / attackFrameRate;
@@ -1441,6 +1718,81 @@ namespace Maglin.Enemy
             // 4. Idle 상태로 복귀 (MonsterAnimationManager에서 Attack 애니메이션 완료 시 자동 처리됨)
 
             // 5. 패턴 완료 이벤트 발생
+            OnPatternCompleted?.Invoke(monster, pattern.PatternName);
+        }
+
+        /// <summary>
+        /// 차지 공격 후 이동 실행 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator ExecuteChargeAttackAndMoveCoroutine(Enemy monster, MonsterPatternSO pattern, Vector2Int playerPosition)
+        {
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 후 이동 애니메이션 시작");
+
+            // 1. 차지 완료 후 공격 애니메이션 시작 (패턴 스프라이트 사용)
+            if (MonsterAnimationManager.Instance != null)
+            {
+                // 패턴 스프라이트가 있으면 패턴과 함께 Attack 애니메이션 실행
+                if (pattern.PatternSprites != null && pattern.PatternSprites.Length > 0)
+                {
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack, pattern);
+                }
+                else
+                {
+                    // 패턴 스프라이트가 없으면 기본 Attack 애니메이션
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack);
+                }
+            }
+
+            // 2. 공격 애니메이션 지속 시간 계산
+            float animationDuration = 0f;
+            if (pattern.PatternSprites != null && pattern.PatternSprites.Length > 0)
+            {
+                // 패턴 전용 스프라이트가 있으면 패턴 프레임 레이트 사용
+                animationDuration = pattern.PatternSprites.Length / pattern.PatternFrameRate;
+            }
+            else
+            {
+                // 패턴 스프라이트가 없으면 몬스터의 기본 공격 애니메이션 시간 사용
+                var attackSprites = monster.EnemyData.GetSpritesForState(Maglin.Enemy.MonsterAnimationState.Attack);
+                float attackFrameRate = monster.EnemyData.GetFrameRateForState(Maglin.Enemy.MonsterAnimationState.Attack);
+
+                if (attackSprites != null && attackSprites.Length > 0)
+                {
+                    animationDuration = attackSprites.Length / attackFrameRate;
+                }
+                else
+                {
+                    animationDuration = 0.8f; // 차지 공격은 조금 더 긴 기본값
+                }
+            }
+
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 애니메이션 대기: {animationDuration}초");
+
+            yield return new WaitForSeconds(animationDuration);
+
+            // 3. 애니메이션 완료 후 데미지 적용
+            int damage = pattern.ChargeAttackAndMoveDamage;
+            ApplyPatternDamage(monster, pattern.ChargeAttackAndMoveTarget, damage);
+
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 데미지 적용 완료 - 데미지: {damage}");
+
+            // 4. 이동 실행 (ChargeAttackAndMove용 이동 설정 사용)
+            Vector2Int newPosition = CalculateChargeAttackMovePosition(monster, pattern);
+            bool moveExecuted = ExecutePatternMove(monster, newPosition, pattern);
+
+            if (debugMode)
+                Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName} 차지 공격 후 이동 완료 - 이동: {(moveExecuted ? "성공" : "실패")}");
+
+            // 5. 패턴 완료 후 Idle 상태로 복귀
+            if (MonsterAnimationManager.Instance != null)
+            {
+                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
+            }
+
+            // 6. 패턴 완료 이벤트 발생
             OnPatternCompleted?.Invoke(monster, pattern.PatternName);
         }
 

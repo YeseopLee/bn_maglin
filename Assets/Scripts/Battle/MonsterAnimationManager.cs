@@ -82,7 +82,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터의 애니메이션 상태 변경
         /// </summary>
-        public void SetMonsterAnimationState(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState newState, MonsterPatternSO pattern = null)
+        public void SetMonsterAnimationState(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState newState, MonsterPatternSO pattern = null, float? customDuration = null)
         {
             if (monster == null) return;
 
@@ -120,14 +120,14 @@ namespace Maglin.Battle
                 patternAnimations.Remove(monster);
             }
 
-            // 애니메이션 시작
-            StartMonsterAnimation(monster, newState);
+            // 애니메이션 시작 (커스텀 지속 시간 포함)
+            StartMonsterAnimation(monster, newState, customDuration);
 
             // 이벤트 발생
             OnMonsterAnimationChanged?.Invoke(monster, newState);
 
             if (debugMode)
-                Debug.Log($"[MonsterAnimationManager] {monster.EnemyName} 애니메이션 상태 변경: {newState}");
+                Debug.Log($"[MonsterAnimationManager] {monster.EnemyName} 애니메이션 상태 변경: {newState}{(customDuration.HasValue ? $" (커스텀 지속시간: {customDuration.Value:F2}초)" : "")}");
         }
 
         /// <summary>
@@ -158,13 +158,13 @@ namespace Maglin.Battle
         /// </summary>
         public void ReturnToIdle(Maglin.Enemy.Enemy monster)
         {
-            if (monster == null || !monster.IsAlive) 
+            if (monster == null || !monster.IsAlive)
             {
                 if (debugMode && monster != null && !monster.IsAlive)
                     Debug.LogWarning($"[MonsterAnimationManager] 죽은 몬스터 {monster.EnemyName}를 Idle 상태로 되돌리려 했지만 무시됩니다.");
                 return;
             }
-            
+
             // 이미 Idle 상태이면 중복 호출 방지
             var currentState = GetMonsterAnimationState(monster);
             if (currentState == Maglin.Enemy.MonsterAnimationState.Idle)
@@ -173,7 +173,7 @@ namespace Maglin.Battle
                     Debug.Log($"[MonsterAnimationManager] {monster.EnemyName}는 이미 Idle 상태입니다. 중복 호출 방지");
                 return;
             }
-            
+
             SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
         }
 
@@ -195,7 +195,7 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터 애니메이션 시작
         /// </summary>
-        private void StartMonsterAnimation(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state)
+        private void StartMonsterAnimation(Maglin.Enemy.Enemy monster, Maglin.Enemy.MonsterAnimationState state, float? customDuration = null)
         {
             if (monster == null || monster.EnemyData == null) return;
 
@@ -207,8 +207,21 @@ namespace Maglin.Battle
                 return;
             }
 
-            float frameRate = GetAnimationFrameRate(monster, state);
-            float frameTime = 1f / Mathf.Max(0.1f, frameRate); // 프레임 레이트를 프레임 간격으로 변환
+            float frameTime;
+            if (customDuration.HasValue)
+            {
+                // 커스텀 지속 시간이 있으면 해당 시간에 맞춰 프레임 타이밍 계산
+                frameTime = customDuration.Value / sprites.Length;
+                if (debugMode)
+                    Debug.Log($"[MonsterAnimationManager] {monster.EnemyName} {state} 커스텀 애니메이션: 총 {customDuration.Value:F2}초, 프레임당 {frameTime:F3}초");
+            }
+            else
+            {
+                // 기본 프레임 레이트 사용
+                float frameRate = GetAnimationFrameRate(monster, state);
+                frameTime = 1f / Mathf.Max(0.1f, frameRate);
+            }
+
             bool loop = ShouldLoop(monster, state);
 
             // 애니메이션 코루틴 시작
@@ -306,13 +319,13 @@ namespace Maglin.Battle
                         {
                             spriteRenderer.sprite = sprites[i];
                         }
-                        
+
                         // flipX는 첫 번째 프레임에서만 설정 (이후에는 변경되지 않음)
                         if (isFirstLoop && i == 0 && monster.EnemyData != null)
                         {
                             spriteRenderer.flipX = monster.EnemyData.FlipSpritesHorizontally;
                         }
-                        
+
                         currentFrame = i;
 
                         // 디버그 로그는 첫 번째 루프에서만 출력 (성능 최적화)
@@ -328,7 +341,7 @@ namespace Maglin.Battle
                         yield break;
                     }
                 }
-                
+
                 isFirstLoop = false;
             } while (loop);
 
@@ -364,7 +377,7 @@ namespace Maglin.Battle
                     // 사망 애니메이션 완료 후 마지막 프레임 유지 (더 이상 애니메이션 없음)
                     if (debugMode)
                         Debug.Log($"[MonsterAnimationManager] {monster.EnemyName} 사망 애니메이션 완료 - 마지막 프레임 유지");
-                    
+
                     // 애니메이션 시스템에서 몬스터 제거
                     RemoveMonster(monster);
                     return; // early return으로 더 이상 처리하지 않음

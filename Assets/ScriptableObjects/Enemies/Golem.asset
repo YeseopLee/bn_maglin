@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: Golem
   enemyType: 0
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
-  maxHealth: 3
+  maxHealth: 1
   enemyElement: 0
   idleSprites:
   - {fileID: 2006732672, guid: 8840c3562a36abc46920d487e6708fe1, type: 3}
@@ -70,10 +70,11 @@ MonoBehaviour:
   deathFrameRate: 8
   flipSpritesHorizontally: 1
   attackDamage: 2
-  attackPattern: 1
-  attackRange: 2
+  attackPattern: 0
+  attackRange: 1
   movementPattern: 0
-  movementSpeed: 1
+  moveSpeed: 1
+  movementRestTurns: 0
   sizeInTiles: 1
   canSummonObjects: 0
   hasSpecialMechanics: 0

@@ -448,6 +448,9 @@ namespace Maglin.Battle
                         case PlayerManager.PlayerAnimationState.Death:
                             spriteRenderer.color = new Color(0.7f, 0.7f, 0.7f, 1f); // 약간 어둡게
                             break;
+                        case PlayerManager.PlayerAnimationState.Attacking:
+                            spriteRenderer.color = new Color(0.8f, 1f, 1f, 1f); // 약간 청록색 틴트 (공격 중)
+                            break;
                         default:
                             spriteRenderer.color = Color.white; // 원본 색상 유지
                             break;
@@ -1405,22 +1408,22 @@ namespace Maglin.Battle
             while (elapsed < hitShakeDuration)
             {
                 elapsed += Time.deltaTime;
-                
+
                 // 감쇠되는 떨림 강도 계산
                 float intensity = hitShakeIntensity * (1f - elapsed / hitShakeDuration);
-                
+
                 // 랜덤한 방향으로 떨림
                 float offsetX = UnityEngine.Random.Range(-intensity, intensity);
                 float offsetY = UnityEngine.Random.Range(-intensity, intensity);
-                
+
                 Vector3 shakePos = new Vector3(
                     originalPos.x + offsetX,
                     originalPos.y + offsetY,
                     originalPos.z
                 );
-                
+
                 camera.transform.position = shakePos;
-                
+
                 yield return null;
             }
 
@@ -1497,13 +1500,13 @@ namespace Maglin.Battle
                 {
                     Vector2 pos = new Vector2(x, y);
                     float distance = Vector2.Distance(pos, center);
-                    
+
                     // 중앙에서 가장자리로 갈수록 알파값 증가
                     float normalizedDistance = Mathf.Clamp01(distance / maxDistance);
-                    
+
                     // 부드러운 그라데이션을 위한 곡선 적용
                     float alpha = Mathf.Pow(normalizedDistance, 1.5f);
-                    
+
                     pixels[y * width + x] = new Color(1f, 0f, 0f, alpha);
                 }
             }
@@ -1528,11 +1531,11 @@ namespace Maglin.Battle
             {
                 elapsed += Time.deltaTime;
                 float progress = elapsed / halfFadeTime;
-                
+
                 Color vignetteColor = hitVignetteRenderer.color;
                 vignetteColor.a = hitVignetteMaxAlpha * progress;
                 hitVignetteRenderer.color = vignetteColor;
-                
+
                 yield return null;
             }
 
@@ -1542,11 +1545,11 @@ namespace Maglin.Battle
             {
                 elapsed += Time.deltaTime;
                 float progress = elapsed / halfFadeTime;
-                
+
                 Color vignetteColor = hitVignetteRenderer.color;
                 vignetteColor.a = hitVignetteMaxAlpha * (1f - progress);
                 hitVignetteRenderer.color = vignetteColor;
-                
+
                 yield return null;
             }
 
@@ -1575,7 +1578,7 @@ namespace Maglin.Battle
             if (mainCamera != null)
             {
                 mainCamera.transform.position = originalCameraPosition;
-                
+
                 if (debugMode)
                     Debug.Log("[PlayerBattleManager] 카메라 위치 복구 완료");
             }

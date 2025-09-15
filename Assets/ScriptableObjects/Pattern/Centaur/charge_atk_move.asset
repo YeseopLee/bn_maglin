@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2017d8aa583b4876861a47598542d44, type: 3}
+  m_Name: charge_atk_move
+  m_EditorClassIdentifier: 
+  patternName: attack_back
+  patternType: 5
+  priority: 2
+  description: 
+  triggerInterval: 1
+  turnOffset: 1
+  blockNormalAttack: 1
+  chargeDuration: 2
+  chargeDamage: 10
+  chargeAttackType: 0
+  chargeAttackRange: 1
+  chargeTarget: 0
+  chargeEffectColor: {r: 1, g: 0, b: 0, a: 1}
+  spawnedMonsterData: {fileID: 0}
+  spawnLocation: 0
+  specificSpawnPosition: {x: 0, y: 0}
+  skipSpawnAnimation: 0
+  targetDestroyType: {fileID: 0}
+  destructionDamage: 5
+  destructionTarget: 2
+  attackAndMoveDamage: 10
+  attackAndMoveType: 0
+  attackAndMoveRange: 1
+  attackAndMoveTarget: 0
+  moveDirection: 1
+  moveDistance: 1
+  attackAndMoveSpeed: 5
+  attackAndMoveMustMove: 0
+  chargeAttackAndMoveDamage: 15
+  chargeAttackAndMoveType: 0
+  chargeAttackAndMoveRange: 1
+  chargeAttackAndMoveTarget: 0
+  chargeAttackMoveDirection: 1
+  chargeAttackMoveDistance: 2
+  chargeAttackAndMoveSpeed: 5
+  chargeAttackAndMoveMustMove: 1
+  patternSprites:
+  - {fileID: 466756558, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -2029870868, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -114265733, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -520407671, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -927569067, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -881474950, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 766381605, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 338648484, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 103086816, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 1015665019, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 116819185, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 1640851401, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -838633186, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -19122354, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -42888415, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: -485630017, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  - {fileID: 358721004, guid: fda3f9404234746daa7b3f69c314beba, type: 3}
+  patternFrameRate: 17

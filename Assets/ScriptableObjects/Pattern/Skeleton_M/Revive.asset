@@ -10,20 +10,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a2017d8aa583b4876861a47598542d44, type: 3}
-  m_Name: Summon
+  m_Name: Revive
   m_EditorClassIdentifier: 
-  patternName: "\uBAAC\uC2A4\uD130\uC18C\uD658"
-  patternType: 1
+  patternName: On_Death_Spawn_Skeleton_R
+  patternType: 0
   priority: 1
   description: 
-  triggerInterval: 2
+  triggerInterval: 1
   turnOffset: 1
   blockNormalAttack: 1
   chargeDuration: 2
   chargeDamage: 10
+  chargeAttackType: 0
+  chargeAttackRange: 1
   chargeTarget: 0
   chargeEffectColor: {r: 1, g: 0, b: 0, a: 1}
-  spawnedMonsterData: {fileID: 11400000, guid: 0f034612c271e4d42811db7930c75caf, type: 2}
+  spawnedMonsterData: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
   spawnLocation: 2
   specificSpawnPosition: {x: 0, y: 0}
   skipSpawnAnimation: 0
@@ -36,11 +38,15 @@ MonoBehaviour:
   attackAndMoveTarget: 0
   moveDirection: 0
   moveDistance: 1
-  patternSprites:
-  - {fileID: 1692213498, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: -1061353778, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: 6500360, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: 236244896, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: -1714560327, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  - {fileID: 1012130553, guid: 2d63bfe778670f04bafcd91cfea97974, type: 3}
-  patternFrameRate: 12
+  attackAndMoveSpeed: 2
+  attackAndMoveMustMove: 0
+  chargeAttackAndMoveDamage: 15
+  chargeAttackAndMoveType: 0
+  chargeAttackAndMoveRange: 1
+  chargeAttackAndMoveTarget: 0
+  chargeAttackMoveDirection: 0
+  chargeAttackMoveDistance: 2
+  chargeAttackAndMoveSpeed: 1.5
+  chargeAttackAndMoveMustMove: 0
+  patternSprites: []
+  patternFrameRate: 8

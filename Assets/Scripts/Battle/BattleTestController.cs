@@ -264,6 +264,13 @@ namespace Maglin.Battle
             {
                 Debug.LogWarning("[BattleTestController] RewardManager가 없어서 이벤트 구독 실패");
             }
+
+            // VFXEffectManager 이벤트 구독 (카드 공격 애니메이션 연동)
+            VFXEffectManager.OnVFXHit -= OnVFXHit;
+            VFXEffectManager.OnVFXHit += OnVFXHit;
+
+            VFXEffectManager.OnCardAttackSequenceCompleted -= OnCardAttackSequenceCompleted;
+            VFXEffectManager.OnCardAttackSequenceCompleted += OnCardAttackSequenceCompleted;
         }
 
         /// <summary>
@@ -293,6 +300,10 @@ namespace Maglin.Battle
                 RewardManager.Instance.OnGoldReceived -= OnGoldReceived;
                 RewardManager.Instance.OnRewardsCompleted -= OnRewardsCompleted;
             }
+
+            // VFXEffectManager 이벤트 구독 해제
+            VFXEffectManager.OnVFXHit -= OnVFXHit;
+            VFXEffectManager.OnCardAttackSequenceCompleted -= OnCardAttackSequenceCompleted;
         }
         #endregion
 
@@ -1127,6 +1138,18 @@ namespace Maglin.Battle
                 }
             }
 
+            // 모든 몬스터 턴 종료 처리 (이동 휴식 카운터 감소 등)
+            foreach (var monster in aliveMonsters)
+            {
+                if (monster != null && monster.IsAlive)
+                {
+                    monster.OnTurnEnd();
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("[BattleTestController] 모든 몬스터 턴 종료 처리 완료");
+
             // 승부 판정
             if (CheckBattleEnd())
             {
@@ -1476,12 +1499,19 @@ namespace Maglin.Battle
             // 카드 상호작용 차단
             SetCardInteractionEnabled(false);
 
-            // 공격/힐 카드인 경우 플레이어 공격 애니메이션 실행
-            if ((cardData.BaseDamage > 0 || cardData.BaseHeal > 0) && PlayerManager.Instance != null)
+            // 카드 사용 중 Attacking 애니메이션 시작 (VFX가 있을 때만)
+            if (cardData.Effect != null && PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.StartCardAttackingAnimation();
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 카드 사용 중 Attacking 애니메이션 시작: {cardData.CardName}");
+            }
+            // 공격/힐 카드이지만 VFX가 없는 경우 기존 공격 애니메이션 실행
+            else if ((cardData.BaseDamage > 0 || cardData.BaseHeal > 0) && PlayerManager.Instance != null)
             {
                 PlayerManager.Instance.PlayAttackAnimation(1, 0.5f);
                 if (debugMode)
-                    Debug.Log($"[BattleTestController] 플레이어 공격 애니메이션 실행");
+                    Debug.Log($"[BattleTestController] 플레이어 공격 애니메이션 실행 (VFX 없음)");
             }
 
             // VFX 이펙트 실행
@@ -1782,6 +1812,14 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[BattleTestController] 카드 {card.CardName} 모든 공격 시퀀스 완료 - 카드 상호작용 재활성화");
 
+            // 카드 사용 중 Attacking 애니메이션 종료
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.EndCardAttackingAnimation();
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 카드 사용 완료 - Attacking 애니메이션 종료");
+            }
+
             // 카드 상호작용 재활성화
             SetCardInteractionEnabled(true);
 
@@ -1951,7 +1989,7 @@ namespace Maglin.Battle
 
                 // 패배 시에도 플레이어 오브젝트 유지 (사망 상태 표시용)
                 // PlayerBattleManager.Instance.CleanupOnSceneTransition(); // 주석 처리
-                
+
                 if (debugMode)
                     Debug.Log("[BattleTestController] 플레이어 오브젝트 유지 (사망 상태)");
             }
@@ -1970,7 +2008,7 @@ namespace Maglin.Battle
             {
                 bool hasActiveDeathAnimations = MonsterDeathAnimationManager.Instance != null &&
                                                MonsterDeathAnimationManager.Instance.HasActiveDeathAnimations();
-                
+
                 bool hasActiveDeathSpawnPatterns = MonsterPatternExecutor.Instance != null &&
                                                  MonsterPatternExecutor.Instance.HasActiveDeathSpawnPatterns();
 
@@ -2037,7 +2075,7 @@ namespace Maglin.Battle
                 else
                 {
                     Debug.LogError("[BattleTestController] FloorManager.Instance가 null입니다! 테스트 모드로 폴백");
-                    
+
                     if (RewardManager.Instance != null)
                     {
                         RewardManager.Instance.ShowBattleRewards(currentFloor, currentFloorType);

@@ -12,7 +12,8 @@ namespace Maglin.Enemy
         Periodic_SpawnMonster,          // N턴마다 몬스터 바로 앞에 새로운 몬스터 소환
         Periodic_ChargeAttack,          // N턴마다 M턴동안 차지 이후 공격 (차징 중 모든 행동 중단)
         Periodic_DestroyAndAttack,      // N턴마다 특정 몬스터 파괴 후 특정 대상에게 공격
-        Periodic_AttackAndMove          // N턴마다 공격 후 뒤로 이동
+        Periodic_AttackAndMove,         // N턴마다 공격 후 뒤로 이동
+        Periodic_ChargeAttackAndMove    // N턴마다 M턴동안 차지 이후 공격 후 뒤로 이동
     }
 
     /// <summary>
@@ -65,6 +66,8 @@ namespace Maglin.Enemy
         [Header("차지 공격 설정 (ChargeAttack 전용)")]
         [SerializeField] private int chargeDuration = 2;        // M턴 동안 차지
         [SerializeField] private int chargeDamage = 10;         // 차지 공격 데미지
+        [SerializeField] private AttackPatternType chargeAttackType = AttackPatternType.Melee;  // 차지 공격 타입 (근접/원거리)
+        [SerializeField] private int chargeAttackRange = 1;     // 차지 공격 범위
         [SerializeField] private AttackTargetType chargeTarget = AttackTargetType.Player;
         [SerializeField] private Color chargeEffectColor = Color.red; // 차지 중 색상 효과
 
@@ -86,6 +89,18 @@ namespace Maglin.Enemy
         [SerializeField] private AttackTargetType attackAndMoveTarget = AttackTargetType.Player; // 공격 대상
         [SerializeField] private MoveDirectionType moveDirection = MoveDirectionType.BackwardN;  // 이동 방향
         [SerializeField] private int moveDistance = 1;                  // 이동 거리 (BackwardN 타입일 때)
+        [SerializeField] private float attackAndMoveSpeed = 2.0f;       // 공격 후 이동 속도 배율 (일반 이동과 별개)
+        [SerializeField] private bool attackAndMoveMustMove = false;    // 강제 이동 여부 (목표 위치 점유 시 가장 가까운 빈 자리로 이동)
+
+        [Header("차지 공격 후 이동 설정 (ChargeAttackAndMove 전용)")]
+        [SerializeField] private int chargeAttackAndMoveDamage = 15;     // 차지 공격 데미지
+        [SerializeField] private AttackPatternType chargeAttackAndMoveType = AttackPatternType.Melee;  // 차지 공격 후 이동 공격 타입 (근접/원거리)
+        [SerializeField] private int chargeAttackAndMoveRange = 1;       // 차지 공격 후 이동 공격 범위
+        [SerializeField] private AttackTargetType chargeAttackAndMoveTarget = AttackTargetType.Player; // 차지 공격 대상
+        [SerializeField] private MoveDirectionType chargeAttackMoveDirection = MoveDirectionType.BackwardN; // 차지 공격 후 이동 방향
+        [SerializeField] private int chargeAttackMoveDistance = 2;       // 차지 공격 후 이동 거리
+        [SerializeField] private float chargeAttackAndMoveSpeed = 1.5f;  // 차지 공격 후 이동 속도 배율
+        [SerializeField] private bool chargeAttackAndMoveMustMove = false; // 강제 이동 여부 (목표 위치 점유 시 가장 가까운 빈 자리로 이동)
 
         [Header("패턴 전용 애니메이션")]
         [SerializeField] private Sprite[] patternSprites;       // 패턴 실행 시 사용할 스프라이트
@@ -101,6 +116,8 @@ namespace Maglin.Enemy
         public bool BlockNormalAttack => blockNormalAttack;
         public int ChargeDuration => chargeDuration;
         public int ChargeDamage => chargeDamage;
+        public AttackPatternType ChargeAttackType => chargeAttackType;
+        public int ChargeAttackRange => chargeAttackRange;
         public AttackTargetType ChargeTarget => chargeTarget;
         public Color ChargeEffectColor => chargeEffectColor;
         public EnemySO SpawnedMonsterData => spawnedMonsterData;
@@ -116,9 +133,19 @@ namespace Maglin.Enemy
         public AttackTargetType AttackAndMoveTarget => attackAndMoveTarget;
         public MoveDirectionType MoveDirection => moveDirection;
         public int MoveDistance => moveDistance;
+        public float AttackAndMoveSpeed => attackAndMoveSpeed;
+        public bool AttackAndMoveMustMove => attackAndMoveMustMove;
+        public int ChargeAttackAndMoveDamage => chargeAttackAndMoveDamage;
+        public AttackPatternType ChargeAttackAndMoveType => chargeAttackAndMoveType;
+        public int ChargeAttackAndMoveRange => chargeAttackAndMoveRange;
+        public AttackTargetType ChargeAttackAndMoveTarget => chargeAttackAndMoveTarget;
+        public MoveDirectionType ChargeAttackMoveDirection => chargeAttackMoveDirection;
+        public int ChargeAttackMoveDistance => chargeAttackMoveDistance;
+        public float ChargeAttackAndMoveSpeed => chargeAttackAndMoveSpeed;
+        public bool ChargeAttackAndMoveMustMove => chargeAttackAndMoveMustMove;
         public Sprite[] PatternSprites => patternSprites;
         public float PatternFrameRate => patternFrameRate;
-        
+
         /// <summary>
         /// 이전 버전 호환성을 위한 AnimationSpeed (Deprecated)
         /// </summary>
@@ -154,7 +181,8 @@ namespace Maglin.Enemy
         /// <summary>
         /// 차지 패턴인지 확인
         /// </summary>
-        public bool IsChargePattern => patternType == MonsterPatternType.Periodic_ChargeAttack;
+        public bool IsChargePattern => patternType == MonsterPatternType.Periodic_ChargeAttack ||
+                                       patternType == MonsterPatternType.Periodic_ChargeAttackAndMove;
 
         /// <summary>
         /// 소환 패턴인지 확인
@@ -172,5 +200,10 @@ namespace Maglin.Enemy
         /// 공격 후 이동 패턴인지 확인
         /// </summary>
         public bool IsAttackAndMovePattern => patternType == MonsterPatternType.Periodic_AttackAndMove;
+
+        /// <summary>
+        /// 차지 공격 후 이동 패턴인지 확인
+        /// </summary>
+        public bool IsChargeAttackAndMovePattern => patternType == MonsterPatternType.Periodic_ChargeAttackAndMove;
     }
 }

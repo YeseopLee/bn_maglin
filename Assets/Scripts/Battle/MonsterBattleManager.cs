@@ -98,19 +98,48 @@ namespace Maglin.Battle
         /// </summary>
         public void RequestMonsterMovement(Maglin.Enemy.Enemy monster, Vector2Int newPosition)
         {
+            RequestMonsterMovement(monster, newPosition, null);
+        }
+
+        /// <summary>
+        /// 외부에서 몬스터 이동 요청 (패턴별 커스텀 속도 지원)
+        /// </summary>
+        public void RequestMonsterMovement(Maglin.Enemy.Enemy monster, Vector2Int newPosition, float? customMoveSpeed)
+        {
             if (monster == null) return;
+
+            // 이전 위치 저장
+            Vector2Int previousPosition = monster.GridPosition;
+
+            // 이동 시간 계산 (커스텀 속도 고려)
+            int moveDistance = Mathf.Abs(newPosition.x - previousPosition.x) + Mathf.Abs(newPosition.y - previousPosition.y);
+            float totalMoveTime = customMoveSpeed.HasValue ?
+                CalculateMoveTime(monster, moveDistance, customMoveSpeed.Value) :
+                CalculateMoveTime(monster, moveDistance);
+
+            // Move 애니메이션 시작 (계산된 이동 시간에 맞춰)
+            if (MonsterAnimationManager.Instance != null)
+            {
+                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Move, null, totalMoveTime);
+            }
 
             // 몬스터의 그리드 위치 업데이트
             SetMonsterGridPosition(monster, newPosition);
 
-            // 부드러운 이동으로 월드 위치 업데이트
-            UpdateMonsterPosition(monster);
+            // 부드러운 이동으로 월드 위치 업데이트 (이전 위치 정보 및 계산된 시간 전달)
+            UpdateMonsterPosition(monster, previousPosition, totalMoveTime);
 
             // 이번 턴에 AI 이동을 건너뛰도록 표시
             MarkMonsterMovedThisTurn(monster);
 
+            // 외부 요청 이동 완료 후 휴식 시작
+            monster.StartMovementRest();
+
             if (debugMode)
-                Debug.Log($"[MonsterBattleManager] 외부 이동 요청 처리: {monster.EnemyName} -> {newPosition}");
+            {
+                string speedInfo = customMoveSpeed.HasValue ? $" (커스텀 속도: {customMoveSpeed.Value})" : "";
+                Debug.Log($"[MonsterBattleManager] 외부 이동 요청 처리: {monster.EnemyName} {previousPosition} -> {newPosition} (시간: {totalMoveTime:F2}초{speedInfo})");
+            }
         }
 
         /// <summary>
@@ -171,27 +200,38 @@ namespace Maglin.Battle
 
             if (newPosition != monster.GridPosition)
             {
-                // Move 애니메이션 시작
+                // 이전 위치 저장
+                Vector2Int previousPosition = monster.GridPosition;
+
+                // 이동 거리 계산하여 적절한 시간으로 이동
+                int moveDistance = Mathf.Abs(newPosition.x - previousPosition.x) + Mathf.Abs(newPosition.y - previousPosition.y);
+                float totalMoveTime = CalculateMoveTime(monster, moveDistance);
+
+                // Move 애니메이션 시작 (이동 시간에 맞춰)
                 if (MonsterAnimationManager.Instance != null)
                 {
-                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Move);
+                    MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Move, null, totalMoveTime);
                 }
 
                 // 위치 이동
                 SetMonsterGridPosition(monster, newPosition);
-                UpdateMonsterPosition(monster);
+
+                UpdateMonsterPosition(monster, previousPosition);
 
                 // 이동 완료 이벤트 발생
                 OnMonsterMoved?.Invoke(monster, newPosition);
 
+                // 이동 완료 후 휴식 시작
+                monster.StartMovementRest();
+
                 if (debugMode)
                 {
                     var movementPattern = monster.EnemyData?.MovementPattern.ToString() ?? "Unknown";
-                    Debug.Log($"[MonsterBattleManager] {monster.EnemyName} AI 위치 이동: {monster.GridPosition} -> {newPosition} (패턴: {movementPattern})");
+                    Debug.Log($"[MonsterBattleManager] {monster.EnemyName} AI 위치 이동: {previousPosition} -> {newPosition} (패턴: {movementPattern}, 거리: {moveDistance}칸, 시간: {totalMoveTime:F2}초)");
                 }
 
-                // 부드러운 이동 완료까지 대기
-                yield return new WaitForSeconds(0.4f);
+                // 계산된 이동 시간만큼 대기
+                yield return new WaitForSeconds(totalMoveTime);
 
                 // 이동 완료 후 Idle 애니메이션으로 복귀
                 if (MonsterAnimationManager.Instance != null)
@@ -234,7 +274,7 @@ namespace Maglin.Battle
                 {
                     // 실행된 패턴 정보 사용 (PatternExecutionResult에서 가져옴)
                     var executedPattern = patternResult.executedPattern;
-                    
+
                     // 차지 패턴의 경우 패턴 스프라이트를 사용하지 않음 (StartChargeEffects에서 처리)
                     if (executedPattern != null && executedPattern.IsChargePattern)
                     {
@@ -263,7 +303,7 @@ namespace Maglin.Battle
                 }
 
                 // 패턴 완료 후 Idle로 복귀 (차지 패턴은 제외 - StartChargeEffects에서 처리)
-                if (MonsterAnimationManager.Instance != null && 
+                if (MonsterAnimationManager.Instance != null &&
                     (patternResult.executedPattern == null || !patternResult.executedPattern.IsChargePattern))
                 {
                     MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
@@ -292,7 +332,7 @@ namespace Maglin.Battle
                 if (MonsterAnimationManager.Instance != null)
                 {
                     MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack);
-                    
+
                     // 애니메이션 완료까지 대기 (실제 애니메이션 이벤트 기반)
                     yield return StartCoroutine(WaitForAttackAnimationComplete(monster));
                 }
@@ -323,7 +363,7 @@ namespace Maglin.Battle
                 if (MonsterAnimationManager.Instance != null)
                 {
                     MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack);
-                    
+
                     // 애니메이션 완료까지 대기 (실제 애니메이션 이벤트 기반)
                     yield return StartCoroutine(WaitForAttackAnimationComplete(monster));
                 }
@@ -436,9 +476,17 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 몬스터 위치 업데이트
+        /// 몬스터 위치 업데이트 (이동 거리와 속도 고려)
         /// </summary>
-        private void UpdateMonsterPosition(Maglin.Enemy.Enemy monster)
+        private void UpdateMonsterPosition(Maglin.Enemy.Enemy monster, Vector2Int previousPosition = default)
+        {
+            UpdateMonsterPosition(monster, previousPosition, null);
+        }
+
+        /// <summary>
+        /// 몬스터 위치 업데이트 (이동 거리와 속도 고려, 커스텀 시간 지원)
+        /// </summary>
+        private void UpdateMonsterPosition(Maglin.Enemy.Enemy monster, Vector2Int previousPosition, float? customMoveTime)
         {
             if (monster == null)
             {
@@ -452,13 +500,27 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[MonsterBattleManager] 몬스터 위치 업데이트: {monster.name} -> 그리드 위치 ({gridPos.x}, {gridPos.y})");
 
+            // 이동 거리 계산
+            Vector2Int startPos = (previousPosition == default) ? gridPos : previousPosition;
+            int moveDistance = Mathf.Abs(gridPos.x - startPos.x) + Mathf.Abs(gridPos.y - startPos.y);
+
+            // 이동 시간 계산 (커스텀 시간이 있으면 사용, 없으면 계산)
+            float totalMoveTime = customMoveTime ?? CalculateMoveTime(monster, moveDistance);
+
+            if (debugMode)
+            {
+                float monsterMoveSpeed = monster.EnemyData?.MoveSpeed ?? 1.0f;
+                string timeInfo = customMoveTime.HasValue ? " (커스텀 시간 사용)" : "";
+                Debug.Log($"[MonsterBattleManager] 이동 계산: {monster.name} - 거리: {moveDistance}칸, 속도: {monsterMoveSpeed}, 시간: {totalMoveTime:F2}초{timeInfo}");
+            }
+
             // GridFieldManager를 통해 위치 업데이트
             if (GridFieldManager.Instance != null && GridFieldManager.Instance.IsInitialized)
             {
                 Vector3 targetWorldPos = GridFieldManager.Instance.GridToWorldPosition(gridPos);
 
-                // 부드러운 이동으로 변경
-                StartCoroutine(SmoothMoveToPosition(monster.gameObject, targetWorldPos, 0.5f));
+                // 부드러운 이동으로 변경 (계산된 시간 사용)
+                StartCoroutine(SmoothMoveToPosition(monster.gameObject, targetWorldPos, totalMoveTime));
 
                 if (debugMode)
                     Debug.Log($"[MonsterBattleManager] 몬스터 월드 위치 설정: {monster.name} -> {targetWorldPos}");
@@ -467,7 +529,7 @@ namespace Maglin.Battle
             {
                 // GridFieldManager가 없는 경우 기본 계산
                 Vector3 targetPos = new Vector3(gridPos.x + 0.5f, gridPos.y + 0.5f, 0f);
-                StartCoroutine(SmoothMoveToPosition(monster.gameObject, targetPos, 0.5f));
+                StartCoroutine(SmoothMoveToPosition(monster.gameObject, targetPos, totalMoveTime));
 
                 if (debugMode)
                     Debug.LogWarning($"[MonsterBattleManager] GridFieldManager가 없어 기본 위치 계산 사용: {monster.name} -> {targetPos}");
@@ -527,13 +589,35 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 부드러운 몬스터 이동
+        /// 부드러운 몬스터 이동 (다중 칸 이동 지원)
         /// </summary>
         private IEnumerator SmoothMoveToPosition(GameObject monster, Vector3 targetPosition, float duration)
         {
             if (monster == null) yield break;
 
             Vector3 startPosition = monster.transform.position;
+
+            // 이동 거리 계산
+            float distance = Vector3.Distance(startPosition, targetPosition);
+            int tiles = Mathf.RoundToInt(distance);
+
+            if (tiles <= 1)
+            {
+                // 1칸 이동은 기존 방식 사용
+                yield return StartCoroutine(SimpleSmoothMove(monster, startPosition, targetPosition, duration));
+            }
+            else
+            {
+                // 다중 칸 이동은 각 칸마다 균등한 시간으로 이동
+                yield return StartCoroutine(MultiTileSmoothMove(monster, startPosition, targetPosition, duration, tiles));
+            }
+        }
+
+        /// <summary>
+        /// 1칸 이동용 부드러운 이동
+        /// </summary>
+        private IEnumerator SimpleSmoothMove(GameObject monster, Vector3 startPosition, Vector3 targetPosition, float duration)
+        {
             float elapsedTime = 0f;
 
             while (elapsedTime < duration)
@@ -543,10 +627,10 @@ namespace Maglin.Battle
                 elapsedTime += Time.deltaTime;
                 float progress = elapsedTime / duration;
 
-                // Ease Out 효과 적용
-                progress = 1f - (1f - progress) * (1f - progress);
+                // 자연스러운 이동 곡선 적용 (다중 칸 이동과 일관성 유지)
+                float smoothedProgress = EaseInOutQuad(progress);
 
-                monster.transform.position = Vector3.Lerp(startPosition, targetPosition, progress);
+                monster.transform.position = Vector3.Lerp(startPosition, targetPosition, smoothedProgress);
 
                 yield return null;
             }
@@ -556,6 +640,79 @@ namespace Maglin.Battle
             {
                 monster.transform.position = targetPosition;
             }
+        }
+
+        /// <summary>
+        /// 다중 칸 이동용 부드러운 이동 (자연스러운 연속 이동)
+        /// </summary>
+        private IEnumerator MultiTileSmoothMove(GameObject monster, Vector3 startPosition, Vector3 targetPosition, float totalDuration, int tiles)
+        {
+            float elapsedTime = 0f;
+
+            while (elapsedTime < totalDuration)
+            {
+                if (monster == null) yield break;
+
+                elapsedTime += Time.deltaTime;
+                float progress = elapsedTime / totalDuration;
+
+                // 자연스러운 이동 곡선 적용 (시작은 빠르게, 끝에 약간 감속)
+                float smoothedProgress = EaseInOutQuad(progress);
+
+                // 직선적으로 부드럽게 이동
+                monster.transform.position = Vector3.Lerp(startPosition, targetPosition, smoothedProgress);
+
+                yield return null;
+            }
+
+            // 최종 위치 보장
+            if (monster != null)
+            {
+                monster.transform.position = targetPosition;
+            }
+        }
+
+        /// <summary>
+        /// 자연스러운 이동을 위한 Ease In-Out Quad 함수
+        /// </summary>
+        private float EaseInOutQuad(float t)
+        {
+            return t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) / 2f;
+        }
+
+        /// <summary>
+        /// 이동 거리와 몬스터 속도에 따른 이동 시간 계산
+        /// </summary>
+        private float CalculateMoveTime(Maglin.Enemy.Enemy monster, int moveDistance)
+        {
+            float baseTimePerTile = 0.4f;
+            float monsterMoveSpeed = monster.EnemyData?.MoveSpeed ?? 1.0f;
+
+            // 다중 칸 이동 시 시간 보정 (너무 오래 걸리지 않도록)
+            float distanceMultiplier = moveDistance > 1 ?
+                Mathf.Lerp(1.0f, 0.8f, (moveDistance - 1) / 3.0f) : 1.0f;
+
+            float totalMoveTime = (moveDistance * baseTimePerTile * distanceMultiplier) / monsterMoveSpeed;
+
+            // 최소/최대 이동 시간 보장
+            return Mathf.Clamp(totalMoveTime, 0.2f, 2.0f);
+        }
+
+        /// <summary>
+        /// 이동 거리와 커스텀 속도에 따른 이동 시간 계산 (패턴 전용)
+        /// </summary>
+        private float CalculateMoveTime(Maglin.Enemy.Enemy monster, int moveDistance, float customMoveSpeed)
+        {
+            float baseTimePerTile = 0.4f;
+
+            // 다중 칸 이동 시 시간 보정 (너무 오래 걸리지 않도록)
+            float distanceMultiplier = moveDistance > 1 ?
+                Mathf.Lerp(1.0f, 0.8f, (moveDistance - 1) / 3.0f) : 1.0f;
+
+            float totalMoveTime = (moveDistance * baseTimePerTile * distanceMultiplier) / customMoveSpeed;
+
+            // 최소/최대 이동 시간 보장
+            return Mathf.Clamp(totalMoveTime, 0.2f, 2.0f);
         }
 
         /// <summary>
@@ -607,7 +764,7 @@ namespace Maglin.Battle
             // 새로운 프레임 레이트 시스템 사용
             float frameRate = monster.EnemyData.GetFrameRateForState(Maglin.Enemy.MonsterAnimationState.Attack);
             float frameTime = 1f / Mathf.Max(0.1f, frameRate);
-            
+
             // 전체 애니메이션 지속 시간 = 프레임 수 × 프레임 간격
             return monster.EnemyData.AttackSprites.Length * frameTime;
         }
@@ -656,7 +813,7 @@ namespace Maglin.Battle
             if (monster == null || MonsterAnimationManager.Instance == null) return;
 
             MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Hit);
-            
+
             // Hit 애니메이션 후 Idle로 복귀 (코루틴으로 처리)
             StartCoroutine(ReturnToIdleAfterHit(monster));
         }
@@ -708,9 +865,9 @@ namespace Maglin.Battle
             }
 
             bool animationCompleted = false;
-            
+
             // 애니메이션 완료 이벤트 리스너 등록
-            System.Action<Maglin.Enemy.Enemy, Maglin.Enemy.MonsterAnimationState> onAnimationCompleted = 
+            System.Action<Maglin.Enemy.Enemy, Maglin.Enemy.MonsterAnimationState> onAnimationCompleted =
                 (animatedMonster, state) =>
                 {
                     if (animatedMonster == monster && state == Maglin.Enemy.MonsterAnimationState.Attack)
@@ -727,7 +884,7 @@ namespace Maglin.Battle
             // 애니메이션 완료까지 대기 (최대 5초 타임아웃)
             float timeout = 5f;
             float elapsedTime = 0f;
-            
+
             while (!animationCompleted && elapsedTime < timeout)
             {
                 yield return new WaitForSeconds(0.1f);
