@@ -806,7 +806,7 @@ namespace Maglin.Player
         public void SetCurrentHealth(int health)
         {
             int oldHealth = currentHealth;
-            currentHealth = Mathf.Clamp(health, 0, calculatedMaxHealth);
+            currentHealth = Mathf.Clamp(health, 100, calculatedMaxHealth);
 
             OnHealthChanged?.Invoke(currentHealth, calculatedMaxHealth);
 

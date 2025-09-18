@@ -385,7 +385,7 @@ namespace Maglin.Battle
                     {
                         if (debugMode)
                             Debug.Log($"[CardDrawAnimationManager] TempCardParent 정리: {tempParent.name}");
-                        
+
                         // 하위의 카드 UI들의 DOTween 애니메이션도 중단
                         for (int i = 0; i < tempParent.childCount; i++)
                         {
@@ -395,7 +395,7 @@ namespace Maglin.Battle
                                 cardUI.DOKill();
                             }
                         }
-                        
+
                         Destroy(tempParent.gameObject);
                     }
                 }
@@ -421,7 +421,7 @@ namespace Maglin.Battle
                 {
                     if (debugMode)
                         Debug.Log($"[CardDrawAnimationManager] HandContent 직하위 TempCardParent 정리: {tempParent.name}");
-                    
+
                     // 하위의 카드 UI들의 DOTween 애니메이션도 중단
                     for (int i = 0; i < tempParent.childCount; i++)
                     {
@@ -431,7 +431,7 @@ namespace Maglin.Battle
                             cardUI.DOKill();
                         }
                     }
-                    
+
                     Destroy(tempParent.gameObject);
                 }
             }

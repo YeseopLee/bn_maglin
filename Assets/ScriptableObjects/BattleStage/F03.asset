@@ -16,7 +16,7 @@ MonoBehaviour:
   stageType: 0
   stageDescription: 3floor
   availableBattles:
-  - battleData: {fileID: 11400000, guid: ed744df8910e2467787590218d47100c, type: 2}
+  - battleData: {fileID: 11400000, guid: afa6f3c1dca49426baccfb93e7e4c805, type: 2}
     spawnWeight: 1
     minFloor: 3
     maxFloor: 3
@@ -26,5 +26,4 @@ MonoBehaviour:
     cardSpawnWeight: 1
     availableRelics: []
     relicSpawnWeight: 1
-  eventChance: 0
   difficultyMultiplier: 1

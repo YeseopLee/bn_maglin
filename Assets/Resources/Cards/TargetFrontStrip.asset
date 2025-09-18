@@ -22,7 +22,7 @@ MonoBehaviour:
   targetCount: 4
   cardDescription: TargetBackStrip
   cardImage: {fileID: 0}
-  cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
+  cardEffect: {fileID: 11400000, guid: 4f9eda3a600684a038d5c2b0edd7ff0f, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 1
   comboFailureType: 0

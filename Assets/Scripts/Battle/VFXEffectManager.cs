@@ -131,6 +131,10 @@ namespace Maglin.Battle
 
         // 컴포넌트 참조
         private TargetManager targetManager;
+
+        // 투사체 관련
+        private List<ProjectileController> activeProjectiles = new List<ProjectileController>();
+        private Dictionary<Card, List<ProjectileController>> cardProjectileTracker = new Dictionary<Card, List<ProjectileController>>();
         #endregion
 
         #region Public Methods
@@ -213,6 +217,13 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.LogWarning($"[VFXEffectManager] 유효하지 않은 VFX 데이터: {vfxData.EffectName}");
+                return;
+            }
+
+            // 투사체인 경우 특별 처리
+            if (vfxData.IsProjectile)
+            {
+                PlayProjectileVFX(card, vfxData, specificTargets);
                 return;
             }
 
@@ -522,6 +533,448 @@ namespace Maglin.Battle
         }
 
         /// <summary>
+        /// 투사체 VFX 실행
+        /// </summary>
+        private void PlayProjectileVFX(Card card, VFXEffectSO vfxData, Transform[] specificTargets = null)
+        {
+            if (card == null || vfxData == null) return;
+
+            // 플레이어 위치 가져오기
+            Transform playerTransform = GetPlayerTransform();
+            if (playerTransform == null)
+            {
+                if (debugMode)
+                    Debug.LogError("[VFXEffectManager] 플레이어 Transform을 찾을 수 없습니다!");
+                return;
+            }
+
+            // 타겟 결정
+            Transform[] targets = DetermineTargets(card, vfxData, specificTargets);
+            if (targets == null || targets.Length == 0)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[VFXEffectManager] 투사체 타겟을 찾을 수 없습니다: {card.CardData.CardName}");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 VFX 시작: {card.CardData.CardName} -> {targets.Length}개 타겟");
+
+            // 카드별 투사체 추적 초기화
+            if (!cardProjectileTracker.ContainsKey(card))
+            {
+                cardProjectileTracker[card] = new List<ProjectileController>();
+            }
+
+            // 투사체 설정 배열이 있는 경우 각 설정대로 투사체 생성
+            if (vfxData.HasValidProjectileConfigs)
+            {
+                var projectileConfigs = vfxData.ProjectileConfigs;
+
+                // 각 타겟에 대해 모든 투사체 설정으로 투사체 생성 (딜레이 적용)
+                for (int targetIndex = 0; targetIndex < targets.Length; targetIndex++)
+                {
+                    for (int configIndex = 0; configIndex < projectileConfigs.Length; configIndex++)
+                    {
+                        var config = projectileConfigs[configIndex];
+                        if (config.LaunchDelay > 0f)
+                        {
+                            // 딜레이가 있는 경우 코루틴으로 지연 발사
+                            StartCoroutine(LaunchProjectileWithDelay(playerTransform, targets[targetIndex], vfxData, card, configIndex, config.LaunchDelay));
+                        }
+                        else
+                        {
+                            // 딜레이가 없는 경우 즉시 발사 (솟아오르는 애니메이션 적용)
+                            if (config.EnableSpawnAnimation)
+                            {
+                                StartCoroutine(CreateAndLaunchProjectileWithSpawnAnimation(playerTransform, targets[targetIndex], vfxData, card, configIndex));
+                            }
+                            else
+                            {
+                                CreateAndLaunchProjectile(playerTransform, targets[targetIndex], vfxData, card, configIndex);
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // 레거시 지원: 단일 투사체 설정
+                for (int i = 0; i < targets.Length; i++)
+                {
+                    CreateAndLaunchProjectile(playerTransform, targets[i], vfxData, card, 0);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 딜레이 후 투사체 발사 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator LaunchProjectileWithDelay(Transform startPos, Transform target, VFXEffectSO vfxData, Card sourceCard, int configIndex, float delay)
+        {
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 딜레이 대기 중: {delay}초");
+
+            yield return new WaitForSeconds(delay);
+
+            // 딜레이 후에도 타겟이 유효한지 확인
+            if (target != null && sourceCard != null)
+            {
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 딜레이 완료, 발사 시작");
+
+                // 솟아오르는 애니메이션 적용해서 투사체 생성
+                var projectileConfig = vfxData.GetProjectileConfig(configIndex);
+                if (projectileConfig.EnableSpawnAnimation)
+                {
+                    StartCoroutine(CreateAndLaunchProjectileWithSpawnAnimation(startPos, target, vfxData, sourceCard, configIndex));
+                }
+                else
+                {
+                    CreateAndLaunchProjectile(startPos, target, vfxData, sourceCard, configIndex);
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.LogWarning($"[VFXEffectManager] 투사체 {configIndex} 딜레이 완료 후 타겟 또는 카드가 유효하지 않음");
+            }
+        }
+
+        /// <summary>
+        /// 솟아오르는 애니메이션과 함께 투사체 생성 및 발사
+        /// </summary>
+        private System.Collections.IEnumerator CreateAndLaunchProjectileWithSpawnAnimation(Transform startPos, Transform target, VFXEffectSO vfxData, Card sourceCard, int configIndex)
+        {
+            if (vfxData?.EffectPrefab == null || target == null) yield break;
+
+            var projectileConfig = vfxData.GetProjectileConfig(configIndex);
+
+            // 최종 목표 위치 계산 (설정된 오프셋 적용)
+            Vector3 finalPosition = startPos.position;
+            if (projectileConfig.StartOffset != Vector3.zero)
+            {
+                finalPosition += projectileConfig.StartOffset;
+            }
+
+            // 시작 위치 계산 (아래에서 시작)
+            Vector3 startPosition = finalPosition + Vector3.up * projectileConfig.SpawnHeightOffset;
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 솟아오르는 애니메이션 시작: {startPosition} -> {finalPosition}");
+
+            // 투사체 오브젝트 생성 (시작 위치에서)
+            Quaternion spawnRotation = Quaternion.Euler(vfxData.RotationOffset);
+            GameObject projectileObj = Instantiate(vfxData.EffectPrefab, startPosition, spawnRotation, vfxParent);
+
+            // 투사체 스케일 적용 (애니메이션 시작 전에)
+            projectileObj.transform.localScale = projectileConfig.Scale;
+
+            // Gabriel Productions ProjectileMoveScript에서 정보 추출
+            GameObject muzzlePrefab = null;
+            GameObject hitPrefab = null;
+            ExtractProjectileMoveScriptData(projectileObj, out muzzlePrefab, out hitPrefab);
+
+            // 투사체 초기 투명도 설정 (페이드인을 위해)
+            SetProjectileAlpha(projectileObj, 0.3f);
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 스케일 적용: {projectileConfig.Scale}");
+
+            // VFX 레이어 설정
+            SetVFXLayer(projectileObj);
+
+            // ProjectileController 컴포넌트 추가 및 설정
+            ProjectileController projectileController = projectileObj.GetComponent<ProjectileController>();
+            if (projectileController == null)
+            {
+                projectileController = projectileObj.AddComponent<ProjectileController>();
+            }
+
+            // Collider 설정 - 기존 Collider가 있으면 Trigger로 설정, 없으면 추가
+            Collider existingCollider3D = projectileObj.GetComponent<Collider>();
+            Collider2D existingCollider2D = projectileObj.GetComponent<Collider2D>();
+
+            if (existingCollider3D != null)
+            {
+                // 기존 3D Collider가 있으면 Trigger로 설정
+                existingCollider3D.isTrigger = true;
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 기존 3D Collider를 Trigger로 설정: {existingCollider3D.GetType().Name}");
+            }
+            else if (existingCollider2D != null)
+            {
+                // 기존 2D Collider가 있으면 Trigger로 설정
+                existingCollider2D.isTrigger = true;
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 기존 2D Collider를 Trigger로 설정: {existingCollider2D.GetType().Name}");
+            }
+            else
+            {
+                // Collider가 없으면 2D Collider 추가 (몬스터가 2D이므로)
+                CircleCollider2D collider2D = projectileObj.AddComponent<CircleCollider2D>();
+                collider2D.isTrigger = true;
+                collider2D.radius = 0.5f;
+                if (debugMode)
+                    Debug.Log("[VFXEffectManager] 새로운 2D Collider 추가");
+            }
+
+            // 투사체 히트 이벤트 등록
+            projectileController.OnProjectileHit += OnProjectileHit;
+
+            // 카드별 투사체 추적에 추가
+            if (!cardProjectileTracker.ContainsKey(sourceCard))
+            {
+                cardProjectileTracker[sourceCard] = new List<ProjectileController>();
+            }
+            cardProjectileTracker[sourceCard].Add(projectileController);
+            activeProjectiles.Add(projectileController);
+
+            // 솟아오르는 애니메이션 실행
+            float elapsedTime = 0f;
+            float duration = projectileConfig.SpawnAnimationDuration;
+
+            while (elapsedTime < duration)
+            {
+                float progress = elapsedTime / duration;
+                float smoothProgress = Mathf.SmoothStep(0.3f, 1f, progress);
+
+                // 위치 보간 (부드럽게 위로 이동)
+                Vector3 currentPosition = Vector3.Lerp(startPosition, finalPosition, smoothProgress);
+                projectileObj.transform.position = currentPosition;
+
+                // 투명도 보간 (페이드인)
+                SetProjectileAlpha(projectileObj, smoothProgress);
+
+                elapsedTime += Time.deltaTime;
+                yield return null;
+            }
+
+            // 최종 위치와 투명도 설정
+            projectileObj.transform.position = finalPosition;
+            SetProjectileAlpha(projectileObj, 1f);
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 솟아오르는 애니메이션 완료");
+
+            // Muzzle 이펙트 생성 (실제 발사 시점에)
+            if (muzzlePrefab != null)
+            {
+                CreateMuzzleEffect(startPos, vfxData, muzzlePrefab);
+            }
+
+            // 사운드 재생
+            if (vfxData.SoundEffect != null)
+            {
+                PlayVFXSound(vfxData.SoundEffect, finalPosition);
+            }
+
+            // 투사체 발사 (애니메이션 완료 후)
+            projectileController.LaunchProjectile(projectileObj.transform, target, vfxData, sourceCard, OnProjectileComplete, hitPrefab, configIndex);
+
+            if (debugMode)
+            {
+                Debug.Log($"[VFXEffectManager] 투사체 발사: {sourceCard.CardData.CardName} -> {target.name} (설정 {configIndex})");
+                Debug.Log($"[VFXEffectManager] 투사체 최종 위치: {finalPosition}, 타겟 위치: {target.position}");
+                Debug.Log($"[VFXEffectManager] 솟아오르는 애니메이션: {projectileConfig.EnableSpawnAnimation} (지속시간: {duration}초)");
+            }
+        }
+
+        /// <summary>
+        /// 투사체 생성 및 발사
+        /// </summary>
+        private void CreateAndLaunchProjectile(Transform startPos, Transform target, VFXEffectSO vfxData, Card sourceCard, int configIndex = 0)
+        {
+            if (vfxData?.EffectPrefab == null || target == null) return;
+
+            // 해당 인덱스의 투사체 설정 가져오기
+            var projectileConfig = vfxData.GetProjectileConfig(configIndex);
+
+            // 투사체 오브젝트 생성 (개별 투사체 StartOffset 적용)
+            Vector3 spawnPosition = startPos.position;
+            if (projectileConfig.StartOffset != Vector3.zero)
+            {
+                spawnPosition += projectileConfig.StartOffset;
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 생성 위치에 오프셋 적용: {startPos.position} + {projectileConfig.StartOffset} = {spawnPosition}");
+            }
+            Quaternion spawnRotation = Quaternion.Euler(vfxData.RotationOffset);
+
+            GameObject projectileObj = Instantiate(vfxData.EffectPrefab, spawnPosition, spawnRotation, vfxParent);
+            // 투사체는 ProjectileController에서 개별 ProjectileScale을 적용
+
+            // Gabriel Productions ProjectileMoveScript에서 정보 추출
+            GameObject muzzlePrefab = null;
+            GameObject hitPrefab = null;
+            ExtractProjectileMoveScriptData(projectileObj, out muzzlePrefab, out hitPrefab);
+
+            // Muzzle 이펙트 생성 (projectileStartOffset 위치에)
+            if (muzzlePrefab != null)
+            {
+                CreateMuzzleEffect(startPos, vfxData, muzzlePrefab);
+            }
+
+            // ProjectileController 컴포넌트 추가 또는 가져오기
+            ProjectileController projectileController = projectileObj.GetComponent<ProjectileController>();
+            if (projectileController == null)
+            {
+                projectileController = projectileObj.AddComponent<ProjectileController>();
+            }
+
+            // Collider 설정 - 기존 Collider가 있으면 Trigger로 설정, 없으면 추가
+            Collider existingCollider3D = projectileObj.GetComponent<Collider>();
+            Collider2D existingCollider2D = projectileObj.GetComponent<Collider2D>();
+
+            if (existingCollider3D != null)
+            {
+                // 기존 3D Collider가 있으면 Trigger로 설정
+                existingCollider3D.isTrigger = true;
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 기존 3D Collider를 Trigger로 설정: {existingCollider3D.GetType().Name}");
+            }
+            else if (existingCollider2D != null)
+            {
+                // 기존 2D Collider가 있으면 Trigger로 설정
+                existingCollider2D.isTrigger = true;
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 기존 2D Collider를 Trigger로 설정: {existingCollider2D.GetType().Name}");
+            }
+            else
+            {
+                // Collider가 없으면 2D Collider 추가 (몬스터가 2D이므로)
+                CircleCollider2D collider2D = projectileObj.AddComponent<CircleCollider2D>();
+                collider2D.isTrigger = true;
+                collider2D.radius = 0.5f;
+                if (debugMode)
+                    Debug.Log("[VFXEffectManager] 새로운 2D Collider 추가");
+            }
+
+            // VFX 레이어 설정
+            SetVFXLayer(projectileObj);
+
+            // 투사체 히트 이벤트 등록
+            if (projectileController != null)
+            {
+                projectileController.OnProjectileHit += OnProjectileHit;
+            }
+            else
+            {
+                Debug.LogError("[VFXEffectManager] ProjectileController가 null입니다!");
+                return;
+            }
+
+            // 투사체 발사 (개별 투사체 설정과 함께)
+            projectileController.LaunchProjectile(projectileObj.transform, target, vfxData, sourceCard, OnProjectileComplete, hitPrefab, configIndex);
+
+            // 투사체 추적에 추가
+            if (activeProjectiles != null)
+            {
+                activeProjectiles.Add(projectileController);
+            }
+
+            if (cardProjectileTracker != null && cardProjectileTracker.ContainsKey(sourceCard))
+            {
+                cardProjectileTracker[sourceCard].Add(projectileController);
+            }
+
+            // 사운드 재생
+            if (vfxData.SoundEffect != null)
+            {
+                PlayVFXSound(vfxData.SoundEffect, spawnPosition);
+            }
+
+            if (debugMode)
+            {
+                Debug.Log($"[VFXEffectManager] 투사체 발사: {sourceCard.CardData.CardName} -> {target.name} (설정 {configIndex})");
+                Debug.Log($"[VFXEffectManager] 투사체 위치: {spawnPosition}, 타겟 위치: {target.position}");
+                Debug.Log($"[VFXEffectManager] 투사체 오브젝트: {projectileObj.name}");
+                Debug.Log($"[VFXEffectManager] 투사체 설정: 딜레이={projectileConfig.LaunchDelay}초, 속도={projectileConfig.Speed}, 스케일={projectileConfig.Scale}");
+                Debug.Log($"[VFXEffectManager] 타겟 오브젝트 컴포넌트: Enemy={target.GetComponent<Maglin.Enemy.Enemy>() != null}, Collider2D={target.GetComponent<Collider2D>() != null}");
+            }
+        }
+
+        /// <summary>
+        /// 투사체 히트 이벤트 처리
+        /// </summary>
+        private void OnProjectileHit(ProjectileController projectile, Transform target)
+        {
+            if (projectile?.SourceCard == null || projectile.VFXData == null) return;
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 히트: {projectile.SourceCard.CardData.CardName} -> {target?.name}");
+
+            // 투사체가 타겟에 도달했으므로 즉시 데미지 적용
+            var hitEventArgs = new VFXHitEventArgs(
+                projectile.SourceCard,
+                new Transform[] { target },
+                new HitTiming(0f, true, 1.0f), // 투사체는 즉시 히트, 데미지 배율 1.0
+                projectile.VFXData,
+                0,
+                1
+            );
+
+            // 즉시 히트 이벤트 발생하여 데미지 처리
+            OnVFXHit?.Invoke(hitEventArgs);
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 히트 이벤트 발생 완료: 카드={projectile.SourceCard.CardData.CardName}, 타겟={target?.name}");
+        }
+
+        /// <summary>
+        /// 투사체 완료 처리
+        /// </summary>
+        private void OnProjectileComplete(ProjectileController projectile)
+        {
+            if (projectile == null) return;
+
+            // 투사체 추적에서 제거
+            activeProjectiles.Remove(projectile);
+
+            if (projectile.SourceCard != null && cardProjectileTracker.ContainsKey(projectile.SourceCard))
+            {
+                cardProjectileTracker[projectile.SourceCard].Remove(projectile);
+
+                // 카드의 모든 투사체가 완료되었는지 확인
+                CheckCardAttackSequenceCompletion(projectile.SourceCard);
+            }
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 완료: {projectile.SourceCard?.CardData?.CardName}");
+        }
+
+        /// <summary>
+        /// 플레이어 Transform 가져오기
+        /// </summary>
+        private Transform GetPlayerTransform()
+        {
+            // PlayerBattleManager에서 플레이어 게임오브젝트 가져오기 (우선순위 1)
+            if (PlayerBattleManager.Instance != null)
+            {
+                GameObject playerGameObject = PlayerBattleManager.Instance.GetPlayerGameObject();
+                if (playerGameObject != null)
+                {
+                    if (debugMode)
+                        Debug.Log("[VFXEffectManager] PlayerBattleManager에서 플레이어 Transform 가져옴");
+                    return playerGameObject.transform;
+                }
+            }
+
+            // PlayerManager에서 가져오기 (우선순위 2)
+            if (PlayerManager.Instance != null)
+            {
+                if (debugMode)
+                    Debug.Log("[VFXEffectManager] PlayerManager에서 플레이어 Transform 가져옴");
+                return PlayerManager.Instance.transform;
+            }
+
+            // 태그로 찾기 (마지막 수단)
+            GameObject playerObj = GameObject.FindWithTag("Player");
+            if (playerObj != null && debugMode)
+                Debug.Log("[VFXEffectManager] 태그로 플레이어 Transform 가져옴");
+
+            return playerObj?.transform;
+        }
+
+        /// <summary>
         /// VFX 인스턴스 생성 및 실행
         /// </summary>
         private VFXInstance CreateAndPlayVFX(VFXEffectSO vfxData, Transform[] targets, Card sourceCard)
@@ -752,6 +1205,21 @@ namespace Maglin.Battle
                 cardVFXTracker.Remove(card);
             }
 
+            // 해당 카드의 투사체가 모두 완료되었는지 확인
+            if (cardProjectileTracker.ContainsKey(card))
+            {
+                var cardProjectileList = cardProjectileTracker[card];
+                if (cardProjectileList.Count > 0)
+                {
+                    if (debugMode)
+                        Debug.Log($"[VFXEffectManager] 카드 {card.CardName} 투사체 아직 진행 중: {cardProjectileList.Count}개 남음");
+                    return;
+                }
+
+                // 모든 투사체가 완료되었으므로 추적에서 제거
+                cardProjectileTracker.Remove(card);
+            }
+
             // 체인 공격 추적에서도 제거
             if (cardChainAttackInProgress.ContainsKey(card))
             {
@@ -831,6 +1299,158 @@ namespace Maglin.Battle
             if (tempTarget != null)
             {
                 Destroy(tempTarget);
+            }
+        }
+        #endregion
+
+        #region ProjectileMoveScript Integration
+        /// <summary>
+        /// Gabriel Productions ProjectileMoveScript에서 muzzle과 hit prefab 정보 추출
+        /// </summary>
+        private void ExtractProjectileMoveScriptData(GameObject projectileObj, out GameObject muzzlePrefab, out GameObject hitPrefab)
+        {
+            muzzlePrefab = null;
+            hitPrefab = null;
+
+            // ProjectileMoveScript 컴포넌트 찾기
+            var projectileMoveScript = projectileObj.GetComponent<ProjectileMoveScript>();
+            if (projectileMoveScript != null)
+            {
+                muzzlePrefab = projectileMoveScript.muzzlePrefab;
+                hitPrefab = projectileMoveScript.hitPrefab;
+
+                if (debugMode)
+                {
+                    Debug.Log($"[VFXEffectManager] ProjectileMoveScript 정보 추출:");
+                    Debug.Log($"  - Muzzle Prefab: {(muzzlePrefab != null ? muzzlePrefab.name : "null")}");
+                    Debug.Log($"  - Hit Prefab: {(hitPrefab != null ? hitPrefab.name : "null")}");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[VFXEffectManager] ProjectileMoveScript 컴포넌트를 찾을 수 없습니다.");
+            }
+        }
+
+        /// <summary>
+        /// Muzzle 이펙트 생성 (projectileStartOffset 위치에)
+        /// </summary>
+        private void CreateMuzzleEffect(Transform startPos, VFXEffectSO vfxData, GameObject muzzlePrefab)
+        {
+            if (muzzlePrefab == null || startPos == null) return;
+
+            // Muzzle 이펙트 위치 계산 (플레이어 위치 + projectileStartOffset)
+            Vector3 muzzlePosition = startPos.position;
+            if (vfxData != null && vfxData.ProjectileStartOffset != Vector3.zero)
+            {
+                muzzlePosition += vfxData.ProjectileStartOffset;
+            }
+
+            // Muzzle 이펙트 생성
+            GameObject muzzleEffect = Instantiate(muzzlePrefab, muzzlePosition, Quaternion.identity, vfxParent);
+
+            // VFX 레이어 설정
+            SetVFXLayer(muzzleEffect);
+
+            if (debugMode)
+            {
+                Debug.Log($"[VFXEffectManager] Muzzle 이펙트 생성: {muzzleEffect.name} at {muzzlePosition}");
+                Debug.Log($"  - 시작 위치: {startPos.position}");
+                Debug.Log($"  - 오프셋: {vfxData?.ProjectileStartOffset ?? Vector3.zero}");
+            }
+
+            // Muzzle 이펙트 자동 삭제 (일반적으로 짧은 시간)
+            StartCoroutine(DestroyMuzzleEffect(muzzleEffect, 2f));
+        }
+
+        /// <summary>
+        /// Muzzle 이펙트 삭제
+        /// </summary>
+        private System.Collections.IEnumerator DestroyMuzzleEffect(GameObject muzzleEffect, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (muzzleEffect != null)
+            {
+                Destroy(muzzleEffect);
+            }
+        }
+
+        /// <summary>
+        /// 투사체의 투명도 설정 (SpriteRenderer, ParticleSystemRenderer 등)
+        /// </summary>
+        private void SetProjectileAlpha(GameObject projectileObj, float alpha)
+        {
+            if (projectileObj == null) return;
+
+            // SpriteRenderer의 투명도 설정
+            var spriteRenderers = projectileObj.GetComponentsInChildren<SpriteRenderer>();
+            foreach (var sr in spriteRenderers)
+            {
+                Color color = sr.color;
+                color.a = alpha;
+                sr.color = color;
+            }
+
+            // ParticleSystemRenderer의 투명도 설정
+            var particleSystems = projectileObj.GetComponentsInChildren<ParticleSystem>();
+            foreach (var ps in particleSystems)
+            {
+                var main = ps.main;
+                var startColor = main.startColor;
+
+                if (startColor.mode == ParticleSystemGradientMode.Color)
+                {
+                    Color color = startColor.color;
+                    color.a = alpha;
+                    main.startColor = color;
+                }
+                else if (startColor.mode == ParticleSystemGradientMode.TwoColors)
+                {
+                    Color colorMin = startColor.colorMin;
+                    Color colorMax = startColor.colorMax;
+                    colorMin.a = alpha;
+                    colorMax.a = alpha;
+                    main.startColor = new ParticleSystem.MinMaxGradient(colorMin, colorMax);
+                }
+            }
+
+            // CanvasGroup이 있으면 alpha 설정
+            var canvasGroup = projectileObj.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = alpha;
+            }
+        }
+
+        /// <summary>
+        /// 투사체 Collider 설정
+        /// </summary>
+        private void SetupProjectileCollider(GameObject projectileObj)
+        {
+            // Collider 설정 - 기존 Collider가 있으면 Trigger로 설정, 없으면 추가
+            Collider existingCollider3D = projectileObj.GetComponent<Collider>();
+            Collider2D existingCollider2D = projectileObj.GetComponent<Collider2D>();
+
+            if (existingCollider3D != null)
+            {
+                existingCollider3D.isTrigger = true;
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 기존 3D Collider를 Trigger로 설정: {existingCollider3D.GetType().Name}");
+            }
+            else if (existingCollider2D != null)
+            {
+                existingCollider2D.isTrigger = true;
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 기존 2D Collider를 Trigger로 설정: {existingCollider2D.GetType().Name}");
+            }
+            else
+            {
+                // Collider가 없으면 2D Collider 추가 (몬스터가 2D이므로)
+                CircleCollider2D collider2D = projectileObj.AddComponent<CircleCollider2D>();
+                collider2D.isTrigger = true;
+                collider2D.radius = 0.5f;
+                if (debugMode)
+                    Debug.Log("[VFXEffectManager] 새로운 2D Collider 추가");
             }
         }
         #endregion
