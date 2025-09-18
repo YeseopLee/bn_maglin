@@ -648,3 +648,4 @@ namespace Maglin.Battle
 #endif
     }
 }
+
