@@ -12,17 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
   m_Name: IceBlast
   m_EditorClassIdentifier: 
-  cardName: IceBlast Projectile
+  cardName: IceBlast
   cardType: 1
-  elementType: 2
-  baseDamage: 3
+  elementType: 0
+  baseDamage: 1
   baseHeal: 0
-  manaCost: 2
-  targetType: 0
-  targetCount: 1
-  cardDescription: "\uD50C\uB808\uC774\uC5B4\uC5D0\uC11C \uD0C0\uAC9F\uC73C\uB85C \uB0A0\uC544\uAC00\uB294 \uC5BC\uC74C \uD22C\uC0AC\uCCB4"
+  manaCost: 0
+  targetType: 6
+  targetCount: 2
+  cardDescription: iceblast
   cardImage: {fileID: 0}
-  cardEffect: {fileID: 11400000, guid: 4f9eda3a600684a038d5c2b0edd7ff0f, type: 2}
+  cardEffect: {fileID: 11400000, guid: b7f58eae985884cbc94b88a63f342266, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 1
   comboFailureType: 0
