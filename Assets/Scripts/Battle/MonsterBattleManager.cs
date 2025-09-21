@@ -514,25 +514,30 @@ namespace Maglin.Battle
                 Debug.Log($"[MonsterBattleManager] 이동 계산: {monster.name} - 거리: {moveDistance}칸, 속도: {monsterMoveSpeed}, 시간: {totalMoveTime:F2}초{timeInfo}");
             }
 
-            // GridFieldManager를 통해 위치 업데이트
+            // GridFieldManager를 통해 위치 업데이트 (X만 변경, Y는 현재 위치 유지)
             if (GridFieldManager.Instance != null && GridFieldManager.Instance.IsInitialized)
             {
-                Vector3 targetWorldPos = GridFieldManager.Instance.GridToWorldPosition(gridPos);
+                Vector3 targetWorldPos = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(monster.gameObject, gridPos);
+                
+                // 현재 Y 위치 유지 (물리 시뮬레이션 결과 보존)
+                Vector3 currentPos = monster.transform.position;
+                Vector3 finalTargetPos = new Vector3(targetWorldPos.x, currentPos.y, targetWorldPos.z);
 
-                // 부드러운 이동으로 변경 (계산된 시간 사용)
-                StartCoroutine(SmoothMoveToPosition(monster.gameObject, targetWorldPos, totalMoveTime));
+                // 부드러운 이동으로 변경 (X축만 이동, Y는 물리 유지)
+                StartCoroutine(SmoothMoveToPositionXOnly(monster.gameObject, finalTargetPos, totalMoveTime));
 
                 if (debugMode)
-                    Debug.Log($"[MonsterBattleManager] 몬스터 월드 위치 설정: {monster.name} -> {targetWorldPos}");
+                    Debug.Log($"[MonsterBattleManager] 몬스터 이동: X={targetWorldPos.x} (그리드), Y={currentPos.y} (물리 유지)");
             }
             else
             {
-                // GridFieldManager가 없는 경우 기본 계산
-                Vector3 targetPos = new Vector3(gridPos.x + 0.5f, gridPos.y + 0.5f, 0f);
-                StartCoroutine(SmoothMoveToPosition(monster.gameObject, targetPos, totalMoveTime));
+                // GridFieldManager가 없는 경우 X만 변경하고 Y는 현재 위치 유지
+                Vector3 currentPos = monster.transform.position;
+                Vector3 targetPos = new Vector3(gridPos.x + 0.5f, currentPos.y, currentPos.z);
+                StartCoroutine(SmoothMoveToPositionXOnly(monster.gameObject, targetPos, totalMoveTime));
 
                 if (debugMode)
-                    Debug.LogWarning($"[MonsterBattleManager] GridFieldManager가 없어 기본 위치 계산 사용: {monster.name} -> {targetPos}");
+                    Debug.LogWarning($"[MonsterBattleManager] 폴백 이동: X={gridPos.x + 0.5f}, Y={currentPos.y} (유지)");
             }
         }
 
@@ -586,6 +591,42 @@ namespace Maglin.Battle
                 Debug.Log($"[MonsterBattleManager] 점유된 위치들: {string.Join(", ", occupiedPositions)}");
 
             return occupiedPositions;
+        }
+
+        /// <summary>
+        /// 부드러운 몬스터 이동 (X축만, Y축은 물리 유지)
+        /// </summary>
+        private IEnumerator SmoothMoveToPositionXOnly(GameObject monster, Vector3 targetPosition, float duration)
+        {
+            if (monster == null) yield break;
+
+            Vector3 startPosition = monster.transform.position;
+            float elapsedTime = 0f;
+
+            while (elapsedTime < duration)
+            {
+                if (monster == null) yield break;
+
+                elapsedTime += Time.deltaTime;
+                float progress = elapsedTime / duration;
+
+                // 자연스러운 이동 곡선 적용
+                float smoothedProgress = EaseInOutQuad(progress);
+
+                // X축만 보간, Y와 Z는 현재 위치 유지 (물리 시뮬레이션 결과 보존)
+                Vector3 currentPos = monster.transform.position;
+                float newX = Mathf.Lerp(startPosition.x, targetPosition.x, smoothedProgress);
+                monster.transform.position = new Vector3(newX, currentPos.y, currentPos.z);
+
+                yield return null;
+            }
+
+            // 최종 X 위치 보장 (Y는 물리에 맡김)
+            if (monster != null)
+            {
+                Vector3 finalPos = monster.transform.position;
+                monster.transform.position = new Vector3(targetPosition.x, finalPos.y, finalPos.z);
+            }
         }
 
         /// <summary>

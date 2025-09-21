@@ -262,7 +262,13 @@ namespace Maglin.Player
             }
             else if (_instance != this)
             {
-                Debug.LogWarning("[PlayerManager] 중복된 PlayerManager 감지됨. 삭제합니다.");
+                // 씬에 할당된 스프라이트 정보를 기존 인스턴스로 복사
+                if (debugMode)
+                    Debug.Log("[PlayerManager] 씬의 스프라이트 데이터를 기존 인스턴스로 복사");
+                
+                CopySpritesToExistingInstance(_instance);
+                
+                Debug.LogWarning("[PlayerManager] 중복된 PlayerManager 감지됨. 스프라이트 복사 후 삭제합니다.");
                 Destroy(gameObject);
                 return;
             }
@@ -318,6 +324,82 @@ namespace Maglin.Player
 
             if (debugMode)
                 Debug.Log("[PlayerManager] 플레이어 초기화 완료");
+        }
+
+        /// <summary>
+        /// 씬의 PlayerManager에 할당된 스프라이트를 기존 인스턴스로 복사
+        /// </summary>
+        private void CopySpritesToExistingInstance(PlayerManager existingInstance)
+        {
+            if (existingInstance == null) return;
+
+            // 현재 씬 오브젝트의 스프라이트 배열들을 기존 인스턴스로 복사
+            if (idleSprites != null && idleSprites.Length > 0)
+            {
+                existingInstance.idleSprites = (Sprite[])idleSprites.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Idle 스프라이트 복사: {idleSprites.Length}개");
+            }
+
+            if (walkSprites != null && walkSprites.Length > 0)
+            {
+                existingInstance.walkSprites = (Sprite[])walkSprites.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Walk 스프라이트 복사: {walkSprites.Length}개");
+            }
+
+            if (attackSprites1 != null && attackSprites1.Length > 0)
+            {
+                existingInstance.attackSprites1 = (Sprite[])attackSprites1.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Attack1 스프라이트 복사: {attackSprites1.Length}개");
+            }
+
+            if (attackSprites2 != null && attackSprites2.Length > 0)
+            {
+                existingInstance.attackSprites2 = (Sprite[])attackSprites2.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Attack2 스프라이트 복사: {attackSprites2.Length}개");
+            }
+
+            if (attackSprites3 != null && attackSprites3.Length > 0)
+            {
+                existingInstance.attackSprites3 = (Sprite[])attackSprites3.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Attack3 스프라이트 복사: {attackSprites3.Length}개");
+            }
+
+            if (attackingSprites != null && attackingSprites.Length > 0)
+            {
+                existingInstance.attackingSprites = (Sprite[])attackingSprites.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Attacking 스프라이트 복사: {attackingSprites.Length}개");
+            }
+
+            if (hitSprites != null && hitSprites.Length > 0)
+            {
+                existingInstance.hitSprites = (Sprite[])hitSprites.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Hit 스프라이트 복사: {hitSprites.Length}개");
+            }
+
+            if (deathSprites != null && deathSprites.Length > 0)
+            {
+                existingInstance.deathSprites = (Sprite[])deathSprites.Clone();
+                if (debugMode)
+                    Debug.Log($"[PlayerManager] Death 스프라이트 복사: {deathSprites.Length}개");
+            }
+
+            // 애니메이션 설정도 복사
+            existingInstance.idleFrameRate = idleFrameRate;
+            existingInstance.walkFrameRate = walkFrameRate;
+            existingInstance.attackFrameRate = attackFrameRate;
+            existingInstance.attackingFrameRate = attackingFrameRate;
+            existingInstance.hitFrameRate = hitFrameRate;
+            existingInstance.deathFrameRate = deathFrameRate;
+
+            if (debugMode)
+                Debug.Log("[PlayerManager] 씬 스프라이트 데이터 복사 완료");
         }
 
         /// <summary>
@@ -428,9 +510,19 @@ namespace Maglin.Player
                 attackingSprites = Resources.LoadAll<Sprite>("Player/PlayerAttacking");
                 if (attackingSprites == null || attackingSprites.Length == 0)
                 {
-                    attackingSprites = new Sprite[] { CreateDefaultSprite(Color.cyan) };
-                    if (debugMode)
-                        Debug.Log("[PlayerManager] 기본 Attacking 스프라이트 생성");
+                    // Attacking 스프라이트가 없으면 Attack1 스프라이트 사용
+                    if (attackSprites1 != null && attackSprites1.Length > 0)
+                    {
+                        attackingSprites = attackSprites1;
+                        if (debugMode)
+                            Debug.LogWarning("[PlayerManager] Attacking 스프라이트가 없어 Attack1 스프라이트 사용");
+                    }
+                    else
+                    {
+                        attackingSprites = new Sprite[] { CreateDefaultSprite(Color.cyan) };
+                        if (debugMode)
+                            Debug.Log("[PlayerManager] 기본 Attacking 스프라이트 생성");
+                    }
                 }
                 else if (debugMode)
                 {

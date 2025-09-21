@@ -219,10 +219,22 @@ namespace Maglin.Battle
             // 1. 스케일 애니메이션 (작은 크기에서 정상 크기로) - 부드럽게
             spawnSequence.Append(monster.transform.DOScale(Vector3.one, spawnDuration).SetEase(spawnEase));
 
-            // 2. 슬라이드 업 애니메이션 (선택적) - 아래에서 위로 자연스럽게
+            // 2. 슬라이드 업 애니메이션 (물리 기반) - 자연스러운 착지
             if (useSlideUpEffect)
             {
-                spawnSequence.Join(monster.transform.DOMoveY(originalPosition.y, spawnDuration).SetEase(Ease.OutQuart));
+                Rigidbody2D monsterRb = monster.GetComponent<Rigidbody2D>();
+                if (monsterRb != null)
+                {
+                    // 물리 시뮬레이션에 맡기고, Y 위치는 DOTween으로 보정하지 않음
+                    // 대신 최종 위치 도달을 체크하여 애니메이션 완료 감지
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnAnimationManager] 물리 기반 착지 애니메이션: {monster.name}");
+                }
+                else
+                {
+                    // Rigidbody2D가 없으면 기존 DOTween 방식 사용
+                    spawnSequence.Join(monster.transform.DOMoveY(originalPosition.y, spawnDuration).SetEase(Ease.OutQuart));
+                }
             }
 
             // 3. 색상 페이드 애니메이션 (선택적) - 투명에서 불투명으로
@@ -262,18 +274,39 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 몬스터 초기 상태 설정
+        /// 몬스터 초기 상태 설정 (물리 기반)
         /// </summary>
         private void SetupInitialState(GameObject monster, Vector3 originalPosition)
         {
             // 스케일을 작게 설정
             monster.transform.localScale = Vector3.one * scaleStartSize;
 
-            // 슬라이드 업 효과 사용 시 시작 위치를 아래로 설정
+            // 슬라이드 업 효과를 물리 기반으로 설정
             if (useSlideUpEffect)
             {
-                Vector3 startPosition = originalPosition - Vector3.up * slideDistance;
-                monster.transform.position = startPosition;
+                // Rigidbody2D가 있는지 확인
+                Rigidbody2D monsterRb = monster.GetComponent<Rigidbody2D>();
+                if (monsterRb != null)
+                {
+                    // 물리 기반 시작 위치: 타일맵 위 약간 높은 곳에서 시작 (자연스럽게 떨어짐)
+                    Vector3 startPosition = originalPosition + Vector3.up * (slideDistance * 0.0001f); // 높이 줄임
+                    monster.transform.position = startPosition;
+                    
+                    // 초기 속도 설정 (약간의 아래쪽 속도로 자연스러운 착지)
+                    monsterRb.velocity = new Vector2(0f, -1f);
+                    
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnAnimationManager] 물리 기반 시작 위치: {startPosition}, 목표: {originalPosition}");
+                }
+                else
+                {
+                    // Rigidbody2D가 없으면 기존 방식 사용
+                    Vector3 startPosition = originalPosition - Vector3.up * slideDistance;
+                    monster.transform.position = startPosition;
+                    
+                    if (debugMode)
+                        Debug.LogWarning($"[MonsterSpawnAnimationManager] {monster.name}에 Rigidbody2D가 없어 기존 방식 사용");
+                }
             }
 
             // 색상 설정 (페이드 효과 사용 시)
@@ -304,7 +337,7 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 몬스터 최종 상태 보정
+        /// 몬스터 최종 상태 보정 (물리 기반)
         /// </summary>
         private void FinalizeMonsterState(GameObject monster, Vector3 originalPosition)
         {
@@ -313,8 +346,27 @@ namespace Maglin.Battle
             // 스케일 정상화
             monster.transform.localScale = Vector3.one;
 
-            // 위치 정상화 (원본 위치로 확실히 설정)
-            monster.transform.position = originalPosition;
+            // 물리 기반 위치 보정
+            Rigidbody2D monsterRb = monster.GetComponent<Rigidbody2D>();
+            if (monsterRb != null)
+            {
+                // 물리 시뮬레이션의 결과 위치를 유지하되, X 좌표만 원본 위치로 보정
+                Vector3 currentPos = monster.transform.position;
+                Vector3 correctedPos = new Vector3(originalPosition.x, currentPos.y, originalPosition.z);
+                monster.transform.position = correctedPos;
+                
+                // 속도 초기화 (애니메이션 완료 후 정지)
+                monsterRb.velocity = Vector2.zero;
+                monsterRb.angularVelocity = 0f;
+                
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnAnimationManager] 물리 기반 최종 위치 보정: {monster.name} -> {correctedPos}");
+            }
+            else
+            {
+                // Rigidbody2D가 없으면 원본 위치로 설정
+                monster.transform.position = originalPosition;
+            }
 
             // 회전 정상화
             monster.transform.rotation = Quaternion.identity;

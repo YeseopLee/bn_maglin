@@ -608,35 +608,35 @@ namespace Maglin.Battle
                     Debug.Log($"[MonsterSpawnManager] 기본 몬스터 생성 (프리팹 없음): {monsterName}");
             }
 
-            // GridFieldManager를 통해 그리드 위치에 배치
+            // GridFieldManager를 통해 그리드 위치에 배치 (타일맵 위에 정확히 배치)
             if (GridFieldManager.Instance != null && GridFieldManager.Instance.IsInitialized)
             {
-                // GridFieldManager를 통해 몬스터를 그리드에 배치
-                bool placed = GridFieldManager.Instance.PlaceObjectAtGrid(monsterObj, gridPosition, true);
+                // 몬스터 스프라이트를 고려한 정확한 월드 위치 계산
+                Vector3 worldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(monsterObj, gridPosition);
+                
+                // 물리 기반 배치를 위해 직접 위치 설정
+                monsterObj.transform.position = worldPosition;
+                
+                // GridFieldManager에 등록 (기존 위치 유지)
+                Vector3 savedPosition = monsterObj.transform.position;
+                GridFieldManager.Instance.PlaceObjectAtGrid(monsterObj, gridPosition, true);
+                monsterObj.transform.position = savedPosition; // 위치 복원
 
-                if (placed)
+                // Enemy 컴포넌트에 그리드 위치 설정
+                var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
+                if (enemy != null)
                 {
-                    // Enemy 컴포넌트에 그리드 위치 설정
-                    var enemy = monsterObj.GetComponent<Maglin.Enemy.Enemy>();
-                    if (enemy != null)
-                    {
-                        SetMonsterGridPosition(enemy, gridPosition);
-                    }
+                    SetMonsterGridPosition(enemy, gridPosition);
+                }
 
-                    if (debugMode)
-                        Debug.Log($"[MonsterSpawnManager] 몬스터를 그리드 위치 {gridPosition}에 배치: {monsterName} -> {monsterObj.transform.position}");
-                }
-                else
-                {
-                    if (debugMode)
-                        Debug.LogWarning($"[MonsterSpawnManager] 몬스터를 그리드 위치 {gridPosition}에 배치할 수 없습니다: {monsterName}");
-                }
+                if (debugMode)
+                    Debug.Log($"[MonsterSpawnManager] 몬스터를 타일맵 위치 {gridPosition}에 배치: {monsterName} -> {worldPosition}");
             }
             else
             {
-                // GridFieldManager가 없는 경우 기본 위치
+                // GridFieldManager가 없는 경우 기본 위치 (타일맵 위)
                 monsterObj.transform.SetParent(null, true);
-                monsterObj.transform.position = new Vector3(gridPosition.x, gridPosition.y + 0.5f, 0f);
+                monsterObj.transform.position = new Vector3(gridPosition.x, 0.5f, 0f); // Y=0.5f는 타일 위
 
                 if (debugMode)
                     Debug.LogWarning($"[MonsterSpawnManager] GridFieldManager가 없어 기본 위치 사용: {monsterName}");

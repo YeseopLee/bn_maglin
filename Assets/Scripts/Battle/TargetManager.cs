@@ -281,47 +281,23 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 타겟 마커 위치 업데이트 (그리드 기반 고정 위치)
+        /// 타겟 마커 위치 업데이트 (간단한 로컬 위치 설정)
         /// </summary>
         private void UpdateTargetMarkerPosition(Transform targetMarker, Maglin.Enemy.Enemy enemy)
         {
             if (targetMarker == null || enemy == null) return;
 
-            // 그리드 기반 고정 위치 계산
-            if (GridFieldManager.Instance != null)
+            // 타겟 마커는 몬스터의 자식이므로 로컬 위치만 설정하면 됨
+            Vector3 targetLocalPosition = new Vector3(0f, 0f, 0f); // 몬스터 발 밑
+            
+            if (targetMarker.localPosition != targetLocalPosition)
             {
-                // 몬스터의 그리드 위치 가져오기
-                Vector2Int monsterGridPos = enemy.GridPosition;
+                targetMarker.localPosition = targetLocalPosition;
                 
-                // 그리드 셀의 월드 위치 계산 (중앙)
-                Vector3 gridCenterWorldPos = GridFieldManager.Instance.GridToWorldPosition(monsterGridPos);
-                
-                // 타겟마커를 그리드 셀 상단에 고정 배치 (셀 크기의 80% 위쪽)
-                float cellSize = GridFieldManager.Instance.CellSize;
-                Vector3 markerWorldPosition = new Vector3(
-                    gridCenterWorldPos.x,
-                    gridCenterWorldPos.y + (cellSize * 0.2f), // 셀 상단 80% 지점
-                    gridCenterWorldPos.z
-                );
-                
-                // 월드 위치를 직접 설정 (localPosition이 아닌 world position 사용)
-                if (Vector3.Distance(targetMarker.position, markerWorldPosition) > 0.01f)
-                {
-                    targetMarker.position = markerWorldPosition;
-                    
-                    if (debugMode)
-                        Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커를 그리드 기반 위치로 설정: {markerWorldPosition}");
-                }
+                if (debugMode)
+                    Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커 로컬 위치 설정: {targetLocalPosition}");
             }
-            else
-            {
-                // GridFieldManager가 없는 경우 기본 로컬 위치 사용 (폴백)
-                Vector3 newPosition = new Vector3(0, 1.5f, 0); // 고정된 높이
-                if (targetMarker.localPosition != newPosition)
-                {
-                    targetMarker.localPosition = newPosition;
-                }
-            }
+
 
             // 스케일이 이미 설정되어 있지 않다면 설정
             Vector3 targetScale = new Vector3(3f, 3f, 1f);
@@ -1091,13 +1067,26 @@ namespace Maglin.Battle
 
                 if (GridFieldManager.Instance != null)
                 {
-                    Vector3 worldPosition = GridFieldManager.Instance.GridToWorldPosition(newGridPosition);
-                    monster.transform.position = worldPosition;
+                    // GridFieldManager를 통해 타일맵 위치 계산 (X만 변경, Y는 타일맵 기준 유지)
+                    Vector3 worldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(monster.gameObject, newGridPosition);
+                    
+                    // 현재 Y 위치 유지 (물리 시뮬레이션 결과 보존)
+                    Vector3 currentPos = monster.transform.position;
+                    Vector3 finalPosition = new Vector3(worldPosition.x, currentPos.y, worldPosition.z);
+                    monster.transform.position = finalPosition;
+                    
+                    if (debugMode)
+                        Debug.Log($"[TargetManager] 몬스터 이동 위치 설정: X={worldPosition.x} (그리드), Y={currentPos.y} (물리 유지)");
                 }
                 else
                 {
-                    Vector3 worldPosition = new Vector3(newGridPosition.x, newGridPosition.y, monster.transform.position.z);
+                    // GridFieldManager가 없는 경우 X만 변경하고 Y는 현재 위치 유지
+                    Vector3 currentPos = monster.transform.position;
+                    Vector3 worldPosition = new Vector3(newGridPosition.x, currentPos.y, currentPos.z);
                     monster.transform.position = worldPosition;
+                    
+                    if (debugMode)
+                        Debug.Log($"[TargetManager] 폴백 이동: X={newGridPosition.x}, Y={currentPos.y} (유지)");
                 }
 
                 if (debugMode)

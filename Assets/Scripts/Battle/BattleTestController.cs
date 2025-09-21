@@ -778,11 +778,8 @@ namespace Maglin.Battle
             // 매니저들에 전투 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
-            // 플레이어 위치 설정 (PlayerBattleManager를 통해)
-            if (PlayerBattleManager.Instance != null)
-            {
-                PlayerBattleManager.Instance.SetPlayerGridPosition(new Vector2Int(0, 0));
-            }
+            // 플레이어 위치 설정은 PlayerBattleManager의 입장 애니메이션에서 처리하므로 제거
+            // (입장 애니메이션과 충돌 방지)
 
             // BattleInitializationSequence 시작
             StartCoroutine(ExecuteBattleInitialization());
@@ -2847,11 +2844,8 @@ namespace Maglin.Battle
             // 매니저들에 전투 상태 알림
             BattleUIManager.Instance?.SetBattleState(isBattleActive, isPlayerTurn);
 
-            // 플레이어 위치 설정 (PlayerBattleManager를 통해)
-            if (PlayerBattleManager.Instance != null)
-            {
-                PlayerBattleManager.Instance.SetPlayerGridPosition(new Vector2Int(0, 0));
-            }
+            // 플레이어 위치 설정은 PlayerBattleManager의 입장 애니메이션에서 처리하므로 제거
+            // (입장 애니메이션과 충돌 방지)
 
             // 이벤트 전투 초기화 시퀀스 시작 (플레이어 입장 애니메이션 포함)
             StartCoroutine(ExecuteEventBattleInitialization(battleData));

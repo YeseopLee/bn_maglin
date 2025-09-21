@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
 using Maglin.Cards;
 using Maglin.Enemy;
 
@@ -32,6 +33,9 @@ namespace Maglin.Battle
         private System.Action<ProjectileController> onHitCallback;
         private GameObject customHitEffectPrefab; // ProjectileMoveScript에서 가져온 hit prefab
         private ProjectileConfig currentProjectileConfig; // 현재 사용중인 투사체 설정
+        
+        // ProjectileMoveScript에서 추출한 정보들
+        private List<GameObject> originalTrails; // 원본 trail 목록
 
         // 움직임 관련 변수
         private ProjectileMovementType movementType;
@@ -168,18 +172,19 @@ namespace Maglin.Battle
                     Debug.Log($"[ProjectileController] 방향: {direction}, 속도: {speed}");
                 }
 
-                // 회전 처리
+                // 회전 처리 (ProjectileMoveScript와 동일한 방식)
+                // 1. 먼저 타겟을 향해 방향 설정 (RotateToMouse와 동일)
+                if (direction != Vector3.zero)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(direction);
+                    transform.localRotation = Quaternion.Lerp(transform.rotation, targetRotation, 1f);
+                }
+                
+                // 2. 추가 자전 회전 (rotate 옵션이 켜져 있으면)
                 if (rotateProjectile)
                 {
-                    transform.Rotate(0, 0, rotateAmount * Time.deltaTime, Space.Self);
-                }
-                else
-                {
-                    // 투사체가 날아가는 방향으로 회전
-                    if (direction != Vector3.zero)
-                    {
-                        transform.rotation = Quaternion.LookRotation(direction);
-                    }
+                    // ProjectileMoveScript와 동일: 고정된 각도값으로 매 프레임 자전
+                    transform.Rotate(0, 0, rotateAmount, Space.Self);
                 }
             }
             else if (!hasHit)
@@ -432,6 +437,9 @@ namespace Maglin.Battle
                 rb2DComponent.isKinematic = true;
             }
 
+            // ProjectileMoveScript와 동일한 방식으로 trails 처리
+            HandleTrailsOnHit();
+
             // 히트 이펙트 생성 (한 번만)
             if (hitEffectPrefab != null && !hitEffectCreated)
             {
@@ -605,7 +613,7 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// Gabriel Productions ProjectileMoveScript 비활성화
+        /// Gabriel Productions ProjectileMoveScript에서 정보를 추출하고 비활성화
         /// </summary>
         private void DisableProjectileMoveScript()
         {
@@ -613,15 +621,89 @@ namespace Maglin.Battle
             var projectileMoveScript = GetComponent<ProjectileMoveScript>();
             if (projectileMoveScript != null)
             {
+                // ProjectileMoveScript에서 trails 정보 추출
+                ExtractTrailsFromProjectileMoveScript(projectileMoveScript);
+
                 // ProjectileMoveScript 비활성화
                 projectileMoveScript.enabled = false;
 
                 if (debugMode)
-                    Debug.Log("[ProjectileController] ProjectileMoveScript 비활성화 완료");
+                    Debug.Log("[ProjectileController] ProjectileMoveScript 비활성화 완료 (trails 정보 추출됨)");
             }
             else if (debugMode)
             {
                 Debug.Log("[ProjectileController] ProjectileMoveScript 컴포넌트를 찾을 수 없습니다.");
+            }
+        }
+        
+        /// <summary>
+        /// ProjectileMoveScript에서 trails 정보 추출
+        /// </summary>
+        private void ExtractTrailsFromProjectileMoveScript(ProjectileMoveScript projectileMoveScript)
+        {
+            if (projectileMoveScript.trails != null && projectileMoveScript.trails.Count > 0)
+            {
+                originalTrails = new List<GameObject>(projectileMoveScript.trails);
+                
+                if (debugMode)
+                {
+                    Debug.Log($"[ProjectileController] Trails 추출 완료: {originalTrails.Count}개");
+                    foreach (var trail in originalTrails)
+                    {
+                        if (trail != null)
+                            Debug.Log($"  - Trail: {trail.name}");
+                    }
+                }
+            }
+            else
+            {
+                originalTrails = new List<GameObject>();
+                if (debugMode)
+                    Debug.Log("[ProjectileController] Trails가 없습니다.");
+            }
+        }
+        
+        /// <summary>
+        /// 히트 시 trails 처리 (ProjectileMoveScript와 동일한 방식)
+        /// </summary>
+        private void HandleTrailsOnHit()
+        {
+            if (originalTrails != null && originalTrails.Count > 0)
+            {
+                if (debugMode)
+                    Debug.Log($"[ProjectileController] Trails 처리 시작: {originalTrails.Count}개");
+
+                for (int i = 0; i < originalTrails.Count; i++)
+                {
+                    if (originalTrails[i] != null)
+                    {
+                        // ProjectileMoveScript와 동일: parent 해제
+                        originalTrails[i].transform.parent = null;
+                        
+                        var ps = originalTrails[i].GetComponent<ParticleSystem>();
+                        if (ps != null)
+                        {
+                            ps.Stop();
+                            // ProjectileMoveScript와 동일한 방식으로 삭제 타이밍 계산
+                            Destroy(ps.gameObject, ps.main.duration + ps.main.startLifetime.constantMax);
+                            
+                            if (debugMode)
+                                Debug.Log($"[ProjectileController] Trail 파티클 정지 및 삭제 예약: {originalTrails[i].name}");
+                        }
+                        else
+                        {
+                            // 파티클 시스템이 없으면 바로 삭제
+                            Destroy(originalTrails[i], 1f);
+                            
+                            if (debugMode)
+                                Debug.Log($"[ProjectileController] Trail 오브젝트 삭제 예약: {originalTrails[i].name}");
+                        }
+                    }
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[ProjectileController] 처리할 Trails가 없습니다.");
             }
         }
 

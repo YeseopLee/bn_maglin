@@ -54,6 +54,8 @@ namespace Maglin.Battle
         private Vector2Int playerGridPosition = new Vector2Int(0, 0);
 
         // 플레이어 게임오브젝트
+        [Header("플레이어 설정")]
+        [SerializeField] private GameObject playerPrefab; // 씬에 배치된 플레이어 오브젝트
         private GameObject playerGameObject = null;
         private bool isInitialized = false;
 
@@ -79,6 +81,7 @@ namespace Maglin.Battle
 
         // 입장 애니메이션 상태 관리
         private bool isPlayingEntranceAnimation = false;
+        private bool hasPlayedEntranceAnimation = false; // 입장 애니메이션 완료 여부
 
         // 피격 효과 관련
         private bool isHitEffectActive = false;
@@ -117,106 +120,193 @@ namespace Maglin.Battle
         /// </summary>
         public void InitializePlayerBattleManager()
         {
-            if (debugMode)
-                Debug.Log("[PlayerBattleManager] 초기화 시작");
-
-            // 이미 초기화되어 있고 플레이어 오브젝트가 존재하면 위치만 업데이트
-            if (isInitialized && playerGameObject != null)
+            if (isInitialized)
             {
                 if (debugMode)
-                    Debug.Log("[PlayerBattleManager] 기존 플레이어 오브젝트 유지, 위치만 업데이트");
-
-                // 기존 플레이어의 위치만 업데이트
-                StartCoroutine(UpdateExistingPlayerPosition());
+                    Debug.Log("[PlayerBattleManager] 이미 초기화됨");
                 return;
             }
 
-            // 완전히 새로운 초기화가 필요한 경우
             if (debugMode)
-                Debug.Log("[PlayerBattleManager] 새로운 플레이어 초기화");
+                Debug.Log("[PlayerBattleManager] PlayerBattleManager 초기화 시작");
 
-            // 기존 플레이어 게임오브젝트가 있으면 정리 (안전 장치)
-            if (playerGameObject != null)
-            {
-                if (GridFieldManager.Instance != null)
-                {
-                    GridFieldManager.Instance.RemoveObjectFromGrid(playerGameObject);
-                }
-                DestroyImmediate(playerGameObject);
-                playerGameObject = null;
-            }
+            // 씬에 배치된 플레이어 찾기
+            FindPlayerInScene();
 
-            isInitialized = false;
-
-            // GridFieldManager 초기화 대기
+            // 그리드 초기화 대기
             StartCoroutine(InitializeAfterGridReady());
         }
 
         /// <summary>
-        /// 기존 플레이어 위치 업데이트
+        /// 씬에 배치된 플레이어 오브젝트 찾기
         /// </summary>
-        private IEnumerator UpdateExistingPlayerPosition()
+        private void FindPlayerInScene()
         {
-            // GridFieldManager가 초기화될 때까지 대기
-            while (GridFieldManager.Instance == null || !GridFieldManager.Instance.IsInitialized)
+            // 1. Inspector에서 직접 할당된 경우
+            if (playerPrefab != null)
             {
-                yield return null;
+                playerGameObject = playerPrefab;
+                if (debugMode)
+                    Debug.Log($"[PlayerBattleManager] Inspector에서 할당된 플레이어 사용: {playerGameObject.name}");
+                return;
             }
 
-            // 플레이어 위치 재설정
-            SetPlayerGridPosition(playerGridPosition);
-
-            // 애니메이션 이벤트 재구독
-            if (PlayerManager.Instance != null)
+            // 2. "Player" 태그로 찾기
+            GameObject foundPlayer = GameObject.FindGameObjectWithTag("Player");
+            if (foundPlayer != null)
             {
-                PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
-                PlayerManager.OnPlayerAnimationChanged += UpdatePlayerSprite;
-
-                // 스프라이트 업데이트
-                UpdatePlayerSprite();
+                playerGameObject = foundPlayer;
+                if (debugMode)
+                    Debug.Log($"[PlayerBattleManager] Player 태그로 플레이어 발견: {playerGameObject.name}");
+                return;
             }
 
-            if (debugMode)
-                Debug.Log("[PlayerBattleManager] 기존 플레이어 위치 업데이트 완료");
+            // 3. 이름으로 찾기
+            foundPlayer = GameObject.Find("Player");
+            if (foundPlayer != null)
+            {
+                playerGameObject = foundPlayer;
+                if (debugMode)
+                    Debug.Log($"[PlayerBattleManager] 이름으로 플레이어 발견: {playerGameObject.name}");
+                return;
+            }
+
+            Debug.LogError("[PlayerBattleManager] 씬에서 플레이어 오브젝트를 찾을 수 없습니다! 다음 중 하나를 수행하세요:\n" +
+                          "1. PlayerBattleManager의 Player Prefab 필드에 플레이어 오브젝트 할당\n" +
+                          "2. 플레이어 오브젝트에 'Player' 태그 설정\n" +
+                          "3. 플레이어 오브젝트 이름을 'Player'로 설정");
         }
 
         /// <summary>
-        /// GridFieldManager 초기화 후 플레이어 초기화
+        /// 기존 플레이어 위치 업데이트 (이미 존재하는 플레이어)
+        /// </summary>
+        private IEnumerator UpdateExistingPlayerPosition()
+        {
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] 기존 플레이어 위치 업데이트 시작");
+
+            // Grid가 초기화될 때까지 대기
+            while (GridFieldManager.Instance == null || !GridFieldManager.Instance.IsInitialized)
+            {
+                yield return new WaitForSeconds(0.1f);
+            }
+
+            if (playerGameObject == null)
+            {
+                Debug.LogError("[PlayerBattleManager] 플레이어 오브젝트가 없습니다!");
+                yield break;
+            }
+
+            // 기존 플레이어의 현재 위치를 그리드 위치로 변환
+            Vector3 currentWorldPos = playerGameObject.transform.position;
+            Vector2Int gridPos = GridFieldManager.Instance.WorldToGridPosition(currentWorldPos);
+
+            // 유효하지 않은 그리드 위치인 경우 기본 위치(0,0)로 설정
+            if (!GridFieldManager.Instance.IsValidGridPosition(gridPos))
+            {
+                gridPos = new Vector2Int(0, 0);
+                if (debugMode)
+                    Debug.LogWarning($"[PlayerBattleManager] 플레이어가 유효하지 않은 위치에 있어서 기본 위치(0,0)로 이동합니다.");
+            }
+
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 기존 플레이어 위치: 월드={currentWorldPos}, 그리드={gridPos}");
+
+            // 그리드에 등록
+            GridFieldManager.Instance.PlaceObjectAtGrid(playerGameObject, gridPos, true);
+
+            // 플레이어 그리드 위치 설정
+            playerGridPosition = gridPos;
+
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 기존 플레이어 그리드 등록 완료: {gridPos}");
+        }
+
+        /// <summary>
+        /// 그리드 시스템이 준비된 후 초기화
         /// </summary>
         private IEnumerator InitializeAfterGridReady()
         {
             // GridFieldManager가 초기화될 때까지 대기
             while (GridFieldManager.Instance == null || !GridFieldManager.Instance.IsInitialized)
             {
-                yield return null;
+                yield return new WaitForSeconds(0.1f);
             }
 
-            // 플레이어 위치 설정
-            SetPlayerGridPosition(playerGridPosition);
+            if (debugMode)
+                Debug.Log("[PlayerBattleManager] GridFieldManager 초기화 완료, 플레이어 설정 시작");
 
-            // 플레이어 게임오브젝트 생성
-            CreatePlayerGameObject();
-
-            // PlayerManager에 전투 시작 알림
-            if (PlayerManager.Instance != null)
+            // 플레이어가 있는지 확인
+            if (playerGameObject != null)
             {
-                PlayerManager.Instance.OnBattleStart();
+                // 기존 플레이어 위치 업데이트
+                yield return StartCoroutine(UpdateExistingPlayerPosition());
+                
+                // 플레이어 스프라이트 렌더러 참조 설정
+                SetupPlayerSpriteRenderer();
+                
+                // PlayerManager에 전투 시작 알림
+                if (PlayerManager.Instance != null)
+                {
+                    PlayerManager.Instance.OnBattleStart();
 
-                // UI 상태 즉시 업데이트 (첫 번째 전투와 동일하게)
-                PlayerManager.Instance.NotifyAllStatsChanged();
+                    // UI 상태 즉시 업데이트 (첫 번째 전투와 동일하게)
+                    PlayerManager.Instance.NotifyAllStatsChanged();
 
-                // 애니메이션 변경 이벤트 구독
-                PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
-                PlayerManager.OnPlayerAnimationChanged += UpdatePlayerSprite;
+                    // 애니메이션 변경 이벤트 구독
+                    PlayerManager.OnPlayerAnimationChanged -= UpdatePlayerSprite;
+                    PlayerManager.OnPlayerAnimationChanged += UpdatePlayerSprite;
 
-                // 애니메이션이 시작되도록 강제로 업데이트
-                StartCoroutine(DelayedAnimationStart());
+                    // 즉시 스프라이트 업데이트 (플레이어 프리팹 스프라이트를 PlayerManager 스프라이트로 덮어씀)
+                    UpdatePlayerSprite();
+                }
+                
+                // 입장 애니메이션은 BattleTestController에서 호출하므로 여기서는 제거
+            }
+            else
+            {
+                Debug.LogError("[PlayerBattleManager] 플레이어 오브젝트가 없습니다! 씬에 플레이어를 배치해주세요.");
+                yield break;
             }
 
             isInitialized = true;
 
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 초기화 완료");
+        }
+
+        /// <summary>
+        /// 플레이어 스프라이트 렌더러 설정
+        /// </summary>
+        private void SetupPlayerSpriteRenderer()
+        {
+            if (playerGameObject != null)
+            {
+                playerSpriteRenderer = playerGameObject.GetComponent<SpriteRenderer>();
+                if (playerSpriteRenderer != null)
+                {
+                    originalPlayerSortingOrder = playerSpriteRenderer.sortingOrder;
+                    
+                    // 플레이어 프리팹의 스프라이트를 PlayerManager의 현재 스프라이트로 즉시 교체
+                    if (PlayerManager.Instance != null)
+                    {
+                        Sprite currentSprite = PlayerManager.Instance.GetCurrentSprite();
+                        if (currentSprite != null)
+                        {
+                            playerSpriteRenderer.sprite = currentSprite;
+                            if (debugMode)
+                                Debug.Log($"[PlayerBattleManager] 플레이어 프리팹 스프라이트를 PlayerManager 스프라이트로 교체: {currentSprite.name}");
+                        }
+                    }
+                    
+                    if (debugMode)
+                        Debug.Log($"[PlayerBattleManager] 플레이어 스프라이트 렌더러 설정 완료. 원래 Sorting Order: {originalPlayerSortingOrder}");
+                }
+                else
+                {
+                    Debug.LogWarning("[PlayerBattleManager] 플레이어 오브젝트에 SpriteRenderer가 없습니다!");
+                }
+            }
         }
 
         /// <summary>
@@ -240,6 +330,10 @@ namespace Maglin.Battle
             // (전투 종료 시에는 플레이어를 유지하여 다음 전투에서 연속성 보장)
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 플레이어 오브젝트 유지 (씬 전환 시까지)");
+
+            // 입장 애니메이션 플래그 리셋 (다음 전투를 위해)
+            hasPlayedEntranceAnimation = false;
+            isPlayingEntranceAnimation = false;
 
             // 초기화 상태만 리셋 (재초기화를 위해)
             // isInitialized = false;  // 이것도 주석 처리하여 플레이어 상태 유지
@@ -267,6 +361,10 @@ namespace Maglin.Battle
             }
 
             isInitialized = false;
+            
+            // 입장 애니메이션 플래그도 리셋
+            hasPlayedEntranceAnimation = false;
+            isPlayingEntranceAnimation = false;
         }
         #endregion
 
@@ -282,6 +380,14 @@ namespace Maglin.Battle
             if (PlayerManager.Instance != null)
             {
                 PlayerManager.Instance.SetPosition(gridPosition);
+            }
+
+            // 입장 애니메이션 중에는 GridFieldManager 위치 재설정을 건너뜀 (물리 애니메이션 보호)
+            if (isPlayingEntranceAnimation)
+            {
+                if (debugMode)
+                    Debug.Log($"[PlayerBattleManager] 입장 애니메이션 중이므로 GridFieldManager 위치 재설정 건너뜀: {gridPosition}");
+                return;
             }
 
             // GridFieldManager에 플레이어 배치
@@ -320,78 +426,8 @@ namespace Maglin.Battle
         #endregion
 
         #region Player GameObject Management
-        /// <summary>
-        /// 플레이어 게임오브젝트 생성 (기본 위치)
-        /// </summary>
-        private void CreatePlayerGameObject()
-        {
-            CreatePlayerGameObjectAtPosition(GetPlayerWorldPosition());
-        }
-
-        /// <summary>
-        /// 플레이어 게임오브젝트를 특정 위치에 생성
-        /// </summary>
-        private void CreatePlayerGameObjectAtPosition(Vector3 worldPosition)
-        {
-            // 기존 플레이어 오브젝트 제거
-            if (playerGameObject != null)
-            {
-                if (GridFieldManager.Instance != null)
-                {
-                    GridFieldManager.Instance.RemoveObjectFromGrid(playerGameObject);
-                }
-                DestroyImmediate(playerGameObject);
-            }
-
-            // PlayerManager에서 플레이어 스프라이트 가져오기
-            Sprite playerSprite = null;
-            if (PlayerManager.Instance != null)
-            {
-                playerSprite = PlayerManager.Instance.GetPlayerSprite();
-            }
-
-            // 스프라이트가 없으면 기본 스프라이트 생성
-            if (playerSprite == null)
-            {
-                playerSprite = CreateDefaultPlayerSprite();
-            }
-
-            // 플레이어 게임오브젝트 생성
-            playerGameObject = new GameObject("Player");
-
-            // SpriteRenderer 컴포넌트 추가
-            var spriteRenderer = playerGameObject.AddComponent<SpriteRenderer>();
-            spriteRenderer.sprite = playerSprite;
-            spriteRenderer.color = Color.white; // 원본 스프라이트 색상 사용
-            spriteRenderer.sortingLayerName = "Default";
-            spriteRenderer.sortingOrder = 10;
-
-            // 지정된 월드 위치에 배치
-            playerGameObject.transform.position = worldPosition;
-
-            if (debugMode)
-                Debug.Log($"[PlayerBattleManager] 플레이어를 위치 {worldPosition}에 생성했습니다.");
-        }
-
-        /// <summary>
-        /// 기본 플레이어 스프라이트 생성 (PlayerManager에서 스프라이트를 가져올 수 없을 때)
-        /// </summary>
-        private Sprite CreateDefaultPlayerSprite()
-        {
-            // 플레이어용 사각형 스프라이트 생성 (파란색)
-            Texture2D texture = new Texture2D(64, 64);
-            Color[] pixels = new Color[64 * 64];
-
-            for (int i = 0; i < pixels.Length; i++)
-            {
-                pixels[i] = Color.blue;
-            }
-
-            texture.SetPixels(pixels);
-            texture.Apply();
-
-            return Sprite.Create(texture, new Rect(0, 0, 64, 64), new Vector2(0.5f, 0.5f));
-        }
+        // 플레이어 자동 생성 로직 제거됨
+        // 이제 씬에 미리 배치된 플레이어 오브젝트를 사용함
 
         /// <summary>
         /// 플레이어 스프라이트 업데이트 (애니메이션 상태 변경 시 호출)
@@ -422,12 +458,12 @@ namespace Maglin.Battle
                 }
             }
 
-            // 스프라이트가 없으면 기본 스프라이트 사용
+            // 스프라이트가 없으면 경고 출력
             if (newSprite == null)
             {
-                newSprite = CreateDefaultPlayerSprite();
                 if (debugMode)
-                    Debug.Log("[PlayerBattleManager] 기본 스프라이트 사용");
+                    Debug.LogWarning("[PlayerBattleManager] PlayerManager에서 스프라이트를 가져올 수 없습니다. 플레이어 오브젝트의 SpriteRenderer에 기본 스프라이트를 설정하세요.");
+                return; // 스프라이트가 없으면 업데이트하지 않음
             }
 
             // SpriteRenderer 컴포넌트 찾아서 스프라이트 업데이트
@@ -449,7 +485,7 @@ namespace Maglin.Battle
                             spriteRenderer.color = new Color(0.7f, 0.7f, 0.7f, 1f); // 약간 어둡게
                             break;
                         case PlayerManager.PlayerAnimationState.Attacking:
-                            spriteRenderer.color = new Color(0.8f, 1f, 1f, 1f); // 약간 청록색 틴트 (공격 중)
+                            spriteRenderer.color = Color.white; // Attacking 상태에서는 원본 색상 유지 (스프라이트 자체 색상 표시)
                             break;
                         default:
                             spriteRenderer.color = Color.white; // 원본 색상 유지
@@ -495,12 +531,12 @@ namespace Maglin.Battle
 
 
         /// <summary>
-        /// 플레이어 위치 변경 (이동)
+        /// 플레이어 위치 변경 (즉시 이동)
         /// </summary>
         public void MovePlayerToGrid(Vector2Int newGridPosition)
         {
             if (debugMode)
-                Debug.Log($"[PlayerBattleManager] 플레이어 이동: {playerGridPosition} -> {newGridPosition}");
+                Debug.Log($"[PlayerBattleManager] 플레이어 즉시 이동: {playerGridPosition} -> {newGridPosition}");
 
             // 이전 위치 저장
             Vector2Int oldPosition = playerGridPosition;
@@ -519,7 +555,65 @@ namespace Maglin.Battle
                     // 실패 시 이전 위치로 복구
                     playerGridPosition = oldPosition;
                 }
+                else
+                {
+                    // 성공 시 즉시 월드 위치 동기화
+                    Vector3 worldPos = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(playerGameObject, newGridPosition);
+                    playerGameObject.transform.position = worldPos;
+                }
             }
+        }
+
+        /// <summary>
+        /// 플레이어 부드러운 타일 이동 (애니메이션 포함)
+        /// </summary>
+        public System.Collections.IEnumerator MovePlayerToGridAnimated(Vector2Int newGridPosition, float moveDuration = 0.5f)
+        {
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 플레이어 애니메이션 이동: {playerGridPosition} -> {newGridPosition}");
+
+            // 이동 불가능한 경우 체크
+            if (GridFieldManager.Instance == null || playerGameObject == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] GridFieldManager 또는 플레이어가 없어서 이동할 수 없습니다.");
+                yield break;
+            }
+
+            // 유효한 위치인지 확인
+            if (!GridFieldManager.Instance.IsValidGridPosition(newGridPosition))
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[PlayerBattleManager] 유효하지 않은 그리드 위치: {newGridPosition}");
+                yield break;
+            }
+
+            // 현재 위치와 목표 위치
+            Vector2Int startGrid = playerGridPosition;
+            Vector3 startWorldPos = playerGameObject.transform.position;
+            Vector3 targetWorldPos = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(playerGameObject, newGridPosition);
+
+            // 걷기 애니메이션 시작
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.PlayWalkAnimation();
+            }
+
+            // 부드러운 이동
+            yield return StartCoroutine(SmoothMoveToPosition(targetWorldPos, moveDuration));
+
+            // 이동 완료 후 그리드에 등록
+            SetPlayerGridPosition(newGridPosition);
+            GridFieldManager.Instance.PlaceObjectAtGrid(playerGameObject, newGridPosition, true);
+
+            // Idle 애니메이션으로 변경
+            if (PlayerManager.Instance != null)
+            {
+                PlayerManager.Instance.ReturnToIdle();
+            }
+
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 플레이어 애니메이션 이동 완료: {newGridPosition}");
         }
 
         /// <summary>
@@ -530,34 +624,7 @@ namespace Maglin.Battle
             MovePlayerToGrid(newPosition);
         }
 
-        /// <summary>
-        /// 지연된 애니메이션 시작 (플레이어 게임오브젝트가 완전히 생성된 후)
-        /// </summary>
-        private System.Collections.IEnumerator DelayedAnimationStart()
-        {
-            // 한 프레임 대기 (플레이어 게임오브젝트 완전 생성 대기)
-            yield return null;
-
-            // 입장 애니메이션 중에는 실행하지 않음
-            if (isPlayingEntranceAnimation)
-            {
-                if (debugMode)
-                    Debug.Log("[PlayerBattleManager] 입장 애니메이션 중이므로 지연된 애니메이션 시작 건너뛰기");
-                yield break;
-            }
-
-            if (PlayerManager.Instance != null)
-            {
-                if (debugMode)
-                    Debug.Log("[PlayerBattleManager] 지연된 애니메이션 시작 트리거");
-
-                // 강제로 Idle 애니메이션 재시작
-                PlayerManager.Instance.ForceSetAnimationState(PlayerManager.PlayerAnimationState.Idle);
-
-                // 즉시 스프라이트 업데이트
-                UpdatePlayerSprite();
-            }
-        }
+        // DelayedAnimationStart 메서드는 제거됨 - 이제 입장 애니메이션이 직접 호출됨
         /// <summary>
         /// 화면 밖 시작 위치 계산 (카메라 기준)
         /// </summary>
@@ -607,45 +674,78 @@ namespace Maglin.Battle
 
         #region Player Entrance Animation
         /// <summary>
-        /// 플레이어 입장 애니메이션 실행 (화면 왼쪽에서 걸어와서 그리드 위치에 도착)
+        /// 플레이어 입장 애니메이션 실행 (타일맵 기반 - 한 칸씩 이동)
         /// </summary>
         public System.Collections.IEnumerator PlayPlayerEntranceAnimation()
         {
+            // 이미 입장 애니메이션을 완료했거나 실행 중이면 건너뜀
+            if (hasPlayedEntranceAnimation || isPlayingEntranceAnimation)
+            {
+                if (debugMode)
+                    Debug.Log($"[PlayerBattleManager] 입장 애니메이션 건너뜀 - 완료됨: {hasPlayedEntranceAnimation}, 실행중: {isPlayingEntranceAnimation}");
+                yield break;
+            }
+
             if (debugMode)
-                Debug.Log("[PlayerBattleManager] 플레이어 입장 애니메이션 시작");
+                Debug.Log("[PlayerBattleManager] 플레이어 입장 애니메이션 시작 (타일맵 기반)");
 
             // 입장 애니메이션 플래그 설정
             isPlayingEntranceAnimation = true;
 
-            // 플레이어 게임오브젝트가 없으면 먼저 생성 (스프라이트 정렬 계산을 위해)
+            // 플레이어가 없으면 애니메이션 실행 불가
             if (playerGameObject == null)
             {
-                CreatePlayerGameObject();
-            }
-
-            // 최종 목표 위치 (스프라이트 정렬이 적용된 그리드 위치)
-            Vector3 targetWorldPosition = GetPlayerWorldPosition();
-
-            // 카메라를 기준으로 화면 완전 밖에서 시작하도록 계산
-            Vector3 startPosition = CalculateOffScreenStartPosition(targetWorldPosition);
-
-            // 시작 위치로 즉시 이동
-            playerGameObject.transform.position = startPosition;
-
-            // 생성/이동 후 현재 스프라이트 확인
-            if (debugMode && playerGameObject != null)
-            {
-                var spriteRenderer = playerGameObject.GetComponent<SpriteRenderer>();
-                if (spriteRenderer != null && spriteRenderer.sprite != null)
-                {
-                    Debug.Log($"[PlayerBattleManager] 현재 플레이어 스프라이트: {spriteRenderer.sprite.name}");
-                }
-            }
-
-            if (playerGameObject == null)
-            {
-                Debug.LogError("[PlayerBattleManager] 플레이어 게임오브젝트 생성 실패!");
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] 플레이어 게임오브젝트가 없어 입장 애니메이션을 실행할 수 없습니다.");
+                
+                isPlayingEntranceAnimation = false;
                 yield break;
+            }
+
+            // GridFieldManager 확인
+            if (GridFieldManager.Instance == null || !GridFieldManager.Instance.IsInitialized)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[PlayerBattleManager] GridFieldManager가 초기화되지 않아 입장 애니메이션을 건너뜁니다.");
+                
+                isPlayingEntranceAnimation = false;
+                yield break;
+            }
+
+            // Rigidbody2D 컴포넌트 확인 (물리 기반 이동을 위해 필수)
+            Rigidbody2D playerRb = playerGameObject.GetComponent<Rigidbody2D>();
+            if (playerRb == null)
+            {
+                if (debugMode)
+                    Debug.LogError("[PlayerBattleManager] 플레이어에 Rigidbody2D가 없어 물리 기반 입장 애니메이션을 실행할 수 없습니다!");
+                
+                isPlayingEntranceAnimation = false;
+                yield break;
+            }
+
+            // 현재 플레이어의 목표 그리드 위치
+            Vector2Int targetGridPosition = playerGridPosition;
+            
+            // 화면 밖 시작 위치 계산 (타일맵 위쪽에서 시작하여 떨어지면서 입장)
+            Vector2Int startGridPosition = new Vector2Int(
+                targetGridPosition.x - 8, // 왼쪽으로 8칸
+                targetGridPosition.y + 2   // 타일맵 위 3칸 높이에서 시작 (중력으로 떨어짐)
+            );
+
+            // 물리적으로 시작 위치로 텔레포트
+            Vector3 startWorldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(playerGameObject, startGridPosition);
+            playerGameObject.transform.position = startWorldPosition;
+
+            // 플레이어가 바닥에 떨어질 때까지 대기 (물리 시뮬레이션)
+            yield return new WaitForSeconds(0.5f);
+
+            if (debugMode)
+            {
+                Vector3 targetWorldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(playerGameObject, targetGridPosition);
+                Debug.Log($"[PlayerBattleManager] 물리 기반 입장 애니메이션 설정:");
+                Debug.Log($"[PlayerBattleManager] 시작 그리드: {startGridPosition}, 목표 그리드: {targetGridPosition}");
+                Debug.Log($"[PlayerBattleManager] 시작 월드: {startWorldPosition}, 목표 월드: {targetWorldPosition}");
+                Debug.Log($"[PlayerBattleManager] Rigidbody2D 상태: isKinematic={playerRb.isKinematic}, gravityScale={playerRb.gravityScale}");
             }
 
             // 애니메이션 이벤트 구독이 되어 있는지 확인하고 설정
@@ -678,34 +778,8 @@ namespace Maglin.Battle
                     Debug.LogError("[PlayerBattleManager] PlayerManager.Instance가 null입니다!");
             }
 
-            if (debugMode)
-                Debug.Log($"[PlayerBattleManager] 플레이어 이동 시작: {startPosition} -> {targetWorldPosition}");
-
-            // DOTween을 사용한 부드러운 이동 (DOTween이 없으면 기본 코루틴 사용)
-            bool useDOTween = false;
-
-            // DOTween 사용 가능 여부 확인
-            try
-            {
-                // DOTween 클래스가 있는지 확인
-                var doTweenType = System.Type.GetType("DG.Tweening.DOTween, DOTween");
-                useDOTween = doTweenType != null;
-            }
-            catch
-            {
-                useDOTween = false;
-            }
-
-            if (useDOTween)
-            {
-                // DOTween 사용
-                yield return StartCoroutine(PlayEntranceAnimationWithDOTween(startPosition, targetWorldPosition));
-            }
-            else
-            {
-                // 기본 코루틴 사용
-                yield return StartCoroutine(PlayEntranceAnimationWithCoroutine(startPosition, targetWorldPosition));
-            }
+            // 물리 기반 횡이동 애니메이션 실행
+            yield return StartCoroutine(PlayPhysicsBasedEntranceAnimation(targetGridPosition, playerRb));
 
             // 애니메이션 완료 후 Idle 상태로 변경
             if (PlayerManager.Instance != null)
@@ -713,8 +787,48 @@ namespace Maglin.Battle
                 PlayerManager.Instance.ReturnToIdle();
             }
 
-            // 입장 애니메이션 플래그 해제
+            // 입장 애니메이션 플래그 해제 및 완료 표시
             isPlayingEntranceAnimation = false;
+            hasPlayedEntranceAnimation = true;
+
+            // 애니메이션 완료 후 GridFieldManager에 최종 위치 등록 (위치 재설정 없이)
+            if (GridFieldManager.Instance != null && playerGameObject != null)
+            {
+                // 현재 물리적 위치를 기준으로 그리드 위치 업데이트 (위치 재설정하지 않음)
+                Vector3 currentPos = playerGameObject.transform.position;
+                Vector2Int actualGridPos = GridFieldManager.Instance.WorldToGridPosition(currentPos);
+                
+                // 내부 그리드 상태만 업데이트 (PlaceObjectAtGrid 사용하지 않음)
+                var gridObjects = typeof(GridFieldManager).GetField("gridObjects", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var objectPositions = typeof(GridFieldManager).GetField("objectPositions", 
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                
+                if (gridObjects != null && objectPositions != null)
+                {
+                    var gridDict = gridObjects.GetValue(GridFieldManager.Instance) as System.Collections.Generic.Dictionary<Vector2Int, GameObject>;
+                    var posDict = objectPositions.GetValue(GridFieldManager.Instance) as System.Collections.Generic.Dictionary<GameObject, Vector2Int>;
+                    
+                    if (gridDict != null && posDict != null)
+                    {
+                        // 기존 위치 제거
+                        if (posDict.ContainsKey(playerGameObject))
+                        {
+                            Vector2Int oldPos = posDict[playerGameObject];
+                            if (gridDict.ContainsKey(oldPos))
+                                gridDict.Remove(oldPos);
+                        }
+                        
+                        // 새 위치 등록 (물리적 위치 변경 없이)
+                        gridDict[actualGridPos] = playerGameObject;
+                        posDict[playerGameObject] = actualGridPos;
+                        playerGridPosition = actualGridPos;
+                        
+                        if (debugMode)
+                            Debug.Log($"[PlayerBattleManager] 입장 애니메이션 완료 후 그리드 상태 업데이트: {actualGridPos}");
+                    }
+                }
+            }
 
             if (debugMode)
                 Debug.Log("[PlayerBattleManager] 플레이어 입장 애니메이션 완료");
@@ -821,12 +935,120 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 기본 코루틴을 사용한 입장 애니메이션
+        /// 물리 기반 입장 애니메이션 (실제 물리 시뮬레이션 사용)
+        /// </summary>
+        private System.Collections.IEnumerator PlayPhysicsBasedEntranceAnimation(Vector2Int targetGrid, Rigidbody2D playerRb)
+        {
+            if (debugMode)
+                Debug.Log($"[PlayerBattleManager] 물리 기반 입장 애니메이션 시작 → 목표: {targetGrid}");
+
+            // 목표 위치 계산
+            Vector3 targetWorldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(playerGameObject, targetGrid);
+            
+            // 현재 위치에서 목표까지의 거리 계산
+            Vector3 currentPosition = playerGameObject.transform.position;
+            float distanceToTarget = Mathf.Abs(targetWorldPosition.x - currentPosition.x);
+            
+            // 이동 속도 계산 (거리를 시간으로 나눔)
+            float moveSpeed = distanceToTarget / entranceAnimationDuration;
+            
+            if (debugMode)
+            {
+                Debug.Log($"[PlayerBattleManager] 현재 위치: {currentPosition}");
+                Debug.Log($"[PlayerBattleManager] 목표 위치: {targetWorldPosition}");
+                Debug.Log($"[PlayerBattleManager] 이동 거리: {distanceToTarget:F2}, 속도: {moveSpeed:F2}");
+                Debug.Log($"[PlayerBattleManager] Rigidbody2D 상태: isKinematic={playerRb.isKinematic}, gravityScale={playerRb.gravityScale}");
+            }
+
+            // 물리 기반 수평 이동 시작
+            float elapsedTime = 0f;
+            Vector3 startPosition = currentPosition;
+            
+            while (elapsedTime < entranceAnimationDuration)
+            {
+                elapsedTime += Time.fixedDeltaTime;
+                
+                // 목표 위치까지의 진행률 계산
+                float progress = elapsedTime / entranceAnimationDuration;
+                progress = Mathf.Clamp01(progress);
+                
+                // 부드러운 이동을 위한 Ease Out 곡선 적용
+                float easedProgress = 1f - (1f - progress) * (1f - progress);
+                
+                // 목표 X 위치 계산 (Y는 물리 시뮬레이션에 맡김)
+                float targetX = Mathf.Lerp(startPosition.x, targetWorldPosition.x, easedProgress);
+                
+                // 현재 위치 가져오기 (Y는 물리 시뮬레이션 결과)
+                Vector3 physicsPosition = playerGameObject.transform.position;
+                
+                // X 위치만 조정하여 물리적으로 이동 (AddForce 대신 velocity 조정)
+                Vector2 currentVelocity = playerRb.velocity;
+                float velocityX = (targetX - physicsPosition.x) / Time.fixedDeltaTime;
+                
+                // 속도 제한 (너무 빠르지 않도록)
+                velocityX = Mathf.Clamp(velocityX, -moveSpeed * 2f, moveSpeed * 2f);
+                
+                // X축 속도만 설정 (Y축은 물리 시뮬레이션 유지)
+                playerRb.velocity = new Vector2(velocityX, currentVelocity.y);
+                
+                if (debugMode && elapsedTime % 0.5f < Time.fixedDeltaTime) // 0.5초마다 로그
+                {
+                    Debug.Log($"[PlayerBattleManager] 물리 이동 진행률: {progress:F2}, 위치: {physicsPosition}, 속도: {playerRb.velocity}");
+                }
+                
+                yield return new WaitForFixedUpdate(); // 물리 업데이트와 동기화
+            }
+            
+            // 목표 위치에 정확히 도달하도록 마지막 조정
+            Vector3 finalPosition = playerGameObject.transform.position;
+            finalPosition.x = targetWorldPosition.x;
+            playerGameObject.transform.position = finalPosition;
+            
+            // 이동 완료 후 속도를 0으로 설정
+            playerRb.velocity = new Vector2(0f, playerRb.velocity.y);
+            
+            // 물리 애니메이션 중에는 GridFieldManager 위치 재설정하지 않음
+            // (애니메이션 완료 후 한 번에 처리)
+
+            if (debugMode)
+            {
+                Debug.Log($"[PlayerBattleManager] 물리 기반 입장 애니메이션 완료");
+                Debug.Log($"[PlayerBattleManager] 최종 위치: {playerGameObject.transform.position}");
+                Debug.Log($"[PlayerBattleManager] 최종 속도: {playerRb.velocity}");
+            }
+        }
+
+        /// <summary>
+        /// 지정된 위치로 부드럽게 이동
+        /// </summary>
+        private System.Collections.IEnumerator SmoothMoveToPosition(Vector3 targetPosition, float duration)
+        {
+            Vector3 startPosition = playerGameObject.transform.position;
+            float elapsedTime = 0;
+
+            while (elapsedTime < duration)
+            {
+                elapsedTime += Time.deltaTime;
+                float t = elapsedTime / duration;
+                
+                // Ease Out 효과 적용
+                t = 1f - Mathf.Pow(1f - t, 2f);
+                
+                playerGameObject.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
+                yield return null;
+            }
+
+            // 정확한 최종 위치 설정
+            playerGameObject.transform.position = targetPosition;
+        }
+
+        /// <summary>
+        /// 기본 코루틴을 사용한 입장 애니메이션 (폴백용 - 사용하지 않음)
         /// </summary>
         private System.Collections.IEnumerator PlayEntranceAnimationWithCoroutine(Vector3 startPos, Vector3 targetPos)
         {
             if (debugMode)
-                Debug.Log("[PlayerBattleManager] 기본 코루틴 입장 애니메이션 시작");
+                Debug.Log("[PlayerBattleManager] 기본 코루틴 입장 애니메이션 시작 (폴백)");
 
             float elapsedTime = 0f;
             Vector3 currentPos = startPos;

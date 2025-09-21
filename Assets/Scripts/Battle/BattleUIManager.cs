@@ -1560,7 +1560,7 @@ namespace Maglin.Battle
                 var buttonText = drawButton.GetComponentInChildren<TextMeshProUGUI>();
                 if (buttonText != null)
                 {
-                    buttonText.text = $"드로우 ({cost})";
+                    buttonText.text = $"Draw ({cost})";
                 }
             }
         }
@@ -1651,8 +1651,8 @@ namespace Maglin.Battle
                                 targetEnemySprite.preserveAspect = true;
 
                                 // 좌우반전 설정 적용 (1.2배 크기)
-                                Vector3 scale = Vector3.one * 1.2f; // 1.2배 크기로 설정
-                                scale.x = currentTarget.EnemyData.FlipSpritesHorizontally ? -1.2f : 1.2f;
+                                Vector3 scale = Vector3.one * 1.1f; // 1.2배 크기로 설정
+                                scale.x = currentTarget.EnemyData.FlipSpritesHorizontally ? -1.1f : 1.1f;
                                 rectTransform.localScale = scale;
 
                                 if (debugMode)
