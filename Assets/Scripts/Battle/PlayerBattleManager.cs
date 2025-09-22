@@ -241,10 +241,10 @@ namespace Maglin.Battle
             {
                 // 기존 플레이어 위치 업데이트
                 yield return StartCoroutine(UpdateExistingPlayerPosition());
-                
+
                 // 플레이어 스프라이트 렌더러 참조 설정
                 SetupPlayerSpriteRenderer();
-                
+
                 // PlayerManager에 전투 시작 알림
                 if (PlayerManager.Instance != null)
                 {
@@ -260,7 +260,7 @@ namespace Maglin.Battle
                     // 즉시 스프라이트 업데이트 (플레이어 프리팹 스프라이트를 PlayerManager 스프라이트로 덮어씀)
                     UpdatePlayerSprite();
                 }
-                
+
                 // 입장 애니메이션은 BattleTestController에서 호출하므로 여기서는 제거
             }
             else
@@ -286,7 +286,7 @@ namespace Maglin.Battle
                 if (playerSpriteRenderer != null)
                 {
                     originalPlayerSortingOrder = playerSpriteRenderer.sortingOrder;
-                    
+
                     // 플레이어 프리팹의 스프라이트를 PlayerManager의 현재 스프라이트로 즉시 교체
                     if (PlayerManager.Instance != null)
                     {
@@ -298,7 +298,7 @@ namespace Maglin.Battle
                                 Debug.Log($"[PlayerBattleManager] 플레이어 프리팹 스프라이트를 PlayerManager 스프라이트로 교체: {currentSprite.name}");
                         }
                     }
-                    
+
                     if (debugMode)
                         Debug.Log($"[PlayerBattleManager] 플레이어 스프라이트 렌더러 설정 완료. 원래 Sorting Order: {originalPlayerSortingOrder}");
                 }
@@ -361,7 +361,7 @@ namespace Maglin.Battle
             }
 
             isInitialized = false;
-            
+
             // 입장 애니메이션 플래그도 리셋
             hasPlayedEntranceAnimation = false;
             isPlayingEntranceAnimation = false;
@@ -697,7 +697,7 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.LogWarning("[PlayerBattleManager] 플레이어 게임오브젝트가 없어 입장 애니메이션을 실행할 수 없습니다.");
-                
+
                 isPlayingEntranceAnimation = false;
                 yield break;
             }
@@ -707,7 +707,7 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.LogWarning("[PlayerBattleManager] GridFieldManager가 초기화되지 않아 입장 애니메이션을 건너뜁니다.");
-                
+
                 isPlayingEntranceAnimation = false;
                 yield break;
             }
@@ -718,18 +718,18 @@ namespace Maglin.Battle
             {
                 if (debugMode)
                     Debug.LogError("[PlayerBattleManager] 플레이어에 Rigidbody2D가 없어 물리 기반 입장 애니메이션을 실행할 수 없습니다!");
-                
+
                 isPlayingEntranceAnimation = false;
                 yield break;
             }
 
             // 현재 플레이어의 목표 그리드 위치
             Vector2Int targetGridPosition = playerGridPosition;
-            
+
             // 화면 밖 시작 위치 계산 (타일맵 위쪽에서 시작하여 떨어지면서 입장)
             Vector2Int startGridPosition = new Vector2Int(
                 targetGridPosition.x - 8, // 왼쪽으로 8칸
-                targetGridPosition.y + 2   // 타일맵 위 3칸 높이에서 시작 (중력으로 떨어짐)
+                targetGridPosition.y + 1   // 타일맵 위 1칸 높이에서 시작 (중력으로 떨어짐)
             );
 
             // 물리적으로 시작 위치로 텔레포트
@@ -797,18 +797,18 @@ namespace Maglin.Battle
                 // 현재 물리적 위치를 기준으로 그리드 위치 업데이트 (위치 재설정하지 않음)
                 Vector3 currentPos = playerGameObject.transform.position;
                 Vector2Int actualGridPos = GridFieldManager.Instance.WorldToGridPosition(currentPos);
-                
+
                 // 내부 그리드 상태만 업데이트 (PlaceObjectAtGrid 사용하지 않음)
-                var gridObjects = typeof(GridFieldManager).GetField("gridObjects", 
+                var gridObjects = typeof(GridFieldManager).GetField("gridObjects",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var objectPositions = typeof(GridFieldManager).GetField("objectPositions", 
+                var objectPositions = typeof(GridFieldManager).GetField("objectPositions",
                     System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                
+
                 if (gridObjects != null && objectPositions != null)
                 {
                     var gridDict = gridObjects.GetValue(GridFieldManager.Instance) as System.Collections.Generic.Dictionary<Vector2Int, GameObject>;
                     var posDict = objectPositions.GetValue(GridFieldManager.Instance) as System.Collections.Generic.Dictionary<GameObject, Vector2Int>;
-                    
+
                     if (gridDict != null && posDict != null)
                     {
                         // 기존 위치 제거
@@ -818,12 +818,12 @@ namespace Maglin.Battle
                             if (gridDict.ContainsKey(oldPos))
                                 gridDict.Remove(oldPos);
                         }
-                        
+
                         // 새 위치 등록 (물리적 위치 변경 없이)
                         gridDict[actualGridPos] = playerGameObject;
                         posDict[playerGameObject] = actualGridPos;
                         playerGridPosition = actualGridPos;
-                        
+
                         if (debugMode)
                             Debug.Log($"[PlayerBattleManager] 입장 애니메이션 완료 후 그리드 상태 업데이트: {actualGridPos}");
                     }
@@ -944,14 +944,14 @@ namespace Maglin.Battle
 
             // 목표 위치 계산
             Vector3 targetWorldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(playerGameObject, targetGrid);
-            
+
             // 현재 위치에서 목표까지의 거리 계산
             Vector3 currentPosition = playerGameObject.transform.position;
             float distanceToTarget = Mathf.Abs(targetWorldPosition.x - currentPosition.x);
-            
+
             // 이동 속도 계산 (거리를 시간으로 나눔)
             float moveSpeed = distanceToTarget / entranceAnimationDuration;
-            
+
             if (debugMode)
             {
                 Debug.Log($"[PlayerBattleManager] 현재 위치: {currentPosition}");
@@ -963,50 +963,50 @@ namespace Maglin.Battle
             // 물리 기반 수평 이동 시작
             float elapsedTime = 0f;
             Vector3 startPosition = currentPosition;
-            
+
             while (elapsedTime < entranceAnimationDuration)
             {
                 elapsedTime += Time.fixedDeltaTime;
-                
+
                 // 목표 위치까지의 진행률 계산
                 float progress = elapsedTime / entranceAnimationDuration;
                 progress = Mathf.Clamp01(progress);
-                
+
                 // 부드러운 이동을 위한 Ease Out 곡선 적용
                 float easedProgress = 1f - (1f - progress) * (1f - progress);
-                
+
                 // 목표 X 위치 계산 (Y는 물리 시뮬레이션에 맡김)
                 float targetX = Mathf.Lerp(startPosition.x, targetWorldPosition.x, easedProgress);
-                
+
                 // 현재 위치 가져오기 (Y는 물리 시뮬레이션 결과)
                 Vector3 physicsPosition = playerGameObject.transform.position;
-                
+
                 // X 위치만 조정하여 물리적으로 이동 (AddForce 대신 velocity 조정)
                 Vector2 currentVelocity = playerRb.velocity;
                 float velocityX = (targetX - physicsPosition.x) / Time.fixedDeltaTime;
-                
+
                 // 속도 제한 (너무 빠르지 않도록)
                 velocityX = Mathf.Clamp(velocityX, -moveSpeed * 2f, moveSpeed * 2f);
-                
+
                 // X축 속도만 설정 (Y축은 물리 시뮬레이션 유지)
                 playerRb.velocity = new Vector2(velocityX, currentVelocity.y);
-                
+
                 if (debugMode && elapsedTime % 0.5f < Time.fixedDeltaTime) // 0.5초마다 로그
                 {
                     Debug.Log($"[PlayerBattleManager] 물리 이동 진행률: {progress:F2}, 위치: {physicsPosition}, 속도: {playerRb.velocity}");
                 }
-                
+
                 yield return new WaitForFixedUpdate(); // 물리 업데이트와 동기화
             }
-            
+
             // 목표 위치에 정확히 도달하도록 마지막 조정
             Vector3 finalPosition = playerGameObject.transform.position;
             finalPosition.x = targetWorldPosition.x;
             playerGameObject.transform.position = finalPosition;
-            
+
             // 이동 완료 후 속도를 0으로 설정
             playerRb.velocity = new Vector2(0f, playerRb.velocity.y);
-            
+
             // 물리 애니메이션 중에는 GridFieldManager 위치 재설정하지 않음
             // (애니메이션 완료 후 한 번에 처리)
 
@@ -1030,10 +1030,10 @@ namespace Maglin.Battle
             {
                 elapsedTime += Time.deltaTime;
                 float t = elapsedTime / duration;
-                
+
                 // Ease Out 효과 적용
                 t = 1f - Mathf.Pow(1f - t, 2f);
-                
+
                 playerGameObject.transform.position = Vector3.Lerp(startPosition, targetPosition, t);
                 yield return null;
             }
