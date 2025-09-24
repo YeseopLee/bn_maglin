@@ -93,9 +93,17 @@ namespace Maglin.UI
 
             var cardData = associatedCard.CardData;
 
-            // 카드 이미지
-            if (cardImage != null && cardData.Image != null)
+            // 카드 일러스트 이미지 (Transform.Find를 사용하여 직접 찾기)
+            var cardIllustration = transform.Find("CardIllustration")?.GetComponent<Image>();
+            if (cardIllustration != null && cardData.Image != null)
+            {
+                cardIllustration.sprite = cardData.Image;
+            }
+            // 폴백: 기존 cardImage 필드 사용
+            else if (cardImage != null && cardData.Image != null)
+            {
                 cardImage.sprite = cardData.Image;
+            }
 
             // 속성 아이콘 (ElementType에 따른 처리 필요)
             if (elementIcon != null)
@@ -104,19 +112,41 @@ namespace Maglin.UI
                 // 추후 ElementType별 아이콘 매핑 시스템 구현 필요
             }
 
-            // 카드 이름
-            if (cardNameText != null)
+            // 카드 이름 (Transform.Find를 사용하여 직접 찾기)
+            var cardNameTextComponent = transform.Find("CardName")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (cardNameTextComponent != null)
+            {
+                cardNameTextComponent.text = cardData.CardName;
+            }
+            // 폴백: 기존 cardNameText 필드 사용
+            else if (cardNameText != null)
+            {
                 cardNameText.text = cardData.CardName;
+            }
 
-            // 데미지 (효과값 반영)
-            if (damageText != null)
+            // 데미지 (Transform.Find를 사용하여 직접 찾기)
+            var damageTextComponent = transform.Find("CardDamage")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (damageTextComponent != null)
+            {
+                int currentDamage = associatedCard.CurrentDamage;
+                damageTextComponent.text = currentDamage.ToString();
+            }
+            // 폴백: 기존 damageText 필드 사용
+            else if (damageText != null)
             {
                 int currentDamage = associatedCard.CurrentDamage;
                 damageText.text = currentDamage.ToString();
             }
 
-            // 마나 비용 (효과값 반영)
-            if (manaCostText != null)
+            // 마나 비용 (Transform.Find를 사용하여 직접 찾기)
+            var manaCostTextComponent = transform.Find("CardCost")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (manaCostTextComponent != null)
+            {
+                int currentCost = associatedCard.CurrentManaCost;
+                manaCostTextComponent.text = currentCost.ToString();
+            }
+            // 폴백: 기존 manaCostText 필드 사용
+            else if (manaCostText != null)
             {
                 int currentCost = associatedCard.CurrentManaCost;
                 manaCostText.text = currentCost.ToString();

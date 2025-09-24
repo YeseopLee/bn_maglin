@@ -10,28 +10,28 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
-  m_Name: SummonWall
+  m_Name: VoidAttack
   m_EditorClassIdentifier: 
-  cardName: SummonWall
+  cardName: VoidAttack
   cardType: 1
   elementType: 0
-  baseDamage: 1
+  baseDamage: 5
   baseHeal: 0
   manaCost: 0
   targetType: 0
   targetCount: 1
-  cardDescription: SummonWall
-  cardImage: {fileID: 0}
-  cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
+  cardDescription: VoidAttack
+  cardImage: {fileID: 21300000, guid: ab3c427a0c7ec6e4db73d5cc9b447962, type: 3}
+  cardEffect: {fileID: 11400000, guid: aa52c0db35f3af14e800290c60b10552, type: 2}
   cardSound: {fileID: 0}
-  showVFXPerTarget: 0
+  showVFXPerTarget: 1
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
   movementType: 0
-  movementDistance: 3
-  enableMonsterSummon: 1
-  monsterToSummon: {fileID: 11400000, guid: bd17793a8b9cb411bb4fbb5351f04b5c, type: 2}
-  summonPosition: 2
+  movementDistance: 1
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 0}
+  summonPosition: 0
   pushExistingMonster: 1
   requiredCombinations: []

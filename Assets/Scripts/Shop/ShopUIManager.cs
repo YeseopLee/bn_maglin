@@ -913,6 +913,13 @@ namespace Maglin.Shop
         /// </summary>
         private void UpdateCardUIInfo(GameObject cardUI, Card card)
         {
+            // 카드 일러스트 이미지 설정
+            var cardImage = cardUI.transform.Find("CardIllustration")?.GetComponent<Image>();
+            if (cardImage != null && card.CardData.Image != null)
+            {
+                cardImage.sprite = card.CardData.Image;
+            }
+
             var nameText = cardUI.transform.Find("CardName")?.GetComponent<TextMeshProUGUI>();
             if (nameText != null)
             {
@@ -923,6 +930,12 @@ namespace Maglin.Shop
             if (costText != null)
             {
                 costText.text = $"{card.CurrentManaCost}";
+            }
+
+            var damageText = cardUI.transform.Find("CardDamage")?.GetComponent<TextMeshProUGUI>();
+            if (damageText != null)
+            {
+                damageText.text = card.CurrentDamage.ToString();
             }
 
             var descText = cardUI.transform.Find("CardDescription")?.GetComponent<TextMeshProUGUI>();

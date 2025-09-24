@@ -1569,6 +1569,10 @@ namespace Maglin.Battle
                     if (cardData.BaseDamage > 0 && TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
                         TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
                     break;
+                case TargetType.TargetCenteredRange:
+                    if (cardData.BaseDamage > 0 && TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                        TargetManager.Instance.DamageTargetCenteredRange(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                    break;
                 case TargetType.Self:
                     if (cardData.BaseDamage > 0)
                         PlayerManager.Instance?.TakeDamage(finalDamage);
@@ -1760,6 +1764,10 @@ namespace Maglin.Battle
                         if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
                             TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
                         break;
+                    case TargetType.TargetCenteredRange:
+                        if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                            TargetManager.Instance.DamageTargetCenteredRange(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                        break;
                     case TargetType.Self:
                         PlayerManager.Instance?.TakeDamage(finalDamage);
                         break;
@@ -1872,6 +1880,10 @@ namespace Maglin.Battle
                 case TargetType.TargetBackStrip:
                     if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
                         TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                    break;
+                case TargetType.TargetCenteredRange:
+                    if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                        TargetManager.Instance.DamageTargetCenteredRange(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
                     break;
             }
         }

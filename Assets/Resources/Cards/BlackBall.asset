@@ -1,0 +1,37 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
+  m_Name: BlackBall
+  m_EditorClassIdentifier: 
+  cardName: blackball
+  cardType: 1
+  elementType: 0
+  baseDamage: 1
+  baseHeal: 0
+  manaCost: 0
+  targetType: 0
+  targetCount: 1
+  cardDescription: blackball
+  cardImage: {fileID: 21300000, guid: ab3c427a0c7ec6e4db73d5cc9b447962, type: 3}
+  cardEffect: {fileID: 11400000, guid: 4f9eda3a600684a038d5c2b0edd7ff0f, type: 2}
+  cardSound: {fileID: 0}
+  showVFXPerTarget: 0
+  comboFailureType: 0
+  cardPrice: 0
+  fieldEffectToApply: {fileID: 0}
+  movementType: 0
+  movementDistance: 3
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 11400000, guid: bd17793a8b9cb411bb4fbb5351f04b5c, type: 2}
+  summonPosition: 2
+  pushExistingMonster: 0
+  requiredCombinations: []

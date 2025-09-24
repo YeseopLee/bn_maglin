@@ -112,7 +112,7 @@ namespace Maglin.Player
 
         [Header("사망 연출 설정")]
         [SerializeField] private float deathSlowMotionScale = 0.3f; // 사망 시 슬로우 모션 배율
-        [SerializeField] private float deathSlowMotionDuration = 6f; // 슬로우 모션 지속 시간
+        [SerializeField] private float deathSlowMotionDuration = 2f; // 슬로우 모션 지속 시간
 
         // 계산된 스탯 (유물 효과 적용)
         private int calculatedMaxHealth;

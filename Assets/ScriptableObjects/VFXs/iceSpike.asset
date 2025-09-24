@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bde35d2da019477ba276d94a9d2554d, type: 3}
+  m_Name: iceSpike
+  m_EditorClassIdentifier: 
+  effectName: Projectile BlackHole
+  description: "\uD50C\uB808\uC774\uC5B4\uC5D0\uC11C \uD0C0\uAC9F\uC73C\uB85C \uB0A0\uC544\uAC00\uB294
+    \uBE14\uB799\uD640 \uD22C\uC0AC\uCCB4"
+  effectPrefab: {fileID: 1443531423890102, guid: 4fb22bf94ff53b743b4fe92b82501e85, type: 3}
+  effectDuration: 6
+  autoDestroy: 1
+  hitTimings: []
+  overrideTargeting: 0
+  customTargetType: 0
+  customTargetCount: 1
+  positionOffset: {x: 0, y: 0, z: 0}
+  rotationOffset: {x: 0, y: 0, z: 0}
+  scale: {x: 0, y: 0, z: 1}
+  soundEffect: {fileID: 0}
+  isProjectile: 1
+  projectileHitEffect: {fileID: 0}
+  projectileHitSound: {fileID: 0}
+  projectileConfigs:
+  - launchDelay: 0
+    enableSpawnAnimation: 1
+    spawnAnimationDuration: 0.7
+    spawnHeightOffset: -1.5
+    speed: 3
+    startOffset: {x: 0.2, y: 3, z: 0}
+    scale: {x: 0.4, y: 0.4, z: 0.4}
+    movementType: 1
+    accelerationFactor: 4
+    initialSpeedRatio: 0.0001
+    rotate: 1
+    rotateAmount: 90
+  - launchDelay: 0.3
+    enableSpawnAnimation: 1
+    spawnAnimationDuration: 0.7
+    spawnHeightOffset: -1.5
+    speed: 3
+    startOffset: {x: -0.3, y: 2.8, z: 0}
+    scale: {x: 0.4, y: 0.4, z: 0.4}
+    movementType: 1
+    accelerationFactor: 4
+    initialSpeedRatio: 0.0001
+    rotate: 1
+    rotateAmount: 90
+  - launchDelay: 0.7
+    enableSpawnAnimation: 1
+    spawnAnimationDuration: 0.7
+    spawnHeightOffset: -1.5
+    speed: 3
+    startOffset: {x: -0.7, y: 2.9, z: 0}
+    scale: {x: 0.4, y: 0.4, z: 0.4}
+    movementType: 1
+    accelerationFactor: 4
+    initialSpeedRatio: 0.0001
+    rotate: 1
+    rotateAmount: 90

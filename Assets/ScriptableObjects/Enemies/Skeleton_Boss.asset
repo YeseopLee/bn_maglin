@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: Skeleton_Boss
   enemyType: 0
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
-  maxHealth: 5
+  maxHealth: 500
   enemyElement: 0
   idleSprites:
   - {fileID: -433150319, guid: c72eb132ac1c49343ab96303c5bff712, type: 3}
@@ -70,7 +70,7 @@ MonoBehaviour:
   hitFrameRate: 1
   deathFrameRate: 12
   flipSpritesHorizontally: 1
-  attackDamage: 10
+  attackDamage: 100
   attackPattern: 0
   attackRange: 1
   movementPattern: 2

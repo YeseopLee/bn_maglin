@@ -44,7 +44,8 @@ namespace Maglin.Cards
         ChainFrontHits,     // 가장 앞 몬스터부터 뒤로 targetCount회 연속 타격 (남는 횟수는 다음 몬스터로)
         PlayerFrontLine,    // 플레이어 앞 targetCount칸 라인(세로) 범위 공격 (같은 X, +Y 방향)
         TargetFrontStrip,   // 타겟 포함 플레이어쪽으로 targetCount칸 세로 스트립 공격 (타겟 마커 기반)
-        TargetBackStrip     // 타겟 포함 플레이어 반대쪽으로 targetCount칸 세로 스트립 공격 (타겟 마커 기반)
+        TargetBackStrip,    // 타겟 포함 플레이어 반대쪽으로 targetCount칸 세로 스트립 공격 (타겟 마커 기반)
+        TargetCenteredRange // 타겟을 중심으로 앞뒤로 targetCount칸씩 공격 (예: targetCount=1이면 앞1칸+타겟+뒤1칸 총3칸)
     }
 
     /// <summary>

@@ -247,6 +247,17 @@ namespace Maglin.Battle
                 return;
             }
 
+            // TargetCenteredRange: ShowVFXPerTarget이 꺼진 경우 실제 타겟 중심에 VFX 재생
+            if (targetTypeForVfx == TargetType.TargetCenteredRange && !card.CardData.ShowVFXPerTarget)
+            {
+                if (targetManager != null && targetManager.IsTargetValid())
+                {
+                    Transform centerTarget = targetManager.CurrentTarget.transform;
+                    CreateAndPlayVFX(vfxData, new Transform[] { centerTarget }, card);
+                    return;
+                }
+            }
+
             if (targets == null || targets.Length == 0)
             {
                 if (debugMode)
@@ -421,6 +432,10 @@ namespace Maglin.Battle
                     targets.AddRange(GetStripFromTarget(includeFront: false, range: targetCount));
                     break;
 
+                case TargetType.TargetCenteredRange:
+                    // 타겟 중심으로 앞뒤로 range칸씩
+                    targets.AddRange(GetCenteredRangeFromTarget(targetCount));
+                    break;
 
             }
 
@@ -521,6 +536,28 @@ namespace Maglin.Battle
                 minX = tx;
                 maxX = tx + (range - 1);
             }
+
+            foreach (var enemy in FindObjectsOfType<Enemy.Enemy>())
+            {
+                if (enemy.CurrentState == EnemyState.Dead) continue;
+                if (enemy.GridPosition.x >= minX && enemy.GridPosition.x <= maxX)
+                    result.Add(enemy.transform);
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 타겟 중심으로 앞뒤로 range칸씩 범위의 적들을 가져옴
+        /// </summary>
+        private IEnumerable<Transform> GetCenteredRangeFromTarget(int range)
+        {
+            var result = new List<Transform>();
+            if (targetManager == null || !targetManager.IsTargetValid()) return result;
+
+            int tx = targetManager.CurrentTarget.GridPosition.x;
+            int minX = tx - range;
+            int maxX = tx + range;
 
             foreach (var enemy in FindObjectsOfType<Enemy.Enemy>())
             {
@@ -649,15 +686,20 @@ namespace Maglin.Battle
 
             var projectileConfig = vfxData.GetProjectileConfig(configIndex);
 
-            // 최종 목표 위치 계산 (설정된 오프셋 적용)
+            // 최종 목표 위치 계산 (StartOffset + SpawnHeightOffset 모두 적용)
             Vector3 finalPosition = startPos.position;
             if (projectileConfig.StartOffset != Vector3.zero)
             {
                 finalPosition += projectileConfig.StartOffset;
             }
+            // SpawnHeightOffset도 최종 위치에 포함 (발사 시작점이 됨)
+            if (projectileConfig.SpawnHeightOffset != 0f)
+            {
+                finalPosition += Vector3.up * projectileConfig.SpawnHeightOffset;
+            }
 
-            // 시작 위치 계산 (아래에서 시작)
-            Vector3 startPosition = finalPosition + Vector3.up * projectileConfig.SpawnHeightOffset;
+            // 시작 위치 계산 (최종 위치에서 추가로 아래에서 시작하여 솟아오름)
+            Vector3 startPosition = finalPosition - Vector3.up * Mathf.Abs(projectileConfig.SpawnHeightOffset);
 
             if (debugMode)
                 Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 솟아오르는 애니메이션 시작: {startPosition} -> {finalPosition}");
@@ -756,10 +798,10 @@ namespace Maglin.Battle
             if (debugMode)
                 Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 솟아오르는 애니메이션 완료");
 
-            // Muzzle 이펙트 생성 (실제 발사 시점에)
+            // Muzzle 이펙트 생성 (실제 발사 시점에, 최종 투사체 위치에서)
             if (muzzlePrefab != null)
             {
-                CreateMuzzleEffect(startPos, vfxData, muzzlePrefab);
+                CreateMuzzleEffect(startPos, vfxData, muzzlePrefab, projectileConfig);
             }
 
             // 사운드 재생
@@ -789,14 +831,18 @@ namespace Maglin.Battle
             // 해당 인덱스의 투사체 설정 가져오기
             var projectileConfig = vfxData.GetProjectileConfig(configIndex);
 
-            // 투사체 오브젝트 생성 (개별 투사체 StartOffset 적용)
+            // 투사체 오브젝트 생성 (개별 투사체 StartOffset + SpawnHeightOffset 적용)
             Vector3 spawnPosition = startPos.position;
             if (projectileConfig.StartOffset != Vector3.zero)
             {
                 spawnPosition += projectileConfig.StartOffset;
-                if (debugMode)
-                    Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 생성 위치에 오프셋 적용: {startPos.position} + {projectileConfig.StartOffset} = {spawnPosition}");
             }
+            if (projectileConfig.SpawnHeightOffset != 0f)
+            {
+                spawnPosition += Vector3.up * projectileConfig.SpawnHeightOffset;
+            }
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 투사체 {configIndex} 생성 위치: {startPos.position} + StartOffset({projectileConfig.StartOffset}) + HeightOffset({projectileConfig.SpawnHeightOffset}) = {spawnPosition}");
             Quaternion spawnRotation = Quaternion.Euler(vfxData.RotationOffset);
 
             GameObject projectileObj = Instantiate(vfxData.EffectPrefab, spawnPosition, spawnRotation, vfxParent);
@@ -810,7 +856,7 @@ namespace Maglin.Battle
             // Muzzle 이펙트 생성 (projectileStartOffset 위치에)
             if (muzzlePrefab != null)
             {
-                CreateMuzzleEffect(startPos, vfxData, muzzlePrefab);
+                CreateMuzzleEffect(startPos, vfxData, muzzlePrefab, projectileConfig);
             }
 
             // ProjectileController 컴포넌트 추가 또는 가져오기
@@ -1333,15 +1379,30 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// Muzzle 이펙트 생성 (projectileStartOffset 위치에)
+        /// Muzzle 이펙트 생성 (projectileStartOffset + spawnHeightOffset 위치에)
         /// </summary>
-        private void CreateMuzzleEffect(Transform startPos, VFXEffectSO vfxData, GameObject muzzlePrefab)
+        private void CreateMuzzleEffect(Transform startPos, VFXEffectSO vfxData, GameObject muzzlePrefab, ProjectileConfig? projectileConfig = null)
         {
             if (muzzlePrefab == null || startPos == null) return;
 
-            // Muzzle 이펙트 위치 계산 (플레이어 위치 + projectileStartOffset)
+            // Muzzle 이펙트 위치 계산 (플레이어 위치 + projectileStartOffset + spawnHeightOffset)
             Vector3 muzzlePosition = startPos.position;
-            if (vfxData != null && vfxData.ProjectileStartOffset != Vector3.zero)
+            
+            // ProjectileConfig가 제공된 경우 개별 설정 사용
+            if (projectileConfig.HasValue)
+            {
+                var config = projectileConfig.Value;
+                if (config.StartOffset != Vector3.zero)
+                {
+                    muzzlePosition += config.StartOffset;
+                }
+                if (config.SpawnHeightOffset != 0f)
+                {
+                    muzzlePosition += Vector3.up * config.SpawnHeightOffset;
+                }
+            }
+            // 레거시 지원: VFXEffectSO의 전역 오프셋 사용
+            else if (vfxData != null && vfxData.ProjectileStartOffset != Vector3.zero)
             {
                 muzzlePosition += vfxData.ProjectileStartOffset;
             }
@@ -1356,7 +1417,16 @@ namespace Maglin.Battle
             {
                 Debug.Log($"[VFXEffectManager] Muzzle 이펙트 생성: {muzzleEffect.name} at {muzzlePosition}");
                 Debug.Log($"  - 시작 위치: {startPos.position}");
-                Debug.Log($"  - 오프셋: {vfxData?.ProjectileStartOffset ?? Vector3.zero}");
+                if (projectileConfig.HasValue)
+                {
+                    var config = projectileConfig.Value;
+                    Debug.Log($"  - StartOffset: {config.StartOffset}");
+                    Debug.Log($"  - SpawnHeightOffset: {config.SpawnHeightOffset}");
+                }
+                else
+                {
+                    Debug.Log($"  - 레거시 오프셋: {vfxData?.ProjectileStartOffset ?? Vector3.zero}");
+                }
             }
 
             // Muzzle 이펙트 자동 삭제 (일반적으로 짧은 시간)

@@ -18,11 +18,11 @@ MonoBehaviour:
   baseDamage: 4
   baseHeal: 0
   manaCost: 0
-  targetType: 4
+  targetType: 0
   targetCount: 4
   cardDescription: ChainFrontHit
-  cardImage: {fileID: 0}
-  cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
+  cardImage: {fileID: 21300000, guid: 1b20f5cea31a7044f87af113744d3fe4, type: 3}
+  cardEffect: {fileID: 11400000, guid: 29ba6967027c3d84998a0ecaeded3cb8, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 0
   comboFailureType: 0

@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6bde35d2da019477ba276d94a9d2554d, type: 3}
-  m_Name: projectile_3
+  m_Name: slash
   m_EditorClassIdentifier: 
   effectName: Projectile BlackHole
   description: "\uD50C\uB808\uC774\uC5B4\uC5D0\uC11C \uD0C0\uAC9F\uC73C\uB85C \uB0A0\uC544\uAC00\uB294
@@ -40,9 +40,9 @@ MonoBehaviour:
     movementType: 1
     accelerationFactor: 2.2
     initialSpeedRatio: 0.0001
-    rotate: 0
+    rotate: 1
     rotateAmount: 45
-  - launchDelay: 0.5
+  - launchDelay: 0.4
     enableSpawnAnimation: 1
     spawnAnimationDuration: 0.7
     spawnHeightOffset: -1.5
@@ -52,17 +52,5 @@ MonoBehaviour:
     movementType: 1
     accelerationFactor: 2.2
     initialSpeedRatio: 0.0001
-    rotate: 0
-    rotateAmount: 45
-  - launchDelay: 1
-    enableSpawnAnimation: 1
-    spawnAnimationDuration: 0.7
-    spawnHeightOffset: -1.5
-    speed: 3
-    startOffset: {x: -0.7, y: 0.2, z: 0}
-    scale: {x: 1, y: 1, z: 1}
-    movementType: 1
-    accelerationFactor: 2.2
-    initialSpeedRatio: 0.0001
-    rotate: 0
+    rotate: 1
     rotateAmount: 45

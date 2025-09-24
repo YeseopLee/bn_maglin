@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: Skeleton_R
   enemyType: 0
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
-  maxHealth: 1
+  maxHealth: 500
   enemyElement: 0
   idleSprites:
   - {fileID: -763258467, guid: 3cfc73fceb1687d46992ca734cd6e7d0, type: 3}
@@ -71,7 +71,8 @@ MonoBehaviour:
   attackPattern: 1
   attackRange: 4
   movementPattern: 0
-  movementSpeed: 1
+  moveSpeed: 1
+  movementRestTurns: 0
   sizeInTiles: 1
   canSummonObjects: 0
   hasSpecialMechanics: 0

@@ -41,7 +41,7 @@ namespace Maglin.Battle
         [SerializeField] private float deathCameraZoomDuration = 0.8f; // 카메라 확대/축소 애니메이션 시간 (빠르게)
 
         [Header("사망 시각 효과")]
-        [SerializeField] private float deathEffectFadeTime = 1f; // 사망 효과 페이드 인 시간
+        [SerializeField] private float deathEffectFadeTime = 0.3f; // 사망 효과 페이드 인 시간
         [SerializeField] private float whiteOverlayMaxAlpha = 0.7f; // 하얀 오버레이 최대 투명도 (더 강하게)
 
         [Header("피격 효과")]
@@ -728,8 +728,8 @@ namespace Maglin.Battle
 
             // 화면 밖 시작 위치 계산 (타일맵 위쪽에서 시작하여 떨어지면서 입장)
             Vector2Int startGridPosition = new Vector2Int(
-                targetGridPosition.x - 8, // 왼쪽으로 8칸
-                targetGridPosition.y + 1   // 타일맵 위 1칸 높이에서 시작 (중력으로 떨어짐)
+                targetGridPosition.x - 5, // 왼쪽으로 8칸
+                targetGridPosition.y   // 타일맵 위 1칸 높이에서 시작 (중력으로 떨어짐)
             );
 
             // 물리적으로 시작 위치로 텔레포트

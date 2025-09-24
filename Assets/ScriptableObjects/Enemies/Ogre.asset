@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c5a97bf729a44666ad0d600a5799eb4, type: 3}
+  m_Name: Ogre
+  m_EditorClassIdentifier: 
+  enemyName: Ogre
+  enemyType: 0
+  enemyColor: {r: 1, g: 1, b: 1, a: 1}
+  maxHealth: 500
+  enemyElement: 0
+  idleSprites:
+  - {fileID: -1012686436, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  - {fileID: 492515021, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  - {fileID: 1641296617, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  - {fileID: -1835277545, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  - {fileID: -114673288, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  - {fileID: -1357067829, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  - {fileID: -1913658084, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  - {fileID: 1756339100, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  moveSprites:
+  - {fileID: -1419699967, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: 641406108, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: 1564244800, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: 1728379257, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: -1243839783, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: 683708974, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: 202802053, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: -1272347183, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: -1048675925, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: 1274480013, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  - {fileID: -892741555, guid: b8cf905ca6da23441905ba0e2d774ac8, type: 3}
+  attackSprites:
+  - {fileID: -417605520, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: -893682970, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: 1086984705, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: -98382692, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: 1533686575, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: 1076758475, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: 1873392478, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: -1048901991, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: -444331584, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: 1071077306, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  - {fileID: 2058803072, guid: 2f47838e9fc78cd468c0f4d4e3fbc6ef, type: 3}
+  hitSprites:
+  - {fileID: 1671894928, guid: fac85daa44a81234bb0e35318c52bc94, type: 3}
+  deathSprites:
+  - {fileID: -38146502, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -2042439157, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: 1867169549, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -394830358, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -1708310644, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: 329372838, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -1116621516, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -1090956062, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: 1188137746, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -1269201963, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: 629633382, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -2029887647, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
+  - {fileID: -1012686436, guid: eb20d2e76b383954caf0ac9e3c1d2eac, type: 3}
+  idleFrameRate: 8
+  moveFrameRate: 11
+  attackFrameRate: 11
+  hitFrameRate: 1
+  deathFrameRate: 12
+  flipSpritesHorizontally: 1
+  attackDamage: 99
+  attackPattern: 0
+  attackRange: 1
+  movementPattern: 2
+  moveSpeed: 1
+  movementRestTurns: 0
+  sizeInTiles: 1
+  canSummonObjects: 0
+  hasSpecialMechanics: 0
+  specialAbilityDescription: 
+  isNeutralObject: 0
+  blocksMonsterMovement: 0
+  monstersAttackThis: 0
+  objectDescription: 
+  monsterPatterns: []
+  goldReward: 0
+  experienceReward: 0

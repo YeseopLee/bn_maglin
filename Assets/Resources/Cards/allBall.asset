@@ -21,8 +21,8 @@ MonoBehaviour:
   targetType: 2
   targetCount: 1
   cardDescription: EnergyBall
-  cardImage: {fileID: 0}
-  cardEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
+  cardImage: {fileID: 21300000, guid: c893bbc6f47bff7418c667de5ccba335, type: 3}
+  cardEffect: {fileID: 11400000, guid: 28a13d0d151676f448f76d160f949948, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 1
   comboFailureType: 0

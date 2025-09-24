@@ -479,7 +479,10 @@ namespace Maglin.UI
             if (previewedComboResult != null)
             {
                 return previewedComboResult.CardData.Target == TargetType.SingleEnemy ||
-                       previewedComboResult.CardData.Target == TargetType.AllEnemies;
+                       previewedComboResult.CardData.Target == TargetType.AllEnemies ||
+                       previewedComboResult.CardData.Target == TargetType.TargetFrontStrip ||
+                       previewedComboResult.CardData.Target == TargetType.TargetBackStrip ||
+                       previewedComboResult.CardData.Target == TargetType.TargetCenteredRange;
             }
 
             return false;

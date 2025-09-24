@@ -32,7 +32,7 @@ MonoBehaviour:
   targetDestroyType: {fileID: 0}
   destructionDamage: 5
   destructionTarget: 2
-  attackAndMoveDamage: 10
+  attackAndMoveDamage: 100
   attackAndMoveType: 0
   attackAndMoveRange: 1
   attackAndMoveTarget: 0

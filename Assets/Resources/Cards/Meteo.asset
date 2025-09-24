@@ -13,20 +13,27 @@ MonoBehaviour:
   m_Name: Meteo
   m_EditorClassIdentifier: 
   cardName: Meteo
-  cardType: 3
-  elementType: 1
-  baseDamage: 20
+  cardType: 1
+  elementType: 0
+  baseDamage: 1
   baseHeal: 0
   manaCost: 0
   targetType: 2
   targetCount: 1
   cardDescription: Meteo
-  cardImage: {fileID: 0}
-  cardEffect: {fileID: 0}
+  cardImage: {fileID: 21300000, guid: 8bbe6e05293089b4e8cba79c9c208d72, type: 3}
+  cardEffect: {fileID: 11400000, guid: 0110edddc4e889847b2b5656fda004f7, type: 2}
   cardSound: {fileID: 0}
+  showVFXPerTarget: 1
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
+  movementType: 0
+  movementDistance: 1
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 0}
+  summonPosition: 0
+  pushExistingMonster: 1
   requiredCombinations:
   - elementCard: {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
     active1Card: {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}

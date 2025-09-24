@@ -711,6 +711,31 @@ namespace Maglin.Battle
                     Debug.Log($"[TargetManager] 타겟 포함 뒤 스트립 {range}칸: {enemy.EnemyName}에게 {damage} 데미지");
             }
         }
+
+        /// <summary>
+        /// 타겟을 중심으로 앞뒤로 range칸씩 공격 (총 range*2+1칸)
+        /// </summary>
+        public void DamageTargetCenteredRange(Maglin.Enemy.Enemy target, int range, int damage)
+        {
+            if (target == null || range <= 0 || damage <= 0) return;
+
+            int tx = target.GridPosition.x;
+
+            // 타겟 중심으로 앞뒤로 range칸씩
+            int minX = tx - range;
+            int maxX = tx + range;
+
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x >= minX && e.GridPosition.x <= maxX)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                enemy.TakeDamage(damage);
+                if (debugMode)
+                    Debug.Log($"[TargetManager] 타겟 중심 {range}칸 범위: {enemy.EnemyName}에게 {damage} 데미지");
+            }
+        }
         #endregion
 
         #region Monster Movement System
@@ -754,6 +779,13 @@ namespace Maglin.Battle
                     if (currentTarget != null && currentTarget.IsAlive)
                     {
                         ApplyMovementToTargetBackStrip(currentTarget, distance, movementType, distance);
+                    }
+                    break;
+
+                case TargetType.TargetCenteredRange:
+                    if (currentTarget != null && currentTarget.IsAlive)
+                    {
+                        ApplyMovementToTargetCenteredRange(currentTarget, distance, movementType, distance);
                     }
                     break;
             }
@@ -858,6 +890,27 @@ namespace Maglin.Battle
             int tx = target.GridPosition.x;
             int minX = tx;
             int maxX = tx + (range - 1);
+
+            var enemies = GetAliveEnemies()
+                .Where(e => e.GridPosition.x >= minX && e.GridPosition.x <= maxX)
+                .ToList();
+
+            foreach (var enemy in enemies)
+            {
+                ApplyMovementToMonster(enemy, movementType, distance);
+            }
+        }
+
+        /// <summary>
+        /// 타겟 중심으로 앞뒤 range칸 범위의 몬스터들에게 이동 효과 적용
+        /// </summary>
+        private void ApplyMovementToTargetCenteredRange(Maglin.Enemy.Enemy target, int range, MonsterMovementType movementType, int distance)
+        {
+            if (target == null) return;
+
+            int tx = target.GridPosition.x;
+            int minX = tx - range;
+            int maxX = tx + range;
 
             var enemies = GetAliveEnemies()
                 .Where(e => e.GridPosition.x >= minX && e.GridPosition.x <= maxX)

@@ -1,0 +1,173 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bde35d2da019477ba276d94a9d2554d, type: 3}
+  m_Name: Test06
+  m_EditorClassIdentifier: 
+  effectName: Projectile BlackHole
+  description: "\uD50C\uB808\uC774\uC5B4\uC5D0\uC11C \uD0C0\uAC9F\uC73C\uB85C \uB0A0\uC544\uAC00\uB294
+    \uBE14\uB799\uD640 \uD22C\uC0AC\uCCB4"
+  effectPrefab: {fileID: 2457285412779223385, guid: 74d92b03c11ff7742bbd6e3d2f968780, type: 3}
+  effectDuration: 6
+  autoDestroy: 1
+  hitTimings:
+  - delay: 0.4
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 0.5
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 0.6
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 0.7
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 0.8
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 0.9
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.1
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.2
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.3
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.4
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.5
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.6
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.7
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.8
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 1.9
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.1
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.2
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.3
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.4
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.5
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.6
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.7
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.8
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 2.9
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.1
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.2
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.3
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.4
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.5
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.6
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.7
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.8
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 3.9
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.1
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.2
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.3
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.4
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.5
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.6
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.7
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.8
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 4.9
+    isDamageHit: 1
+    damageMultiplier: 1
+  - delay: 5
+    isDamageHit: 1
+    damageMultiplier: 1
+  overrideTargeting: 0
+  customTargetType: 0
+  customTargetCount: 1
+  positionOffset: {x: 3.5, y: 6, z: 0}
+  rotationOffset: {x: 0, y: 0, z: -30}
+  scale: {x: 1, y: 1, z: 1}
+  soundEffect: {fileID: 0}
+  isProjectile: 0
+  projectileHitEffect: {fileID: 0}
+  projectileHitSound: {fileID: 0}
+  projectileConfigs: []
