@@ -18,8 +18,8 @@ MonoBehaviour:
   baseDamage: 1
   baseHeal: 0
   manaCost: 0
-  targetType: 4
-  targetCount: 3
+  targetType: 0
+  targetCount: 1
   cardDescription: FrontN
   cardImage: {fileID: 21300000, guid: 7816fa01a2c393e479ea24b73212b048, type: 3}
   cardEffect: {fileID: 11400000, guid: 6225f79a093126048967bc35491d5720, type: 2}

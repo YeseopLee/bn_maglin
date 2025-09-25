@@ -21,7 +21,7 @@ MonoBehaviour:
   targetType: 0
   targetCount: 1
   cardDescription: Water Element
-  cardImage: {fileID: 1545378183, guid: 5b3d421f3ab1044b784f1f944e231c46, type: 3}
+  cardImage: {fileID: 21300000, guid: 18eb8023e50b448cc83ee68ee1bcd3d5, type: 3}
   cardEffect: {fileID: 0}
   cardSound: {fileID: 0}
   showVFXPerTarget: 1

@@ -75,6 +75,34 @@ namespace Maglin.Battle
     }
 
     /// <summary>
+    /// 개별 이펙트 설정 정보 (투사체가 아닌 일반 이펙트용)
+    /// </summary>
+    [System.Serializable]
+    public struct EffectConfig
+    {
+        [Header("타이밍 설정")]
+        [SerializeField] private float startDelay;                    // 이펙트 시작 딜레이 (초)
+
+        [Header("위치 설정")]
+        [SerializeField] private Vector3 positionOffset;              // 위치 오프셋
+        [SerializeField] private Vector3 rotationOffset;              // 회전 오프셋 (Euler 각도)
+        [SerializeField] private Vector3 scale;                       // 이펙트 스케일
+
+        public float StartDelay => startDelay;
+        public Vector3 PositionOffset => positionOffset;
+        public Vector3 RotationOffset => rotationOffset;
+        public Vector3 Scale => scale;
+
+        public EffectConfig(float startDelay = 0f, Vector3 positionOffset = default, Vector3 rotationOffset = default, Vector3 scale = default)
+        {
+            this.startDelay = startDelay;
+            this.positionOffset = positionOffset;
+            this.rotationOffset = rotationOffset;
+            this.scale = scale == Vector3.zero ? Vector3.one : scale;
+        }
+    }
+
+    /// <summary>
     /// VFX 히트 타이밍 정보
     /// </summary>
     [System.Serializable]
@@ -115,6 +143,11 @@ namespace Maglin.Battle
         [Header("히트 타이밍")]
         [SerializeField] private HitTiming[] hitTimings;           // 히트 타이밍 배열
 
+        [Header("다중 이펙트 설정")]
+        [SerializeField] private bool useMultipleEffects = false;     // 다중 이펙트 사용 여부
+        [SerializeField] private EffectConfig[] effectConfigs = new EffectConfig[1]; // 이펙트 설정 배열
+
+
         [Header("타겟팅 오버라이드")]
         [SerializeField] private bool overrideTargeting = false;   // 카드의 타겟팅을 오버라이드할지
         [SerializeField] private TargetType customTargetType;      // 커스텀 타겟 타입
@@ -136,6 +169,7 @@ namespace Maglin.Battle
         [Header("다중 투사체 설정")]
         [SerializeField] private ProjectileConfig[] projectileConfigs = new ProjectileConfig[1]; // 투사체 설정 배열
 
+
         // Properties
         public string EffectName => effectName;
         public string Description => description;
@@ -156,6 +190,16 @@ namespace Maglin.Battle
         public GameObject ProjectileHitEffect => projectileHitEffect;
         public AudioClip ProjectileHitSound => projectileHitSound;
         public ProjectileConfig[] ProjectileConfigs => projectileConfigs;
+
+        // 다중 이펙트 관련 Properties
+        public bool UseMultipleEffects => useMultipleEffects && !isProjectile; // 투사체가 아닐 때만 사용
+        public EffectConfig[] EffectConfigs => effectConfigs;
+
+        // 이펙트 개수
+        public int EffectCount => UseMultipleEffects && effectConfigs != null ? effectConfigs.Length : 1;
+
+        // 유효한 이펙트 설정이 있는지 확인
+        public bool HasValidEffectConfigs => UseMultipleEffects && effectConfigs != null && effectConfigs.Length > 0;
 
         // 투사체 개수
         public int ProjectileCount => isProjectile && projectileConfigs != null ? projectileConfigs.Length : 0;
@@ -258,6 +302,30 @@ namespace Maglin.Battle
             return configs;
         }
 
+        /// <summary>
+        /// 특정 인덱스의 이펙트 설정 반환
+        /// </summary>
+        public EffectConfig GetEffectConfig(int index)
+        {
+            if (!HasValidEffectConfigs || index < 0 || index >= effectConfigs.Length)
+            {
+                return new EffectConfig(); // 기본값 반환
+            }
+            return effectConfigs[index];
+        }
+
+        /// <summary>
+        /// 모든 이펙트 설정 반환 (복사본)
+        /// </summary>
+        public EffectConfig[] GetAllEffectConfigs()
+        {
+            if (!HasValidEffectConfigs) return new EffectConfig[0];
+
+            var configs = new EffectConfig[effectConfigs.Length];
+            System.Array.Copy(effectConfigs, configs, effectConfigs.Length);
+            return configs;
+        }
+
 #if UNITY_EDITOR
         /// <summary>
         /// 에디터에서 유효성 검사
@@ -338,6 +406,43 @@ namespace Maglin.Battle
                             config.InitialSpeedRatio == 0f ? 0.2f : config.InitialSpeedRatio,
                             config.Rotate,
                             config.RotateAmount == 0f ? 45f : config.RotateAmount
+                        );
+                    }
+                }
+            }
+
+            // 다중 이펙트 설정 배열 유효성 검사
+            if (useMultipleEffects && !isProjectile && (effectConfigs == null || effectConfigs.Length == 0))
+            {
+                effectConfigs = new EffectConfig[1];
+                effectConfigs[0] = new EffectConfig(
+                    startDelay: 0f,
+                    positionOffset: Vector3.zero,
+                    rotationOffset: Vector3.zero,
+                    scale: Vector3.one
+                ); // 기본값으로 초기화
+            }
+            
+            // 이펙트 설정 배열의 각 항목 유효성 검사
+            if (effectConfigs != null)
+            {
+                for (int i = 0; i < effectConfigs.Length; i++)
+                {
+                    var config = effectConfigs[i];
+                    bool needsUpdate = false;
+                    
+                    if (config.Scale == Vector3.zero)
+                    {
+                        needsUpdate = true;
+                    }
+                    
+                    if (needsUpdate)
+                    {
+                        effectConfigs[i] = new EffectConfig(
+                            config.StartDelay,
+                            config.PositionOffset,
+                            config.RotationOffset,
+                            config.Scale == Vector3.zero ? Vector3.one : config.Scale
                         );
                     }
                 }

@@ -1712,14 +1712,27 @@ namespace Maglin.Battle
                 return;
             }
 
-            // showVFXPerTarget이 true이고 여러 VFX가 있는 경우, 첫 번째 VFX에서만 데미지 적용
+            // 데미지 적용 여부 결정
             bool shouldApplyDamage = true;
-            if (cardData.ShowVFXPerTarget && hitArgs.totalVFXCount > 1)
+
+            // 다중 이펙트 시스템인지 확인 (UseMultipleEffects가 true인 경우)
+            bool isMultipleEffectsSystem = hitArgs.effectData?.UseMultipleEffects == true;
+
+            if (isMultipleEffectsSystem)
             {
-                shouldApplyDamage = (hitArgs.vfxIndex == 0); // 첫 번째 VFX에서만 데미지 적용
+                // 다중 이펙트 시스템: 각 이펙트마다 데미지 적용
+                shouldApplyDamage = true;
 
                 if (debugMode)
-                    Debug.Log($"[BattleTestController] 다중 VFX 데미지 제어: {(shouldApplyDamage ? "적용" : "건너뜀")} (VFX {hitArgs.vfxIndex}/{hitArgs.totalVFXCount})");
+                    Debug.Log($"[BattleTestController] 다중 이펙트 시스템 - 이펙트 {hitArgs.vfxIndex} 데미지 적용");
+            }
+            else if (cardData.ShowVFXPerTarget && hitArgs.totalVFXCount > 1)
+            {
+                // 기존 타겟별 VFX 시스템: 첫 번째 VFX에서만 데미지 적용
+                shouldApplyDamage = (hitArgs.vfxIndex == 0);
+
+                if (debugMode)
+                    Debug.Log($"[BattleTestController] 타겟별 VFX 시스템 - 데미지 제어: {(shouldApplyDamage ? "적용" : "건너뜀")} (VFX {hitArgs.vfxIndex}/{hitArgs.totalVFXCount})");
             }
 
             // 기본 데미지 계산
@@ -1735,49 +1748,70 @@ namespace Maglin.Battle
                 // 히트 타이밍 배율 적용
                 finalDamage = Mathf.RoundToInt(finalDamage * hitTiming.DamageMultiplier);
 
-                // 타겟별 데미지 적용 (타입별로 TargetManager 직접 호출)
-                switch (cardData.Target)
+                // 투사체인 경우 실제 충돌한 타겟에게만 데미지 적용
+                if (hitArgs.effectData.IsProjectile && hitArgs.targets != null && hitArgs.targets.Length > 0)
                 {
-                    case TargetType.SingleEnemy:
-                        TargetManager.Instance?.DamageTarget(finalDamage);
-                        break;
-                    case TargetType.AllEnemies:
-                        TargetManager.Instance?.DamageAllEnemies(finalDamage);
-                        break;
-                    case TargetType.AllIncludingSelf:
-                        TargetManager.Instance?.DamageAllEnemies(finalDamage);
-                        PlayerManager.Instance?.TakeDamage(finalDamage);
-                        break;
+                    // 실제 충돌한 타겟들에게 직접 데미지 적용
+                    foreach (var targetTransform in hitArgs.targets)
+                    {
+                        var hitMonster = targetTransform.GetComponent<Maglin.Enemy.Enemy>();
+                        if (hitMonster == null)
+                            hitMonster = targetTransform.GetComponentInParent<Maglin.Enemy.Enemy>();
 
-                    case TargetType.ChainFrontHits:
-                        // VFX 히트 한 번마다 앞의 적에게 한 번만 타격
-                        TargetManager.Instance?.ChainHitOnceFromFront(finalDamage);
-                        break;
-                    case TargetType.PlayerFrontLine:
-                        TargetManager.Instance?.DamagePlayerFrontLine(cardData.TargetCount, finalDamage);
-                        break;
-                    case TargetType.TargetFrontStrip:
-                        if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
-                            TargetManager.Instance.DamageTargetFrontStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
-                        break;
-                    case TargetType.TargetBackStrip:
-                        if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
-                            TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
-                        break;
-                    case TargetType.TargetCenteredRange:
-                        if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
-                            TargetManager.Instance.DamageTargetCenteredRange(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
-                        break;
-                    case TargetType.Self:
-                        PlayerManager.Instance?.TakeDamage(finalDamage);
-                        break;
+                        if (hitMonster != null && hitMonster.CurrentState != Maglin.Enemy.EnemyState.Dead)
+                        {
+                            hitMonster.TakeDamage(finalDamage);
+                            if (debugMode)
+                                Debug.Log($"[BattleTestController] 투사체 충돌 데미지 적용: {hitMonster.name} - {finalDamage}");
+                        }
+                    }
+                }
+                else
+                {
+                    // 일반 VFX의 경우 기존 로직 사용
+                    switch (cardData.Target)
+                    {
+                        case TargetType.SingleEnemy:
+                            TargetManager.Instance?.DamageTarget(finalDamage);
+                            break;
+                        case TargetType.AllEnemies:
+                            TargetManager.Instance?.DamageAllEnemies(finalDamage);
+                            break;
+                        case TargetType.AllIncludingSelf:
+                            TargetManager.Instance?.DamageAllEnemies(finalDamage);
+                            PlayerManager.Instance?.TakeDamage(finalDamage);
+                            break;
+
+                        case TargetType.ChainFrontHits:
+                            // VFX 히트 한 번마다 앞의 적에게 한 번만 타격
+                            TargetManager.Instance?.ChainHitOnceFromFront(finalDamage);
+                            break;
+                        case TargetType.PlayerFrontLine:
+                            TargetManager.Instance?.DamagePlayerFrontLine(cardData.TargetCount, finalDamage);
+                            break;
+                        case TargetType.TargetFrontStrip:
+                            if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                                TargetManager.Instance.DamageTargetFrontStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                            break;
+                        case TargetType.TargetBackStrip:
+                            if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                                TargetManager.Instance.DamageTargetBackStrip(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                            break;
+                        case TargetType.TargetCenteredRange:
+                            if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                                TargetManager.Instance.DamageTargetCenteredRange(TargetManager.Instance.CurrentTarget, cardData.TargetCount, finalDamage);
+                            break;
+                        case TargetType.Self:
+                            PlayerManager.Instance?.TakeDamage(finalDamage);
+                            break;
+                    }
                 }
 
                 if (debugMode)
                     Debug.Log($"[BattleTestController] VFX 데미지 적용: {finalDamage} (기본: {baseDamage}, 배율: {hitTiming.DamageMultiplier})");
             }
 
-            // 힐 처리 (플레이어 대상인 경우, 첫 번째 VFX에서만)
+            // 힐 처리 (플레이어 대상인 경우)
             if (cardData.BaseHeal > 0 && cardData.Target == TargetType.Self && PlayerManager.Instance != null && shouldApplyDamage)
             {
                 int finalHeal = Mathf.RoundToInt(cardData.BaseHeal * hitTiming.DamageMultiplier);
@@ -1787,8 +1821,14 @@ namespace Maglin.Battle
                     Debug.Log($"[BattleTestController] VFX 힐 적용: {finalHeal}");
             }
 
-            // 몬스터 이동 효과 적용 (첫 번째 VFX에서만)
-            if (shouldApplyDamage && cardData.MovementType != MonsterMovementType.None && TargetManager.Instance != null)
+            // 몬스터 이동 효과 적용 (다중 이펙트 시스템에서는 첫 번째 이펙트에서만, 기존 시스템에서는 shouldApplyDamage 조건 따름)
+            bool shouldApplyMovement = shouldApplyDamage;
+            if (isMultipleEffectsSystem)
+            {
+                shouldApplyMovement = (hitArgs.vfxIndex == 0); // 다중 이펙트에서는 첫 번째만
+            }
+
+            if (shouldApplyMovement && cardData.MovementType != MonsterMovementType.None && TargetManager.Instance != null)
             {
                 TargetManager.Instance.ApplyMovementEffect(cardData.Target, cardData.MovementType, cardData.MovementDistance);
 
@@ -1796,14 +1836,26 @@ namespace Maglin.Battle
                     Debug.Log($"[BattleTestController] VFX 몬스터 이동 효과 적용: {cardData.MovementType}, 거리: {cardData.MovementDistance}");
             }
 
-            // 몬스터 소환 효과 적용 (첫 번째 VFX에서만)
-            if (shouldApplyDamage && cardData.EnableMonsterSummon && cardData.MonsterToSummon != null && MonsterSpawnManager.Instance != null)
+            // 몬스터 소환 효과 적용 (다중 이펙트 시스템에서는 첫 번째 이펙트에서만)
+            bool shouldApplySummon = shouldApplyDamage;
+            if (isMultipleEffectsSystem)
+            {
+                shouldApplySummon = (hitArgs.vfxIndex == 0); // 다중 이펙트에서는 첫 번째만
+            }
+
+            if (shouldApplySummon && cardData.EnableMonsterSummon && cardData.MonsterToSummon != null && MonsterSpawnManager.Instance != null)
             {
                 StartCoroutine(SummonMonsterFromCard(cardData));
             }
 
-            // VFX 히트 후 전투 종료 조건 확인 (첫 번째 VFX에서만)
-            if (shouldApplyDamage)
+            // VFX 히트 후 전투 종료 조건 확인 (다중 이펙트 시스템에서는 첫 번째 이펙트에서만)
+            bool shouldCheckBattleEnd = shouldApplyDamage;
+            if (isMultipleEffectsSystem)
+            {
+                shouldCheckBattleEnd = (hitArgs.vfxIndex == 0); // 다중 이펙트에서는 첫 번째만
+            }
+
+            if (shouldCheckBattleEnd)
             {
                 CheckBattleEnd();
             }

@@ -561,6 +561,17 @@ namespace Maglin.Battle
                     }
                 }
 
+                // BoxCollider 설정 (EnemySO에서 설정값 적용)
+                var boxCollider = monsterObj.GetComponent<BoxCollider>();
+                if (boxCollider != null && enemyData != null)
+                {
+                    boxCollider.center = enemyData.ColliderCenter;
+                    boxCollider.size = enemyData.ColliderSize;
+
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} BoxCollider 적용 - Center: {enemyData.ColliderCenter}, Size: {enemyData.ColliderSize}");
+                }
+
                 if (debugMode)
                     Debug.Log($"[MonsterSpawnManager] 프리팹 몬스터 생성: {monsterName}");
             }
@@ -604,6 +615,23 @@ namespace Maglin.Battle
                 monsterObj.AddComponent<Maglin.Enemy.Enemy>();
                 monsterObj.AddComponent<EnemyAI>();
 
+                // BoxCollider 추가 및 설정
+                var boxCollider = monsterObj.AddComponent<BoxCollider>();
+                if (enemyData != null)
+                {
+                    boxCollider.center = enemyData.ColliderCenter;
+                    boxCollider.size = enemyData.ColliderSize;
+
+                    if (debugMode)
+                        Debug.Log($"[MonsterSpawnManager] {enemyData.EnemyName} BoxCollider 생성 및 적용 - Center: {enemyData.ColliderCenter}, Size: {enemyData.ColliderSize}");
+                }
+                else
+                {
+                    // 기본값 설정
+                    boxCollider.center = Vector3.zero;
+                    boxCollider.size = Vector3.one;
+                }
+
                 if (debugMode)
                     Debug.Log($"[MonsterSpawnManager] 기본 몬스터 생성 (프리팹 없음): {monsterName}");
             }
@@ -613,10 +641,10 @@ namespace Maglin.Battle
             {
                 // 몬스터 스프라이트를 고려한 정확한 월드 위치 계산
                 Vector3 worldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(monsterObj, gridPosition);
-                
+
                 // 물리 기반 배치를 위해 직접 위치 설정
                 monsterObj.transform.position = worldPosition;
-                
+
                 // GridFieldManager에 등록 (기존 위치 유지)
                 Vector3 savedPosition = monsterObj.transform.position;
                 GridFieldManager.Instance.PlaceObjectAtGrid(monsterObj, gridPosition, true);
@@ -1135,7 +1163,7 @@ namespace Maglin.Battle
                     if (monster != null)
                     {
                         monster.SetActive(true);
-                        
+
                         // Idle 애니메이션 설정
                         if (MonsterAnimationManager.Instance != null)
                         {
@@ -1145,7 +1173,7 @@ namespace Maglin.Battle
                                 MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, Maglin.Enemy.MonsterAnimationState.Idle);
                             }
                         }
-                        
+
                         MonsterSpawnAnimationManager.Instance.PlaySpawnAnimation(monster);
                     }
                 }
@@ -1676,7 +1704,7 @@ namespace Maglin.Battle
             {
                 // 몬스터를 활성화하고 Idle 애니메이션 시작
                 monsterObj.SetActive(true);
-                
+
                 // Idle 애니메이션 설정
                 if (MonsterAnimationManager.Instance != null && enemy != null)
                 {
@@ -1705,13 +1733,13 @@ namespace Maglin.Battle
             {
                 // 애니메이션 없이 즉시 활성화
                 monsterObj.SetActive(true);
-                
+
                 // Idle 애니메이션 설정
                 if (MonsterAnimationManager.Instance != null && enemy != null)
                 {
                     MonsterAnimationManager.Instance.SetMonsterAnimationState(enemy, Maglin.Enemy.MonsterAnimationState.Idle);
                 }
-                
+
                 OnPatternMonsterSpawnCompleted(enemy);
             }
 

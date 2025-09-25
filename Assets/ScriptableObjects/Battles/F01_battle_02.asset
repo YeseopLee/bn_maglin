@@ -15,8 +15,20 @@ MonoBehaviour:
   battleName: F01_battle_02
   battleDescription: f01_02
   enemyPlacements:
-  - enemyData: {fileID: 11400000, guid: 60a26c30b0bcfa443a39e4d7605a4112, type: 2}
+  - enemyData: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
     startingPosition: 4
+    isFixed: 0
+    customHealth: 0
+  - enemyData: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
+    startingPosition: 5
+    isFixed: 0
+    customHealth: 0
+  - enemyData: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
+    startingPosition: 7
+    isFixed: 0
+    customHealth: 0
+  - enemyData: {fileID: 11400000, guid: 3971b0fea03918d46a8f0cad81f94176, type: 2}
+    startingPosition: 9
     isFixed: 0
     customHealth: 0
   objectPlacements: []

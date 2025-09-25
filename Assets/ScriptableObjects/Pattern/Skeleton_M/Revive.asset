@@ -26,7 +26,7 @@ MonoBehaviour:
   chargeTarget: 0
   chargeEffectColor: {r: 1, g: 0, b: 0, a: 1}
   spawnedMonsterData: {fileID: 11400000, guid: 97358a9adf5464e4f885c8ed8f4a24e2, type: 2}
-  spawnLocation: 2
+  spawnLocation: 4
   specificSpawnPosition: {x: 0, y: 0}
   skipSpawnAnimation: 0
   targetDestroyType: {fileID: 0}

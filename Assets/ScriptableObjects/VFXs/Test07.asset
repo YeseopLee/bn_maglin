@@ -16,7 +16,7 @@ MonoBehaviour:
   description: "\uD50C\uB808\uC774\uC5B4\uC5D0\uC11C \uD0C0\uAC9F\uC73C\uB85C \uB0A0\uC544\uAC00\uB294
     \uBE14\uB799\uD640 \uD22C\uC0AC\uCCB4"
   effectPrefab: {fileID: 2457285412779223385, guid: 39c8730a448617b498f86a46947e197d, type: 3}
-  effectDuration: 1
+  effectDuration: 0.6
   autoDestroy: 1
   hitTimings:
   - delay: 0.2

@@ -289,11 +289,11 @@ namespace Maglin.Battle
 
             // 타겟 마커는 몬스터의 자식이므로 로컬 위치만 설정하면 됨
             Vector3 targetLocalPosition = new Vector3(0f, 0f, 0f); // 몬스터 발 밑
-            
+
             if (targetMarker.localPosition != targetLocalPosition)
             {
                 targetMarker.localPosition = targetLocalPosition;
-                
+
                 if (debugMode)
                     Debug.Log($"[TargetManager] {enemy.EnemyName} 타겟 마커 로컬 위치 설정: {targetLocalPosition}");
             }
@@ -1122,12 +1122,12 @@ namespace Maglin.Battle
                 {
                     // GridFieldManager를 통해 타일맵 위치 계산 (X만 변경, Y는 타일맵 기준 유지)
                     Vector3 worldPosition = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(monster.gameObject, newGridPosition);
-                    
+
                     // 현재 Y 위치 유지 (물리 시뮬레이션 결과 보존)
                     Vector3 currentPos = monster.transform.position;
                     Vector3 finalPosition = new Vector3(worldPosition.x, currentPos.y, worldPosition.z);
                     monster.transform.position = finalPosition;
-                    
+
                     if (debugMode)
                         Debug.Log($"[TargetManager] 몬스터 이동 위치 설정: X={worldPosition.x} (그리드), Y={currentPos.y} (물리 유지)");
                 }
@@ -1137,7 +1137,7 @@ namespace Maglin.Battle
                     Vector3 currentPos = monster.transform.position;
                     Vector3 worldPosition = new Vector3(newGridPosition.x, currentPos.y, currentPos.z);
                     monster.transform.position = worldPosition;
-                    
+
                     if (debugMode)
                         Debug.Log($"[TargetManager] 폴백 이동: X={newGridPosition.x}, Y={currentPos.y} (유지)");
                 }

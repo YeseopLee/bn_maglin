@@ -10,19 +10,19 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
-  m_Name: Fire
+  m_Name: WaterMeteo
   m_EditorClassIdentifier: 
-  cardName: Fire Element
-  cardType: 0
-  elementType: 1
-  baseDamage: 0
+  cardName: Meteo
+  cardType: 3
+  elementType: 2
+  baseDamage: 1
   baseHeal: 0
   manaCost: 0
-  targetType: 0
+  targetType: 2
   targetCount: 1
-  cardDescription: Add Fire Element
-  cardImage: {fileID: 21300000, guid: 1b20f5cea31a7044f87af113744d3fe4, type: 3}
-  cardEffect: {fileID: 0}
+  cardDescription: Meteo
+  cardImage: {fileID: 21300000, guid: 8bbe6e05293089b4e8cba79c9c208d72, type: 3}
+  cardEffect: {fileID: 11400000, guid: 8e8605d9d14b94b84a5b257729e5ee48, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 1
   comboFailureType: 0
@@ -34,4 +34,9 @@ MonoBehaviour:
   monsterToSummon: {fileID: 0}
   summonPosition: 0
   pushExistingMonster: 1
-  requiredCombinations: []
+  requiredCombinations:
+  - elementCard: {fileID: 11400000, guid: de39f22d7a9b345aaa1634c45d1bca4b, type: 2}
+    active1Card: {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
+    active2Card: {fileID: 11400000, guid: fd039a11222e24eb99aa6790758da01e, type: 2}
+    requiredField: {fileID: 0}
+    combinationDescription: 

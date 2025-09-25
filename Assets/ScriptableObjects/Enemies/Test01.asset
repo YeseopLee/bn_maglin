@@ -95,13 +95,15 @@ MonoBehaviour:
   hitFrameRate: 1
   deathFrameRate: 12
   flipSpritesHorizontally: 1
-  attackDamage: 100
-  attackPattern: 1
-  attackRange: 10
+  attackDamage: 1
+  attackPattern: 0
+  attackRange: 1
   movementPattern: 4
   moveSpeed: 1
   movementRestTurns: 0
   sizeInTiles: 1
+  colliderCenter: {x: 0, y: 0.8, z: 0}
+  colliderSize: {x: 1, y: 2.6, z: 1}
   canSummonObjects: 0
   hasSpecialMechanics: 0
   specialAbilityDescription: 

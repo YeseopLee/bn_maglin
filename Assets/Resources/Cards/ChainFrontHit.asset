@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ChainFrontHit
   m_EditorClassIdentifier: 
   cardName: ChainFrontHit
-  cardType: 2
+  cardType: 1
   elementType: 0
   baseDamage: 4
   baseHeal: 0
@@ -21,7 +21,7 @@ MonoBehaviour:
   targetType: 0
   targetCount: 4
   cardDescription: ChainFrontHit
-  cardImage: {fileID: 21300000, guid: 1b20f5cea31a7044f87af113744d3fe4, type: 3}
+  cardImage: {fileID: 21300000, guid: 81991b601fcccd54aa5436782d9f4cdf, type: 3}
   cardEffect: {fileID: 11400000, guid: 29ba6967027c3d84998a0ecaeded3cb8, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 0

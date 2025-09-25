@@ -86,6 +86,10 @@ namespace Maglin.Enemy
         [Header("크기 정보")]
         [SerializeField] private int sizeInTiles = 1;     // 차지하는 칸 수
 
+        [Header("Collider 설정")]
+        [SerializeField] private Vector3 colliderCenter = Vector3.zero;    // BoxCollider Center 설정 (기본값: 0,0,0)
+        [SerializeField] private Vector3 colliderSize = Vector3.one;       // BoxCollider Size 설정 (기본값: 1,1,1)
+
         [Header("특수 능력")]
         [SerializeField] private bool canSummonObjects;   // 오브젝트 소환 가능 여부
         [SerializeField] private bool hasSpecialMechanics; // 특수 기믹 보유 여부
@@ -155,6 +159,10 @@ namespace Maglin.Enemy
         public bool BlocksMonsterMovement => blocksMonsterMovement;
         public bool MonstersAttackThis => monstersAttackThis;
         public string ObjectDescription => objectDescription;
+
+        // Collider 관련 Properties
+        public Vector3 ColliderCenter => colliderCenter;
+        public Vector3 ColliderSize => colliderSize;
 
         /// <summary>
         /// 보스 몬스터인지 확인

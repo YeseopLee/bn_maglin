@@ -76,6 +76,8 @@ MonoBehaviour:
   moveSpeed: 1
   movementRestTurns: 0
   sizeInTiles: 1
+  colliderCenter: {x: 0, y: 0.35, z: 0}
+  colliderSize: {x: 1, y: 1.7, z: 1}
   canSummonObjects: 0
   hasSpecialMechanics: 0
   specialAbilityDescription: 

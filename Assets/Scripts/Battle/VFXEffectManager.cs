@@ -113,7 +113,7 @@ namespace Maglin.Battle
 
         #region Fields
         [Header("설정")]
-        [SerializeField] private bool debugMode = false;
+        [SerializeField] private bool debugMode = true;
         [SerializeField] private Transform vfxParent; // VFX 오브젝트들의 부모 Transform
 
         [Header("레이어 설정")]
@@ -224,6 +224,13 @@ namespace Maglin.Battle
             if (vfxData.IsProjectile)
             {
                 PlayProjectileVFX(card, vfxData, specificTargets);
+                return;
+            }
+
+            // 다중 이펙트인 경우 특별 처리
+            if (vfxData.UseMultipleEffects)
+            {
+                PlayMultipleEffectVFX(card, vfxData, specificTargets);
                 return;
             }
 
@@ -567,6 +574,150 @@ namespace Maglin.Battle
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// 다중 이펙트 VFX 실행
+        /// </summary>
+        private void PlayMultipleEffectVFX(Card card, VFXEffectSO vfxData, Transform[] specificTargets = null)
+        {
+            if (card == null || vfxData == null || !vfxData.HasValidEffectConfigs) return;
+
+            // 타겟 결정
+            Transform[] targets = DetermineTargets(card, vfxData, specificTargets);
+            if (targets == null || targets.Length == 0)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[VFXEffectManager] 다중 이펙트 타겟을 찾을 수 없습니다: {card.CardData.CardName}");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 다중 이펙트 VFX 시작: {card.CardData.CardName} -> {vfxData.EffectCount}개 이펙트, {targets.Length}개 타겟");
+
+            // 카드별 VFX 추적 초기화
+            if (!cardVFXTracker.ContainsKey(card))
+            {
+                cardVFXTracker[card] = new List<VFXInstance>();
+            }
+
+            var effectConfigs = vfxData.EffectConfigs;
+
+            // 각 타겟에 대해 모든 이펙트 설정으로 이펙트 생성 (딜레이 적용)
+            for (int targetIndex = 0; targetIndex < targets.Length; targetIndex++)
+            {
+                for (int configIndex = 0; configIndex < effectConfigs.Length; configIndex++)
+                {
+                    var config = effectConfigs[configIndex];
+                    if (config.StartDelay > 0f)
+                    {
+                        // 딜레이가 있는 경우 코루틴으로 지연 생성
+                        StartCoroutine(CreateEffectWithDelay(targets[targetIndex], vfxData, card, configIndex, config.StartDelay));
+                    }
+                    else
+                    {
+                        // 딜레이가 없는 경우 즉시 생성
+                        CreateMultipleEffect(targets[targetIndex], vfxData, card, configIndex);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 딜레이 후 이펙트 생성 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator CreateEffectWithDelay(Transform target, VFXEffectSO vfxData, Card sourceCard, int configIndex, float delay)
+        {
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 이펙트 {configIndex} 딜레이 대기 중: {delay}초");
+
+            yield return new WaitForSeconds(delay);
+
+            // 딜레이 후에도 타겟이 유효한지 확인
+            if (target != null && sourceCard != null)
+            {
+                if (debugMode)
+                    Debug.Log($"[VFXEffectManager] 이펙트 {configIndex} 딜레이 완료, 생성 시작 (현재 시간: {Time.time})");
+
+                // 딜레이 후 생성되는 이펙트도 생성 시점을 기준으로 히트타이밍 계산
+                CreateMultipleEffect(target, vfxData, sourceCard, configIndex);
+            }
+            else if (debugMode)
+            {
+                Debug.LogWarning($"[VFXEffectManager] 이펙트 {configIndex} 딜레이 완료 후 타겟 또는 카드가 유효하지 않음");
+            }
+        }
+
+        /// <summary>
+        /// 다중 이펙트 개별 생성
+        /// </summary>
+        private void CreateMultipleEffect(Transform target, VFXEffectSO vfxData, Card sourceCard, int configIndex)
+        {
+            if (vfxData?.EffectPrefab == null || target == null) return;
+
+            // 해당 인덱스의 이펙트 설정 가져오기
+            var effectConfig = vfxData.GetEffectConfig(configIndex);
+
+            // 이펙트 오브젝트 생성 (개별 이펙트 PositionOffset + RotationOffset + Scale 적용)
+            Vector3 spawnPosition = target.position + vfxData.PositionOffset + effectConfig.PositionOffset;
+            Quaternion spawnRotation = Quaternion.Euler(vfxData.RotationOffset + effectConfig.RotationOffset);
+
+            if (debugMode)
+            {
+                Debug.Log($"[VFXEffectManager] 이펙트 {configIndex} 생성 위치: {target.position} + VFXOffset({vfxData.PositionOffset}) + ConfigOffset({effectConfig.PositionOffset}) = {spawnPosition}");
+                Debug.Log($"[VFXEffectManager] 이펙트 {configIndex} 회전: VFXRotation({vfxData.RotationOffset}) + ConfigRotation({effectConfig.RotationOffset}) = {vfxData.RotationOffset + effectConfig.RotationOffset}");
+            }
+
+            GameObject effectObj = Instantiate(vfxData.EffectPrefab, spawnPosition, spawnRotation, vfxParent);
+
+            // 스케일 적용 (VFX 기본 스케일 * 개별 이펙트 스케일)
+            Vector3 finalScale = Vector3.Scale(vfxData.Scale, effectConfig.Scale);
+            effectObj.transform.localScale = finalScale;
+
+            if (debugMode)
+                Debug.Log($"[VFXEffectManager] 이펙트 {configIndex} 스케일 적용: VFX({vfxData.Scale}) * Config({effectConfig.Scale}) = {finalScale}");
+
+            // VFX 레이어 설정
+            SetVFXLayer(effectObj);
+
+            // VFX 인스턴스 생성 (개별 이펙트는 현재 시간을 시작 시간으로 설정)
+            var vfxInstance = new VFXInstance(effectObj, vfxData, new Transform[] { target }, sourceCard, configIndex, vfxData.EffectCount);
+            // 다중 이펙트의 경우 각 이펙트가 생성된 시점을 시작 시간으로 재설정
+            vfxInstance.startTime = Time.time;
+            activeVFXInstances.Add(vfxInstance);
+
+            // 카드별 VFX 추적에 등록
+            if (sourceCard != null)
+            {
+                if (!cardVFXTracker.ContainsKey(sourceCard))
+                {
+                    cardVFXTracker[sourceCard] = new List<VFXInstance>();
+                }
+                cardVFXTracker[sourceCard].Add(vfxInstance);
+            }
+
+            // 사운드 재생 (첫 번째 이펙트에서만)
+            if (configIndex == 0 && vfxData.SoundEffect != null)
+            {
+                PlayVFXSound(vfxData.SoundEffect, spawnPosition);
+            }
+
+            // 자동 삭제 설정
+            if (vfxData.AutoDestroy)
+            {
+                StartCoroutine(DestroyVFXAfterDuration(vfxInstance, vfxData.EffectDuration));
+            }
+
+            // 이벤트 발생
+            OnVFXStarted?.Invoke(vfxInstance);
+
+            if (debugMode)
+            {
+                Debug.Log($"[VFXEffectManager] 다중 이펙트 생성: {sourceCard.CardData.CardName} -> {target.name} (설정 {configIndex})");
+                Debug.Log($"[VFXEffectManager] 이펙트 위치: {spawnPosition}, 회전: {spawnRotation.eulerAngles}, 스케일: {finalScale}");
+                Debug.Log($"[VFXEffectManager] 이펙트 설정: 딜레이={effectConfig.StartDelay}초, 위치오프셋={effectConfig.PositionOffset}, 회전오프셋={effectConfig.RotationOffset}, 스케일={effectConfig.Scale}");
+                Debug.Log($"[VFXEffectManager] 이펙트 시작 시간: {vfxInstance.startTime}, 히트타이밍 개수: {(vfxData.HasValidHitTimings ? vfxData.HitTimings.Length : 0)}");
+            }
         }
 
         /// <summary>
@@ -943,15 +1094,29 @@ namespace Maglin.Battle
         /// </summary>
         private void OnProjectileHit(ProjectileController projectile, Transform target)
         {
-            if (projectile?.SourceCard == null || projectile.VFXData == null) return;
+            if (projectile?.SourceCard == null || projectile.VFXData == null || target == null) return;
+
+            // 충돌한 타겟이 살아있는 몬스터인지 확인
+            var hitMonster = target.GetComponent<Maglin.Enemy.Enemy>();
+            if (hitMonster == null)
+            {
+                hitMonster = target.GetComponentInParent<Maglin.Enemy.Enemy>();
+            }
+
+            if (hitMonster == null || hitMonster.CurrentState == Maglin.Enemy.EnemyState.Dead)
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[VFXEffectManager] 투사체가 유효하지 않은 타겟과 충돌: {target.name}");
+                return;
+            }
 
             if (debugMode)
-                Debug.Log($"[VFXEffectManager] 투사체 히트: {projectile.SourceCard.CardData.CardName} -> {target?.name}");
+                Debug.Log($"[VFXEffectManager] 투사체 히트: {projectile.SourceCard.CardData.CardName} -> {hitMonster.name}");
 
-            // 투사체가 타겟에 도달했으므로 즉시 데미지 적용
+            // 투사체가 몬스터에 도달했으므로 즉시 데미지 적용
             var hitEventArgs = new VFXHitEventArgs(
                 projectile.SourceCard,
-                new Transform[] { target },
+                new Transform[] { hitMonster.transform }, // 실제 충돌한 몬스터의 Transform 사용
                 new HitTiming(0f, true, 1.0f), // 투사체는 즉시 히트, 데미지 배율 1.0
                 projectile.VFXData,
                 0,
@@ -962,7 +1127,7 @@ namespace Maglin.Battle
             OnVFXHit?.Invoke(hitEventArgs);
 
             if (debugMode)
-                Debug.Log($"[VFXEffectManager] 투사체 히트 이벤트 발생 완료: 카드={projectile.SourceCard.CardData.CardName}, 타겟={target?.name}");
+                Debug.Log($"[VFXEffectManager] 투사체 히트 이벤트 발생 완료: 카드={projectile.SourceCard.CardData.CardName}, 타겟={hitMonster.name}");
         }
 
         /// <summary>
@@ -1110,6 +1275,11 @@ namespace Maglin.Battle
             float elapsedTime = Time.time - vfxInstance.startTime;
             var hitTimings = vfxInstance.effectData.HitTimings;
 
+            if (debugMode && elapsedTime > 0.1f && vfxInstance.currentHitIndex == 0) // 첫 번째 히트 타이밍 체크 시에만 로그
+            {
+                Debug.Log($"[VFXEffectManager] 히트타이밍 체크 중 - 이펙트 인덱스: {vfxInstance.vfxIndex}, 경과시간: {elapsedTime:F2}초, 시작시간: {vfxInstance.startTime:F2}, 현재시간: {Time.time:F2}");
+            }
+
             // 다음 히트 타이밍 확인
             for (int i = vfxInstance.currentHitIndex; i < hitTimings.Length; i++)
             {
@@ -1122,7 +1292,7 @@ namespace Maglin.Battle
                     vfxInstance.currentHitIndex = i + 1;
 
                     if (debugMode)
-                        Debug.Log($"[VFXEffectManager] 히트 발생: {vfxInstance.effectData.EffectName} - 타이밍 {hitTiming.Delay}초");
+                        Debug.Log($"[VFXEffectManager] 히트 발생: {vfxInstance.effectData.EffectName} - 이펙트 인덱스 {vfxInstance.vfxIndex}, 타이밍 {hitTiming.Delay}초, 경과시간 {elapsedTime:F2}초");
                 }
                 else
                 {
@@ -1136,6 +1306,11 @@ namespace Maglin.Battle
         /// </summary>
         private void ExecuteHit(VFXInstance vfxInstance, HitTiming hitTiming)
         {
+            if (debugMode)
+            {
+                Debug.Log($"[VFXEffectManager] ExecuteHit 호출 - 카드: {vfxInstance.sourceCard?.CardData?.CardName}, 이펙트 인덱스: {vfxInstance.vfxIndex}, 타겟 수: {vfxInstance.targets?.Length}, 데미지 히트: {hitTiming.IsDamageHit}");
+            }
+
             var hitEventArgs = new VFXHitEventArgs(
                 vfxInstance.sourceCard,
                 vfxInstance.targets,
@@ -1146,6 +1321,11 @@ namespace Maglin.Battle
             );
 
             OnVFXHit?.Invoke(hitEventArgs);
+
+            if (debugMode)
+            {
+                Debug.Log($"[VFXEffectManager] OnVFXHit 이벤트 발생 완료 - 이펙트 인덱스: {vfxInstance.vfxIndex}");
+            }
         }
 
 
@@ -1387,7 +1567,7 @@ namespace Maglin.Battle
 
             // Muzzle 이펙트 위치 계산 (플레이어 위치 + projectileStartOffset + spawnHeightOffset)
             Vector3 muzzlePosition = startPos.position;
-            
+
             // ProjectileConfig가 제공된 경우 개별 설정 사용
             if (projectileConfig.HasValue)
             {

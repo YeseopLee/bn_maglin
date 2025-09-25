@@ -33,7 +33,7 @@ namespace Maglin.Battle
         private System.Action<ProjectileController> onHitCallback;
         private GameObject customHitEffectPrefab; // ProjectileMoveScript에서 가져온 hit prefab
         private ProjectileConfig currentProjectileConfig; // 현재 사용중인 투사체 설정
-        
+
         // ProjectileMoveScript에서 추출한 정보들
         private List<GameObject> originalTrails; // 원본 trail 목록
 
@@ -155,7 +155,9 @@ namespace Maglin.Battle
                 {
                     if (debugMode)
                         Debug.Log($"[ProjectileController] 거리 기반 히트 감지: 거리={distanceToTarget:F2}");
-                    HitTarget();
+
+                    // 거리 기반일 때도 경로상의 다른 몬스터 검사
+                    CheckForMonstersInPath();
                     return;
                 }
 
@@ -179,7 +181,7 @@ namespace Maglin.Battle
                     Quaternion targetRotation = Quaternion.LookRotation(direction);
                     transform.localRotation = Quaternion.Lerp(transform.rotation, targetRotation, 1f);
                 }
-                
+
                 // 2. 추가 자전 회전 (rotate 옵션이 켜져 있으면)
                 if (rotateProjectile)
                 {
@@ -366,45 +368,101 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 충돌한 오브젝트가 타겟인지 확인
+        /// 투사체 경로상에 있는 몬스터들을 검사하여 가장 가까운 몬스터와 충돌 처리
+        /// </summary>
+        private void CheckForMonstersInPath()
+        {
+            if (hasHit) return;
+
+            // 현재 위치에서 타겟까지의 방향과 거리
+            Vector3 directionToTarget = (target.position - transform.position).normalized;
+            float distanceToTarget = Vector3.Distance(transform.position, target.position);
+
+            // 경로상의 모든 몬스터들을 검사
+            var allMonsters = FindObjectsOfType<Maglin.Enemy.Enemy>();
+            Maglin.Enemy.Enemy closestMonster = null;
+            float closestDistance = float.MaxValue;
+
+            foreach (var monster in allMonsters)
+            {
+                if (monster.CurrentState == Maglin.Enemy.EnemyState.Dead) continue;
+
+                // 몬스터까지의 거리
+                float distanceToMonster = Vector3.Distance(transform.position, monster.transform.position);
+
+                // 타겟보다 더 멀리 있는 몬스터는 제외
+                if (distanceToMonster > distanceToTarget) continue;
+
+                // 투사체 경로상에 있는지 확인 (약간의 여유 범위 포함)
+                Vector3 directionToMonster = (monster.transform.position - transform.position).normalized;
+                float dot = Vector3.Dot(directionToTarget, directionToMonster);
+
+                // 거의 같은 방향이고 (dot > 0.9) 가장 가까운 몬스터 찾기
+                if (dot > 0.9f && distanceToMonster < closestDistance)
+                {
+                    closestMonster = monster;
+                    closestDistance = distanceToMonster;
+                }
+            }
+
+            // 가장 가까운 몬스터와 충돌 처리
+            if (closestMonster != null)
+            {
+                if (debugMode)
+                    Debug.Log($"[ProjectileController] 경로상 가장 가까운 몬스터: {closestMonster.name} (거리: {closestDistance:F2})");
+
+                target = closestMonster.transform;
+                HitTarget();
+            }
+            else
+            {
+                // 경로상에 몬스터가 없으면 원래 타겟으로 히트
+                if (debugMode)
+                    Debug.Log($"[ProjectileController] 경로상 몬스터 없음, 원래 타겟으로 히트: {target.name}");
+                HitTarget();
+            }
+        }
+
+        /// <summary>
+        /// 충돌한 오브젝트가 몬스터인지 확인하고 히트 처리
         /// </summary>
         private void CheckHit(Transform hitTransform)
         {
             if (hasHit) return;
 
-            // 타겟에 도달했는지 확인 (더 넓은 범위로)
-            bool isTargetHit = false;
+            if (debugMode)
+                Debug.Log($"[ProjectileController] 충돌 감지: {hitTransform.name} (레이어: {hitTransform.gameObject.layer})");
 
-            // 직접적인 타겟 확인
-            if (hitTransform == target)
+            // 충돌한 오브젝트에서 Enemy 컴포넌트 찾기 (부모에서 먼저 찾기)
+            Maglin.Enemy.Enemy hitMonster = hitTransform.GetComponentInParent<Maglin.Enemy.Enemy>();
+            if (hitMonster == null)
             {
-                isTargetHit = true;
-            }
-            // 부모-자식 관계 확인
-            else if (hitTransform.IsChildOf(target) || target.IsChildOf(hitTransform))
-            {
-                isTargetHit = true;
-            }
-            // 같은 게임오브젝트 확인
-            else if (hitTransform.gameObject == target.gameObject)
-            {
-                isTargetHit = true;
-            }
-            // 몬스터 관련 컴포넌트가 있는지 확인
-            else if (target != null && (
-                hitTransform.GetComponent<Maglin.Enemy.Enemy>() != null ||
-                hitTransform.GetComponentInParent<Maglin.Enemy.Enemy>() != null ||
-                hitTransform.name.ToLower().Contains("monster") ||
-                hitTransform.transform.root == target.transform.root))
-            {
-                isTargetHit = true;
+                hitMonster = hitTransform.GetComponent<Maglin.Enemy.Enemy>();
             }
 
-            if (isTargetHit)
+            // Enemy 컴포넌트가 있고 살아있는 몬스터인 경우
+            if (hitMonster != null && hitMonster.CurrentState != Maglin.Enemy.EnemyState.Dead)
             {
                 if (debugMode)
-                    Debug.Log($"[ProjectileController] 타겟 히트 확인됨: {hitTransform.name}");
+                    Debug.Log($"[ProjectileController] 몬스터와 충돌: {hitMonster.name} (원래 타겟: {target?.name})");
+
+                // 충돌한 몬스터로 타겟 변경하여 히트 처리
+                Transform originalTarget = target;
+                target = hitMonster.transform;
+
                 HitTarget();
+
+                if (debugMode)
+                {
+                    if (originalTarget != target)
+                        Debug.Log($"[ProjectileController] 투사체 경로상 충돌로 타겟 변경: {originalTarget?.name} → {target.name}");
+                    else
+                        Debug.Log($"[ProjectileController] 원래 타겟에 도달: {target.name}");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log($"[ProjectileController] 몬스터가 아닌 오브젝트와 충돌: {hitTransform.name} (Enemy 컴포넌트: {hitMonster != null})");
             }
         }
 
@@ -445,7 +503,8 @@ namespace Maglin.Battle
             {
                 hitEffectCreated = true; // 플래그 설정
 
-                Vector3 hitPosition = target.position;
+                // 실제 충돌 지점(투사체 현재 위치)에 히트 이펙트 생성
+                Vector3 hitPosition = transform.position;
                 GameObject hitEffect = Instantiate(hitEffectPrefab, hitPosition, Quaternion.identity);
 
                 // 개별 투사체 설정의 스케일을 히트 이펙트에 적용
@@ -477,7 +536,10 @@ namespace Maglin.Battle
                 }
 
                 if (debugMode)
+                {
                     Debug.Log($"[ProjectileController] 히트 이펙트 생성 완료: {hitEffect.name} (최종 스케일: {hitEffect.transform.localScale})");
+                    Debug.Log($"[ProjectileController] 히트 위치: {hitPosition} (투사체 위치), 타겟 위치: {target.position}");
+                }
 
                 // 히트 이펙트에서 반복 재생을 방지
                 // 파티클 시스템이 있다면 한 번만 재생하도록 설정
@@ -524,10 +586,13 @@ namespace Maglin.Battle
                 StartCoroutine(DestroyHitEffect(hitEffect, 1f));
             }
 
-            // 히트 사운드 재생
+            // 히트 사운드 재생 (실제 충돌 지점에서)
             if (hitSound != null)
             {
                 AudioSource.PlayClipAtPoint(hitSound, transform.position);
+
+                if (debugMode)
+                    Debug.Log($"[ProjectileController] 히트 사운드 재생: {hitSound.name} at {transform.position}");
             }
 
             // 히트 이벤트 발생 (한 번만)
@@ -635,7 +700,7 @@ namespace Maglin.Battle
                 Debug.Log("[ProjectileController] ProjectileMoveScript 컴포넌트를 찾을 수 없습니다.");
             }
         }
-        
+
         /// <summary>
         /// ProjectileMoveScript에서 trails 정보 추출
         /// </summary>
@@ -644,7 +709,7 @@ namespace Maglin.Battle
             if (projectileMoveScript.trails != null && projectileMoveScript.trails.Count > 0)
             {
                 originalTrails = new List<GameObject>(projectileMoveScript.trails);
-                
+
                 if (debugMode)
                 {
                     Debug.Log($"[ProjectileController] Trails 추출 완료: {originalTrails.Count}개");
@@ -662,7 +727,7 @@ namespace Maglin.Battle
                     Debug.Log("[ProjectileController] Trails가 없습니다.");
             }
         }
-        
+
         /// <summary>
         /// 히트 시 trails 처리 (ProjectileMoveScript와 동일한 방식)
         /// </summary>
@@ -679,14 +744,14 @@ namespace Maglin.Battle
                     {
                         // ProjectileMoveScript와 동일: parent 해제
                         originalTrails[i].transform.parent = null;
-                        
+
                         var ps = originalTrails[i].GetComponent<ParticleSystem>();
                         if (ps != null)
                         {
                             ps.Stop();
                             // ProjectileMoveScript와 동일한 방식으로 삭제 타이밍 계산
                             Destroy(ps.gameObject, ps.main.duration + ps.main.startLifetime.constantMax);
-                            
+
                             if (debugMode)
                                 Debug.Log($"[ProjectileController] Trail 파티클 정지 및 삭제 예약: {originalTrails[i].name}");
                         }
@@ -694,7 +759,7 @@ namespace Maglin.Battle
                         {
                             // 파티클 시스템이 없으면 바로 삭제
                             Destroy(originalTrails[i], 1f);
-                            
+
                             if (debugMode)
                                 Debug.Log($"[ProjectileController] Trail 오브젝트 삭제 예약: {originalTrails[i].name}");
                         }
