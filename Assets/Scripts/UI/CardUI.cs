@@ -3,6 +3,8 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using Maglin.Cards;
 using System.Collections;
+using System.Reflection;
+using TMPro;
 
 namespace Maglin.UI
 {
@@ -14,9 +16,9 @@ namespace Maglin.UI
         [Header("UI 컴포넌트")]
         [SerializeField] private Image cardImage;
         [SerializeField] private Image elementIcon;
-        [SerializeField] private Text cardNameText;
-        [SerializeField] private Text damageText;
-        [SerializeField] private Text manaCostText;
+        [SerializeField] private TextMeshProUGUI cardNameText;
+        [SerializeField] private TextMeshProUGUI damageText;
+        [SerializeField] private TextMeshProUGUI manaCostText;
         [SerializeField] private GameObject highlightEffect;
         [SerializeField] private GameObject selectionEffect;
         [SerializeField] private CanvasGroup canvasGroup;
@@ -45,6 +47,9 @@ namespace Maglin.UI
         private int originalSortOrder;
         private bool isHovering;
 
+        // hover UI 관련
+        private GameObject hoverUIInstance;
+
         // 참조
         private HandCardUI parentHand;
         private CardSlotUI currentSlot;
@@ -66,6 +71,12 @@ namespace Maglin.UI
 
             // 원본 정렬 순서 저장
             originalSortOrder = transform.GetSiblingIndex();
+        }
+
+        private void OnDestroy()
+        {
+            // hover UI가 남아있다면 정리
+            HideHoverUI();
         }
 
         #endregion
@@ -318,25 +329,20 @@ namespace Maglin.UI
             if (highlightEffect != null)
                 highlightEffect.SetActive(true);
 
-            // 카드를 맨 앞으로 가져오기 (겹침 방지)
-            BringToFront();
-
-            AnimateScale(originalScale * hoverScale);
+            // 스케일업 대신 hover UI 표시
+            ShowHoverUI();
             OnCardHoverEnter?.Invoke(this);
         }
 
         public void OnPointerExit(PointerEventData eventData)
         {
-
             isHovering = false;
 
             if (highlightEffect != null)
                 highlightEffect.SetActive(false);
 
-            // 원래 위치로 되돌리기
-            RestoreOriginalOrder();
-
-            AnimateScale(originalScale);
+            // hover UI 숨기기
+            HideHoverUI();
             OnCardHoverExit?.Invoke(this);
         }
 
@@ -383,6 +389,185 @@ namespace Maglin.UI
             {
                 Destroy(canvas);
             }
+        }
+
+        /// <summary>
+        /// hover UI 표시
+        /// </summary>
+        private void ShowHoverUI()
+        {
+            // 이미 hover UI가 있으면 제거
+            if (hoverUIInstance != null)
+            {
+                HideHoverUI();
+            }
+
+            // 카드 데이터 먼저 확인
+            Card cardData = GetCardData();
+            if (cardData == null) return;
+
+            // BattleUIManager에서 CardHoverUIPrefab 가져오기
+            var battleUIManager = Maglin.Battle.BattleUIManager.Instance;
+            if (battleUIManager == null) return;
+
+            var hoverPrefab = GetCardHoverPrefab(battleUIManager);
+            if (hoverPrefab == null) return;
+
+            // 부모 Canvas 찾기 (보통 현재 카드의 최상위 Canvas)
+            var parentCanvas = GetComponentInParent<Canvas>();
+            if (parentCanvas == null) return;
+
+            // hover UI 생성
+            hoverUIInstance = Instantiate(hoverPrefab, parentCanvas.transform);
+
+            // 현재 카드와 같은 위치에 배치 (바로 그 자리에서 크게 표시)
+            var rectTransform = hoverUIInstance.GetComponent<RectTransform>();
+            var currentRectTransform = GetComponent<RectTransform>();
+
+            if (rectTransform != null && currentRectTransform != null)
+            {
+                // UI 좌표계에서 현재 카드의 위치를 그대로 사용
+                rectTransform.position = currentRectTransform.position;
+                rectTransform.localScale = Vector3.one;
+
+                // 높은 sorting order로 설정하여 맨 앞에 표시
+                var canvas = hoverUIInstance.GetComponent<Canvas>();
+                if (canvas == null)
+                {
+                    canvas = hoverUIInstance.AddComponent<Canvas>();
+                    canvas.overrideSorting = true;
+                }
+                canvas.sortingOrder = 2000; // 매우 높은 값으로 설정
+
+                // GraphicRaycaster는 추가하지 않음 (마우스 이벤트가 원본 카드로 전달되어야 함)
+            }
+
+            // hover UI에 카드 정보 설정
+            UpdateHoverUIInfo(hoverUIInstance, cardData);
+        }
+
+        /// <summary>
+        /// hover UI 숨기기
+        /// </summary>
+        private void HideHoverUI()
+        {
+            if (hoverUIInstance != null)
+            {
+                Destroy(hoverUIInstance);
+                hoverUIInstance = null;
+            }
+        }
+
+        /// <summary>
+        /// BattleUIManager 또는 ShopUIManager에서 CardHoverUIPrefab 가져오기 (리플렉션 사용)
+        /// </summary>
+        private GameObject GetCardHoverPrefab(Maglin.Battle.BattleUIManager battleUIManager)
+        {
+            // 먼저 BattleUIManager에서 시도
+            var battleField = typeof(Maglin.Battle.BattleUIManager).GetField("cardHoverUIPrefab",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            var hoverPrefab = battleField?.GetValue(battleUIManager) as GameObject;
+            if (hoverPrefab != null)
+            {
+                return hoverPrefab;
+            }
+
+            // BattleUIManager에서 찾지 못했다면 ShopUIManager에서 시도
+            var shopUIManager = Maglin.Shop.ShopUIManager.Instance;
+            if (shopUIManager != null)
+            {
+                var shopField = typeof(Maglin.Shop.ShopUIManager).GetField("cardHoverUIPrefab",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                hoverPrefab = shopField?.GetValue(shopUIManager) as GameObject;
+                if (hoverPrefab != null)
+                {
+                    return hoverPrefab;
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 카드 데이터 가져오기 (associatedCard 또는 CardUIData에서)
+        /// </summary>
+        private Card GetCardData()
+        {
+            // 먼저 associatedCard 확인 (CardUI.Initialize에서 설정된 경우)
+            if (associatedCard != null)
+            {
+                return associatedCard;
+            }
+
+            // CardUIData 컴포넌트에서 확인 (BattleUIManager에서 생성된 경우)
+            var cardUIData = GetComponent<Maglin.Battle.CardUIData>();
+            if (cardUIData != null && cardUIData.CardInstance != null)
+            {
+                return cardUIData.CardInstance;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// hover UI에 카드 정보 업데이트
+        /// </summary>
+        private void UpdateHoverUIInfo(GameObject hoverUI, Card card)
+        {
+            if (hoverUI == null || card == null) return;
+
+            var cardData = card.CardData;
+
+            // CardHoverUIPrefab은 CardUIPrefab과 구조가 동일하므로 같은 방식으로 업데이트
+
+            // 카드 일러스트 이미지
+            var cardIllustration = hoverUI.transform.Find("CardIllustration")?.GetComponent<Image>();
+            if (cardIllustration != null && cardData.Image != null)
+            {
+                cardIllustration.sprite = cardData.Image;
+            }
+
+            // 카드 이름
+            var cardNameTextComponent = hoverUI.transform.Find("CardName")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (cardNameTextComponent != null)
+            {
+                cardNameTextComponent.text = cardData.CardName;
+            }
+
+            // 데미지
+            var damageTextComponent = hoverUI.transform.Find("CardDamage")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (damageTextComponent != null)
+            {
+                int currentDamage = card.CurrentDamage;
+                damageTextComponent.text = currentDamage.ToString();
+            }
+
+            // 마나 비용 (BattleUIManager의 형식과 맞춤)
+            var manaCostTextComponent = hoverUI.transform.Find("CardCost")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (manaCostTextComponent != null)
+            {
+                int currentCost = card.CurrentManaCost;
+                manaCostTextComponent.text = currentCost.ToString(); // "비용: " 제거하고 숫자만
+            }
+
+            // 카드 설명 (CardDescription이 있다면)
+            var cardDescComponent = hoverUI.transform.Find("CardDescription")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (cardDescComponent != null)
+            {
+                cardDescComponent.text = card.Description;
+            }
+
+            // 카드 정보 (ElementType과 CardType)
+            var cardInfoComponent = hoverUI.transform.Find("CardInfo")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (cardInfoComponent != null)
+            {
+                cardInfoComponent.text = $"{card.Element} | {card.Type}";
+            }
+
+            // 디버그 로그
+            Debug.Log($"[CardUI] Hover UI 정보 업데이트: {card.CardName} (데미지: {card.CurrentDamage}, 비용: {card.CurrentManaCost})");
         }
 
         #endregion

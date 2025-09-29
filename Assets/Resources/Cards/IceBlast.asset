@@ -20,12 +20,19 @@ MonoBehaviour:
   manaCost: 2
   targetType: 0
   targetCount: 1
-  cardDescription: "\uD50C\uB808\uC774\uC5B4\uC5D0\uC11C \uD0C0\uAC9F\uC73C\uB85C \uB0A0\uC544\uAC00\uB294 \uC5BC\uC74C \uD22C\uC0AC\uCCB4"
-  cardImage: {fileID: 0}
+  cardDescription: "\uD50C\uB808\uC774\uC5B4\uC5D0\uC11C \uD0C0\uAC9F\uC73C\uB85C
+    \uB0A0\uC544\uAC00\uB294 \uC5BC\uC74C \uD22C\uC0AC\uCCB4"
+  cardImage: {fileID: 21300000, guid: fb4a7fb6fc1cb6f428992adcfd8dcb64, type: 3}
   cardEffect: {fileID: 11400000, guid: 4f9eda3a600684a038d5c2b0edd7ff0f, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 1
   comboFailureType: 0
   cardPrice: 0
   fieldEffectToApply: {fileID: 0}
+  movementType: 0
+  movementDistance: 1
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 0}
+  summonPosition: 0
+  pushExistingMonster: 1
   requiredCombinations: []

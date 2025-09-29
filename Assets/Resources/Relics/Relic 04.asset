@@ -15,7 +15,7 @@ MonoBehaviour:
   relicName: Relic03
   relicType: 0
   relicDescription: Relic03 Description
-  relicImage: {fileID: 0}
+  relicImage: {fileID: 21300000, guid: 4afbb28c18a5d43db8724dc908b7c38c, type: 3}
   effectType: 3
   effectValue: 3
   secondaryValue: 1

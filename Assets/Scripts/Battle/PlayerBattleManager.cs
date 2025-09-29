@@ -728,7 +728,7 @@ namespace Maglin.Battle
 
             // 화면 밖 시작 위치 계산 (타일맵 위쪽에서 시작하여 떨어지면서 입장)
             Vector2Int startGridPosition = new Vector2Int(
-                targetGridPosition.x - 5, // 왼쪽으로 8칸
+                targetGridPosition.x - 10, // 왼쪽으로 8칸
                 targetGridPosition.y   // 타일맵 위 1칸 높이에서 시작 (중력으로 떨어짐)
             );
 

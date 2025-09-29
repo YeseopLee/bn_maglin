@@ -2719,6 +2719,7 @@ namespace Maglin.Battle
             var fieldAreaImage = FindUIComponent<UnityEngine.UI.Image>("FieldArea");
             var fieldEffectTurnsText = FindUIComponent<TextMeshProUGUI>("FieldEffectTurnsText");
             var cardUIPrefab = Resources.Load<GameObject>("Prefabs/CardUIPrefab");
+            var cardHoverUIPrefab = Resources.Load<GameObject>("Prefabs/CardHoverUIPrefab");
             var relicPrefab = Resources.Load<GameObject>("Prefabs/RelicPrefab");
             var monsterPrefab = Resources.Load<GameObject>("Prefabs/MonsterPrefab");
 
@@ -2729,7 +2730,7 @@ namespace Maglin.Battle
                 elementSlot, active1Slot, active2Slot,
                 executeComboButton, clearComboButton,
                 fieldAreaImage, fieldEffectTurnsText,
-                cardUIPrefab, relicPrefab, monsterPrefab
+                cardUIPrefab, cardHoverUIPrefab, relicPrefab, monsterPrefab
             );
 
             if (debugMode)

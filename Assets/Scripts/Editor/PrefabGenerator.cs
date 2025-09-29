@@ -40,6 +40,12 @@ namespace Maglin.Editor
                 GenerateCardUIPrefab();
             }
 
+            if (GUILayout.Button("유물 프리팹 생성", GUILayout.Height(30)))
+            {
+                Debug.Log("[PrefabGenerator] 유물 프리팹 생성 버튼 클릭됨");
+                GenerateRelicPrefab();
+            }
+
             EditorGUILayout.Space();
 
             if (GUILayout.Button("모든 프리팹 생성", GUILayout.Height(30)))
@@ -49,7 +55,7 @@ namespace Maglin.Editor
             }
 
             EditorGUILayout.Space();
-            EditorGUILayout.HelpBox("동적으로 생성될 몬스터와 카드 UI 프리팹을 생성합니다.", MessageType.Info);
+            EditorGUILayout.HelpBox("동적으로 생성될 몬스터, 카드 UI, 유물 프리팹을 생성합니다.", MessageType.Info);
 
             EditorGUILayout.Space();
             EditorGUILayout.HelpBox("콘솔창을 확인하여 생성 과정을 모니터링하세요.", MessageType.Info);
@@ -62,6 +68,7 @@ namespace Maglin.Editor
         {
             GenerateMonsterPrefab();
             GenerateCardUIPrefab();
+            GenerateRelicPrefab();
             Debug.Log("[PrefabGenerator] 모든 프리팹 생성 완료!");
         }
 
@@ -277,6 +284,172 @@ namespace Maglin.Editor
             LayoutElement layoutElement = illustration.AddComponent<LayoutElement>();
             layoutElement.preferredHeight = 50;
             layoutElement.flexibleHeight = 1;
+        }
+
+        /// <summary>
+        /// 유물 프리팹 생성
+        /// </summary>
+        private void GenerateRelicPrefab()
+        {
+            Debug.Log("[PrefabGenerator] 유물 프리팹 생성 시작...");
+
+            GameObject relic = new GameObject("RelicPrefab");
+
+            // 유물 이미지
+            Image relicImage = relic.AddComponent<Image>();
+            relicImage.color = Color.white;
+            relicImage.preserveAspect = true; // 종횡비 유지
+            relicImage.raycastTarget = true; // 마우스 이벤트 수신
+
+            RectTransform relicRect = relic.GetComponent<RectTransform>();
+            relicRect.sizeDelta = new Vector2(64, 64); // 기본 크기 64x64
+            Debug.Log("[PrefabGenerator] 유물 이미지 설정 완료");
+
+            // 유물 툴팁 캔버스 생성 (호버 시 표시될 정보)
+            CreateRelicTooltip(relic);
+            Debug.Log("[PrefabGenerator] 유물 툴팁 생성 완료");
+
+            // Button 컴포넌트 추가 (클릭 이벤트용)
+            Button relicButton = relic.AddComponent<Button>();
+            relicButton.transition = Selectable.Transition.None; // 버튼 시각 효과 없음
+            Debug.Log("[PrefabGenerator] Button 컴포넌트 추가 완료");
+
+            // 유물 컨트롤러 스크립트 추가 (Button 컴포넌트 후에 추가)
+            Maglin.Relics.RelicUI relicUI = relic.AddComponent<Maglin.Relics.RelicUI>();
+
+            // RelicUI 컴포넌트의 참조 설정
+            SetupRelicUIReferences(relicUI, relic, relicImage);
+            Debug.Log("[PrefabGenerator] RelicUI 컴포넌트 추가 및 참조 설정 완료");
+
+            SaveAsPrefab(relic, "RelicPrefab");
+        }
+
+        /// <summary>
+        /// 유물 툴팁 생성 (호버 시 표시될 정보창)
+        /// </summary>
+        private void CreateRelicTooltip(GameObject parent)
+        {
+            GameObject tooltip = new GameObject("RelicTooltip");
+            tooltip.transform.SetParent(parent.transform, false);
+
+            // Canvas 컴포넌트 추가 (Screen Space Overlay)
+            Canvas tooltipCanvas = tooltip.AddComponent<Canvas>();
+            tooltipCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            tooltipCanvas.sortingOrder = 1000; // 가장 위에 표시
+            tooltipCanvas.enabled = false; // 기본적으로 비활성화
+
+            // CanvasScaler 추가
+            CanvasScaler scaler = tooltip.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            scaler.matchWidthOrHeight = 0.5f;
+
+            // GraphicRaycaster 추가 (UI 이벤트 처리용)
+            tooltip.AddComponent<GraphicRaycaster>();
+
+            // 툴팁 배경 패널
+            GameObject tooltipPanel = new GameObject("TooltipPanel");
+            tooltipPanel.transform.SetParent(tooltip.transform, false);
+
+            Image panelBG = tooltipPanel.AddComponent<Image>();
+            panelBG.color = new Color(0.1f, 0.1f, 0.1f, 0.9f); // 반투명 검은 배경
+
+            RectTransform panelRect = tooltipPanel.GetComponent<RectTransform>();
+            panelRect.sizeDelta = new Vector2(280, 120);
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.anchoredPosition = Vector2.zero;
+
+            // 레이아웃 그룹 추가
+            VerticalLayoutGroup layout = tooltipPanel.AddComponent<VerticalLayoutGroup>();
+            layout.childControlHeight = false;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true;
+            layout.padding = new RectOffset(10, 10, 10, 10);
+            layout.spacing = 5;
+
+            // 유물 이름 텍스트
+            CreateTooltipText(tooltipPanel, "RelicNameText", "유물 이름", 16, Color.yellow, FontStyles.Bold, 25);
+
+            // 유물 설명 텍스트
+            CreateTooltipText(tooltipPanel, "RelicDescriptionText", "유물 설명이 여기에 표시됩니다.\n효과와 사용법을 설명합니다.", 12, Color.white, FontStyles.Normal, 70);
+
+            // 기본적으로 툴팁은 비활성화
+            tooltip.SetActive(false);
+        }
+
+        /// <summary>
+        /// RelicUI 컴포넌트의 참조 설정
+        /// </summary>
+        private void SetupRelicUIReferences(Maglin.Relics.RelicUI relicUI, GameObject relic, Image relicImage)
+        {
+            // 리플렉션을 사용하여 private 필드에 접근
+            var relicUIType = typeof(Maglin.Relics.RelicUI);
+
+            // relicImage 필드 설정
+            var relicImageField = relicUIType.GetField("relicImage", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (relicImageField != null)
+            {
+                relicImageField.SetValue(relicUI, relicImage);
+                Debug.Log("[PrefabGenerator] RelicImage 참조 설정 완료");
+            }
+
+            // tooltipCanvas 찾기 및 설정
+            Canvas tooltipCanvas = relic.GetComponentInChildren<Canvas>();
+            var tooltipCanvasField = relicUIType.GetField("tooltipCanvas", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (tooltipCanvasField != null && tooltipCanvas != null)
+            {
+                tooltipCanvasField.SetValue(relicUI, tooltipCanvas);
+                Debug.Log("[PrefabGenerator] TooltipCanvas 참조 설정 완료");
+            }
+
+            // 텍스트 컴포넌트들 찾기 및 설정
+            TextMeshProUGUI[] texts = relic.GetComponentsInChildren<TextMeshProUGUI>();
+            foreach (var text in texts)
+            {
+                if (text.gameObject.name.Contains("Name"))
+                {
+                    var nameField = relicUIType.GetField("relicNameText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (nameField != null)
+                    {
+                        nameField.SetValue(relicUI, text);
+                        Debug.Log("[PrefabGenerator] RelicNameText 참조 설정 완료");
+                    }
+                }
+                else if (text.gameObject.name.Contains("Description"))
+                {
+                    var descField = relicUIType.GetField("relicDescriptionText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (descField != null)
+                    {
+                        descField.SetValue(relicUI, text);
+                        Debug.Log("[PrefabGenerator] RelicDescriptionText 참조 설정 완료");
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 툴팁 텍스트 생성
+        /// </summary>
+        private void CreateTooltipText(GameObject parent, string name, string text, int fontSize, Color color, FontStyles fontStyle, float height)
+        {
+            GameObject textObj = new GameObject(name);
+            textObj.transform.SetParent(parent.transform, false);
+
+            TextMeshProUGUI textTMP = textObj.AddComponent<TextMeshProUGUI>();
+            textTMP.text = text;
+            textTMP.fontSize = fontSize;
+            textTMP.color = color;
+            textTMP.fontStyle = fontStyle;
+            textTMP.alignment = TextAlignmentOptions.TopLeft;
+            textTMP.enableWordWrapping = true;
+            textTMP.overflowMode = TextOverflowModes.Overflow;
+
+            LayoutElement layoutElement = textObj.AddComponent<LayoutElement>();
+            layoutElement.preferredHeight = height;
+            layoutElement.flexibleHeight = 0;
         }
 
         /// <summary>

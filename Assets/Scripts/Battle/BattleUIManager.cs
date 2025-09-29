@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Maglin.Core;
 using Maglin.Player;
 using Maglin.Cards;
@@ -104,6 +105,7 @@ namespace Maglin.Battle
 
         [Header("프리팹")]
         [SerializeField] private GameObject cardUIPrefab;
+        [SerializeField] private GameObject cardHoverUIPrefab; // 카드 hover용 프리팹
         [SerializeField] private GameObject relicPrefab; // 유물 프리팹
         [SerializeField] private GameObject monsterPrefab;
 
@@ -317,6 +319,7 @@ namespace Maglin.Battle
             UnityEngine.UI.Image fieldAreaImage,
             TMPro.TextMeshProUGUI fieldEffectTurnsText,
             GameObject cardUIPrefab,
+            GameObject cardHoverUIPrefab = null,
             GameObject relicPrefab = null,
             GameObject monsterPrefab = null,
             Slider healthSlider = null,
@@ -343,6 +346,12 @@ namespace Maglin.Battle
             this.fieldEffectTurnsText = fieldEffectTurnsText;
             this.cardUIPrefab = cardUIPrefab;
             this.monsterPrefab = monsterPrefab;
+
+            // 카드 hover 프리팹 설정 (제공된 경우)
+            if (cardHoverUIPrefab != null)
+            {
+                this.cardHoverUIPrefab = cardHoverUIPrefab;
+            }
 
             // 유물 프리팹 설정 (제공된 경우)
             if (relicPrefab != null)
@@ -1396,6 +1405,12 @@ namespace Maglin.Battle
             {
                 cardUIComponent = cardUI.AddComponent<CardUI>();
             }
+
+            // CardUI 컴포넌트에 카드 데이터 설정 (hover 시 참조할 수 있도록)
+            // CardUI.Initialize는 HandCardUI를 필요로 하므로, 직접 associatedCard를 설정
+            var associatedCardField = typeof(Maglin.UI.CardUI).GetField("associatedCard",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            associatedCardField?.SetValue(cardUIComponent, card);
 
             var button = cardUI.GetComponent<Button>();
             if (button == null)
