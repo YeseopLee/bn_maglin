@@ -11,10 +11,13 @@ namespace Maglin.Event
     /// </summary>
     public class EventUIManager : MonoBehaviour
     {
-        [Header("UI 참조")]
+        [Header("메인 UI 참조")]
         [SerializeField] private CanvasGroup eventCanvasGroup;
+
+        [Header("플레이어 상태 UI")]
         [SerializeField] private TextMeshProUGUI goldText;
         [SerializeField] private TextMeshProUGUI healthText;
+        [SerializeField] private Slider healthSlider;
 
         [Header("이벤트 정보 UI")]
         [SerializeField] private Image eventImage;
@@ -60,6 +63,12 @@ namespace Maglin.Event
             StartCoroutine(InitialUpdate());
         }
 
+        private void Update()
+        {
+            // 플레이어 상태 실시간 업데이트 (변화가 있을 때만)
+            UpdatePlayerStatusRealtime();
+        }
+
         /// <summary>
         /// 초기 업데이트 (다른 매니저들이 초기화된 후)
         /// </summary>
@@ -70,9 +79,15 @@ namespace Maglin.Event
             // 플레이어 상태 초기 업데이트
             UpdatePlayerStatus();
 
-            // 이벤트 UI 숨김
-            HideEventUI();
+            // 이벤트가 이미 시작되지 않은 경우에만 UI 숨김
+            if (currentEvent == null)
+            {
+                HideEventUI();
+            }
             HideResultUI();
+
+            if (debugMode)
+                Debug.Log($"[EventUIManager] InitialUpdate 완료 - currentEvent: {(currentEvent != null ? currentEvent.EventName : "null")}");
         }
 
         private void OnEnable()
@@ -157,6 +172,74 @@ namespace Maglin.Event
         }
 
         /// <summary>
+        /// UI 참조 설정 (외부에서 호출)
+        /// </summary>
+        public void SetUIReferences(
+            CanvasGroup eventCanvasGroup = null,
+            TextMeshProUGUI goldText = null,
+            TextMeshProUGUI healthText = null,
+            Slider healthSlider = null,
+            Image eventImage = null,
+            TextMeshProUGUI eventTitle = null,
+            TextMeshProUGUI eventDescription = null,
+            Transform choicesContent = null,
+            GameObject choiceButtonPrefab = null,
+            CanvasGroup resultCanvasGroup = null,
+            TextMeshProUGUI resultText = null,
+            Button continueButton = null)
+        {
+            // 메인 UI 참조
+            if (eventCanvasGroup != null)
+                this.eventCanvasGroup = eventCanvasGroup;
+
+            // 플레이어 상태 UI 참조
+            if (goldText != null)
+                this.goldText = goldText;
+
+            if (healthText != null)
+                this.healthText = healthText;
+
+            if (healthSlider != null)
+                this.healthSlider = healthSlider;
+
+            // 이벤트 정보 UI 참조
+            if (eventImage != null)
+                this.eventImage = eventImage;
+
+            if (eventTitle != null)
+                this.eventTitle = eventTitle;
+
+            if (eventDescription != null)
+                this.eventDescription = eventDescription;
+
+            // 선택지 UI 참조
+            if (choicesContent != null)
+                this.choicesContent = choicesContent;
+
+            if (choiceButtonPrefab != null)
+                this.choiceButtonPrefab = choiceButtonPrefab;
+
+            // 결과 UI 참조
+            if (resultCanvasGroup != null)
+                this.resultCanvasGroup = resultCanvasGroup;
+
+            if (resultText != null)
+                this.resultText = resultText;
+
+            if (continueButton != null)
+                this.continueButton = continueButton;
+
+            if (debugMode)
+                Debug.Log("[EventUIManager] UI 참조 설정 완료");
+
+            // UI 참조 설정 후 버튼 이벤트 연결
+            SetupButtonEvents();
+
+            // 플레이어 상태 즉시 업데이트
+            ForceUpdatePlayerUI();
+        }
+
+        /// <summary>
         /// UI 참조 자동 찾기
         /// </summary>
         private void FindUIReferences()
@@ -171,26 +254,8 @@ namespace Maglin.Event
                 }
             }
 
-            // 플레이어 상태 텍스트 찾기
-            if (goldText == null && eventCanvasGroup != null)
-            {
-                // EventUI > PlayerStatusPanel > GoldText
-                var goldTextObj = eventCanvasGroup.transform.Find("PlayerStatusPanel/GoldText");
-                if (goldTextObj != null)
-                {
-                    goldText = goldTextObj.GetComponent<TextMeshProUGUI>();
-                }
-            }
-
-            if (healthText == null && eventCanvasGroup != null)
-            {
-                // EventUI > PlayerStatusPanel > HealthText
-                var healthTextObj = eventCanvasGroup.transform.Find("PlayerStatusPanel/HealthText");
-                if (healthTextObj != null)
-                {
-                    healthText = healthTextObj.GetComponent<TextMeshProUGUI>();
-                }
-            }
+            // 플레이어 상태 UI 찾기
+            FindPlayerStatusUI();
 
             // 이벤트 정보 UI 찾기
             FindEventInfoUI();
@@ -200,6 +265,52 @@ namespace Maglin.Event
 
             // 결과 UI 찾기
             FindResultUI();
+        }
+
+        /// <summary>
+        /// 플레이어 상태 UI 찾기
+        /// </summary>
+        private void FindPlayerStatusUI()
+        {
+            if (eventCanvasGroup == null) return;
+
+            if (goldText == null)
+            {
+                // EventUI > PlayerStatusPanel > GoldText
+                var goldTextObj = eventCanvasGroup.transform.Find("PlayerStatusPanel/GoldText");
+                if (goldTextObj != null)
+                {
+                    goldText = goldTextObj.GetComponent<TextMeshProUGUI>();
+                }
+            }
+
+            if (healthText == null)
+            {
+                // EventUI > PlayerStatusPanel > HealthText
+                var healthTextObj = eventCanvasGroup.transform.Find("PlayerStatusPanel/HealthText");
+                if (healthTextObj != null)
+                {
+                    healthText = healthTextObj.GetComponent<TextMeshProUGUI>();
+                }
+            }
+
+            if (healthSlider == null)
+            {
+                // EventUI > PlayerStatusPanel > HealthSlider
+                var healthSliderObj = eventCanvasGroup.transform.Find("PlayerStatusPanel/HealthSlider");
+                if (healthSliderObj != null)
+                {
+                    healthSlider = healthSliderObj.GetComponent<Slider>();
+                }
+            }
+
+            if (debugMode)
+            {
+                Debug.Log($"[EventUIManager] 플레이어 상태 UI 찾기 완료:");
+                Debug.Log($"  - 골드 텍스트: {(goldText != null ? "찾음" : "없음")}");
+                Debug.Log($"  - 체력 텍스트: {(healthText != null ? "찾음" : "없음")}");
+                Debug.Log($"  - 체력 슬라이더: {(healthSlider != null ? "찾음" : "없음")}");
+            }
         }
 
         /// <summary>
@@ -646,28 +757,132 @@ namespace Maglin.Event
         /// </summary>
         private void UpdatePlayerStatus()
         {
-            if (PlayerManager.Instance == null)
-            {
-                if (debugMode)
-                    Debug.LogWarning("[EventUIManager] PlayerManager.Instance가 null입니다!");
-                return;
-            }
+            UpdateGoldUI();
+            UpdateHealthUI();
+        }
 
-            // 골드 업데이트
+        /// <summary>
+        /// 골드 UI 업데이트
+        /// </summary>
+        private void UpdateGoldUI()
+        {
             if (goldText != null)
             {
-                goldText.text = $"골드: {PlayerManager.Instance.CurrentGold}";
+                if (PlayerManager.Instance != null)
+                {
+                    goldText.text = $"골드: {PlayerManager.Instance.CurrentGold}";
+                }
+                else
+                {
+                    goldText.text = "골드: 100"; // 기본값
+                }
             }
+        }
 
-            // 체력 업데이트
-            if (healthText != null)
+        /// <summary>
+        /// 체력 UI 업데이트
+        /// </summary>
+        private void UpdateHealthUI()
+        {
+            if (PlayerManager.Instance != null)
             {
                 int currentHealth = PlayerManager.Instance.CurrentHealth;
                 int maxHealth = PlayerManager.Instance.MaxHealth;
-                healthText.text = $"체력: {currentHealth}/{maxHealth}";
+
+                // 텍스트 업데이트
+                if (healthText != null)
+                {
+                    healthText.text = $"체력: {currentHealth}/{maxHealth}";
+                }
+
+                // 슬라이더 업데이트
+                if (healthSlider != null)
+                {
+                    if (maxHealth > 0)
+                    {
+                        float healthRatio = (float)currentHealth / maxHealth;
+                        healthSlider.value = healthRatio;
+                    }
+                    else
+                    {
+                        healthSlider.value = 0f;
+                    }
+                }
 
                 if (debugMode)
                     Debug.Log($"[EventUIManager] 체력 UI 업데이트: {currentHealth}/{maxHealth}");
+            }
+            else
+            {
+                // PlayerManager가 아직 초기화되지 않은 경우 기본값 표시
+                if (healthText != null)
+                {
+                    healthText.text = "체력: 100/100"; // 기본값
+                }
+                if (healthSlider != null)
+                {
+                    healthSlider.value = 1f; // 100%
+                }
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 UI 강제 업데이트 (즉시 동기화용)
+        /// </summary>
+        public void ForceUpdatePlayerUI()
+        {
+            if (debugMode)
+                Debug.Log("[EventUIManager] 플레이어 UI 강제 업데이트 시작");
+
+            UpdateGoldUI();
+            UpdateHealthUI();
+
+            if (debugMode)
+                Debug.Log("[EventUIManager] 플레이어 UI 강제 업데이트 완료");
+        }
+
+        /// <summary>
+        /// 플레이어 상태 실시간 업데이트 (변화가 있을 때만)
+        /// </summary>
+        private void UpdatePlayerStatusRealtime()
+        {
+            if (PlayerManager.Instance == null) return;
+
+            // 골드 실시간 업데이트 (변화가 있을 때만)
+            if (goldText != null)
+            {
+                string newGoldText = $"골드: {PlayerManager.Instance.CurrentGold}";
+                if (goldText.text != newGoldText)
+                {
+                    goldText.text = newGoldText;
+                }
+            }
+
+            // 체력 실시간 업데이트 (변화가 있을 때만)
+            if (healthText != null || healthSlider != null)
+            {
+                int currentHealth = PlayerManager.Instance.CurrentHealth;
+                int maxHealth = PlayerManager.Instance.MaxHealth;
+
+                // 체력 텍스트 업데이트
+                if (healthText != null)
+                {
+                    string newHealthText = $"체력: {currentHealth}/{maxHealth}";
+                    if (healthText.text != newHealthText)
+                    {
+                        healthText.text = newHealthText;
+                    }
+                }
+
+                // 체력 슬라이더 업데이트
+                if (healthSlider != null && maxHealth > 0)
+                {
+                    float healthRatio = (float)currentHealth / maxHealth;
+                    if (Mathf.Abs(healthSlider.value - healthRatio) > 0.01f)
+                    {
+                        healthSlider.value = healthRatio;
+                    }
+                }
             }
         }
 
@@ -751,7 +966,10 @@ namespace Maglin.Event
         /// </summary>
         private void OnGoldChanged(int newGold)
         {
-            UpdatePlayerStatus();
+            UpdateGoldUI();
+            
+            if (debugMode)
+                Debug.Log($"[EventUIManager] 골드 변경 감지: {newGold}");
         }
 
         /// <summary>
@@ -759,7 +977,10 @@ namespace Maglin.Event
         /// </summary>
         private void OnHealthChanged(int currentHealth, int maxHealth)
         {
-            UpdatePlayerStatus();
+            UpdateHealthUI();
+            
+            if (debugMode)
+                Debug.Log($"[EventUIManager] 체력 변경 감지: {currentHealth}/{maxHealth}");
         }
 
         /// <summary>
@@ -802,6 +1023,29 @@ namespace Maglin.Event
                 eventCanvasGroup.alpha = 1f;
                 eventCanvasGroup.interactable = true;
                 eventCanvasGroup.blocksRaycasts = true;
+                
+                // GameObject도 활성화 확인
+                if (!eventCanvasGroup.gameObject.activeInHierarchy)
+                {
+                    eventCanvasGroup.gameObject.SetActive(true);
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] EventUI GameObject 활성화됨");
+                }
+                
+                if (debugMode)
+                {
+                    Debug.Log($"[EventUIManager] 이벤트 UI 표시 완료:");
+                    Debug.Log($"  - alpha: {eventCanvasGroup.alpha}");
+                    Debug.Log($"  - interactable: {eventCanvasGroup.interactable}");
+                    Debug.Log($"  - blocksRaycasts: {eventCanvasGroup.blocksRaycasts}");
+                    Debug.Log($"  - GameObject active: {eventCanvasGroup.gameObject.activeInHierarchy}");
+                    Debug.Log($"  - GameObject name: {eventCanvasGroup.gameObject.name}");
+                }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogError("[EventUIManager] eventCanvasGroup이 null입니다! 이벤트 UI를 표시할 수 없습니다.");
             }
         }
 
@@ -815,9 +1059,50 @@ namespace Maglin.Event
                 eventCanvasGroup.alpha = 0f;
                 eventCanvasGroup.interactable = false;
                 eventCanvasGroup.blocksRaycasts = false;
+                
+                if (debugMode)
+                {
+                    Debug.Log($"[EventUIManager] 이벤트 UI 숨김:");
+                    Debug.Log($"  - alpha: {eventCanvasGroup.alpha}");
+                    Debug.Log($"  - interactable: {eventCanvasGroup.interactable}");
+                    Debug.Log($"  - GameObject name: {eventCanvasGroup.gameObject.name}");
+                }
             }
 
             HideResultUI();
+        }
+
+        /// <summary>
+        /// UI 상태 디버그 정보 출력
+        /// </summary>
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        public void DebugUIStatus()
+        {
+            if (!debugMode) return;
+
+            Debug.Log("[EventUIManager] UI 상태 디버그:");
+            Debug.Log($"  - eventCanvasGroup: {(eventCanvasGroup != null ? "설정됨" : "null")}");
+            Debug.Log($"  - goldText: {(goldText != null ? "설정됨" : "null")}");
+            Debug.Log($"  - healthText: {(healthText != null ? "설정됨" : "null")}");
+            Debug.Log($"  - healthSlider: {(healthSlider != null ? "설정됨" : "null")}");
+            Debug.Log($"  - eventImage: {(eventImage != null ? "설정됨" : "null")}");
+            Debug.Log($"  - eventTitle: {(eventTitle != null ? "설정됨" : "null")}");
+            Debug.Log($"  - eventDescription: {(eventDescription != null ? "설정됨" : "null")}");
+            Debug.Log($"  - choicesContent: {(choicesContent != null ? "설정됨" : "null")}");
+            Debug.Log($"  - choiceButtonPrefab: {(choiceButtonPrefab != null ? "설정됨" : "null")}");
+            Debug.Log($"  - resultCanvasGroup: {(resultCanvasGroup != null ? "설정됨" : "null")}");
+            Debug.Log($"  - resultText: {(resultText != null ? "설정됨" : "null")}");
+            Debug.Log($"  - continueButton: {(continueButton != null ? "설정됨" : "null")}");
+
+            if (PlayerManager.Instance != null)
+            {
+                Debug.Log($"  - 플레이어 골드: {PlayerManager.Instance.CurrentGold}");
+                Debug.Log($"  - 플레이어 체력: {PlayerManager.Instance.CurrentHealth}/{PlayerManager.Instance.MaxHealth}");
+            }
+            else
+            {
+                Debug.Log("  - PlayerManager.Instance: null");
+            }
         }
     }
 }

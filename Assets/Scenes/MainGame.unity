@@ -1561,8 +1561,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   availableEvents:
-  - {fileID: 11400000, guid: e34dedf1851754958b2bf2c4e9b2fc4e, type: 2}
-  - {fileID: 11400000, guid: cdfdc153c95d141b7a51b42d206f49c9, type: 2}
+  - {fileID: 11400000, guid: 8ade1c5f25eceef43afb4b612e3cb271, type: 2}
   eventChance: 100
   currentEvent: {fileID: 0}
   isEventActive: 0

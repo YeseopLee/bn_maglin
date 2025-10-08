@@ -12,16 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 324645b46a839461fad172ef019e0eb6, type: 3}
   m_Name: Event02
   m_EditorClassIdentifier: 
-  eventName: Event02
-  eventDescription: Event 02 Desc
-  eventImage: {fileID: 0}
+  eventName: "\uB2EB\uD78C \uC0C1\uC790"
+  eventDescription: "\uB208\uC55E\uC5D0 \uB2EB\uD78C \uB098\uBB34\uC0C1\uC790\uAC00
+    \uBCF4\uC778\uB2E4."
+  eventImage: {fileID: 21300000, guid: 220d64a793523e24bba7d903bd311608, type: 3}
   minFloor: 1
   maxFloor: 999
   spawnWeight: 1
   isOneTimeOnly: 0
   choices:
-  - choiceText: choice 1
-    resultText: choice 1 selected
+  - choiceText: "\uC5F4\uC5B4\uBCF8\uB2E4"
+    resultText: "\uACE8\uB4DC\uB97C \uD68D\uB4DD\uD588\uB2E4"
     rewards:
     - rewardType: 0
       amount: 5
@@ -43,8 +44,8 @@ MonoBehaviour:
       isRandom: 0
       minAmount: 0
       maxAmount: 0
-  - choiceText: choice 2
-    resultText: choice 2 selected
+  - choiceText: "\uBB34\uC2DC\uD55C\uB2E4"
+    resultText: "\uBB34\uC2DC\uD588\uB2E4."
     rewards:
     - rewardType: 0
       amount: 8
@@ -66,8 +67,8 @@ MonoBehaviour:
       isRandom: 0
       minAmount: 0
       maxAmount: 0
-  - choiceText: choice 3
-    resultText: choice 3 selected
+  - choiceText: "\uACF5\uACA9\uD55C\uB2E4"
+    resultText: "\uACF5\uACA9\uD588\uB2E4"
     rewards:
     - rewardType: 7
       amount: 0

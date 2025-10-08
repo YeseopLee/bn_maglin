@@ -1,5 +1,6 @@
 using UnityEngine;
 using Maglin.Player;
+using Maglin.Battle;
 
 namespace Maglin.Event
 {
@@ -11,16 +12,166 @@ namespace Maglin.Event
         [Header("테스트 설정")]
         [SerializeField] private int testFloor = 1;
 
+        [Header("UI 참조 (옵션)")]
+        [SerializeField] private CanvasGroup eventCanvasGroup;
+        [SerializeField] private TMPro.TextMeshProUGUI goldText;
+        [SerializeField] private TMPro.TextMeshProUGUI healthText;
+        [SerializeField] private UnityEngine.UI.Slider healthSlider;
+
+        [Header("플레이어 입장 애니메이션")]
+        [SerializeField] private bool enablePlayerEntrance = true;
+        [SerializeField] private Vector2Int playerGridPosition = new Vector2Int(0, 0); // 플레이어 그리드 위치 (BattleTestController와 동일)
+
         [Header("디버그")]
         [SerializeField] private bool debugMode = true;
         [SerializeField] private bool autoStartEvent = true;
+        [SerializeField] private bool setupUIReferences = true;
 
         private void Start()
         {
-            // 약간의 지연 후 이벤트 진입 (다른 매니저들이 초기화될 시간을 줌)
+            StartCoroutine(InitializeEventScene());
+        }
+
+        /// <summary>
+        /// 이벤트 씬 초기화 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator InitializeEventScene()
+        {
+            if (debugMode)
+                Debug.Log("[EventTestController] 이벤트 씬 초기화 시작");
+
+            // PlayerEventManager 초기화
+            if (enablePlayerEntrance)
+            {
+                yield return StartCoroutine(InitializePlayerEventManager());
+            }
+
+            // EventUIManager UI 참조 설정
+            if (setupUIReferences)
+            {
+                SetupEventUIReferences();
+            }
+
+            // 플레이어 입장 애니메이션 실행
+            if (enablePlayerEntrance && PlayerEventManager.Instance != null)
+            {
+                if (debugMode)
+                    Debug.Log("[EventTestController] 플레이어 입장 애니메이션 시작");
+                
+                yield return StartCoroutine(PlayerEventManager.Instance.PlayPlayerEntranceAnimation());
+                
+                if (debugMode)
+                    Debug.Log("[EventTestController] 플레이어 입장 애니메이션 완료");
+            }
+
+            // 입장 애니메이션 완료 후 이벤트 시작
             if (autoStartEvent)
             {
-                Invoke(nameof(StartRandomEventForTest), 0.5f);
+                if (debugMode)
+                    Debug.Log("[EventTestController] 입장 애니메이션 완료 후 이벤트 시작 대기");
+                
+                yield return new WaitForSeconds(0.5f); // 잠시 대기
+                
+                if (debugMode)
+                    Debug.Log("[EventTestController] 이벤트 시작");
+                
+                StartRandomEventForTest();
+            }
+
+            if (debugMode)
+                Debug.Log("[EventTestController] 이벤트 씬 초기화 완료");
+        }
+
+        /// <summary>
+        /// PlayerEventManager 초기화
+        /// </summary>
+        private System.Collections.IEnumerator InitializePlayerEventManager()
+        {
+            if (debugMode)
+                Debug.Log("[EventTestController] PlayerEventManager 초기화 시작");
+
+            // PlayerEventManager가 있는지 확인
+            if (PlayerEventManager.Instance == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventTestController] PlayerEventManager.Instance가 null입니다. 씬에 PlayerEventManager가 있는지 확인하세요.");
+                yield break;
+            }
+
+            // GridFieldManager 초기화
+            if (debugMode)
+                Debug.Log("[EventTestController] GridFieldManager 초기화 시작");
+
+            if (GridFieldManager.Instance != null)
+            {
+                if (!GridFieldManager.Instance.IsInitialized)
+                {
+                    if (debugMode)
+                        Debug.Log("[EventTestController] GridFieldManager.InitializeGridField() 호출");
+                    
+                    GridFieldManager.Instance.InitializeGridField();
+                    
+                    // 한 프레임 대기 후 초기화 확인
+                    yield return null;
+                }
+
+                if (GridFieldManager.Instance.IsInitialized)
+                {
+                    if (debugMode)
+                        Debug.Log("[EventTestController] GridFieldManager 초기화 완료 확인됨");
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.LogWarning("[EventTestController] GridFieldManager 초기화 실패");
+                }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventTestController] GridFieldManager.Instance가 null입니다. 씬에 GridFieldManager가 있는지 확인하세요.");
+            }
+
+            // PlayerEventManager 초기화
+            PlayerEventManager.Instance.InitializePlayerEventManager();
+
+            // 그리드 위치 설정
+            PlayerEventManager.Instance.SetPlayerGridPosition(playerGridPosition);
+
+            // 한 프레임 대기
+            yield return null;
+
+            if (debugMode)
+                Debug.Log("[EventTestController] PlayerEventManager 초기화 완료");
+        }
+
+        /// <summary>
+        /// EventUIManager에 UI 참조 설정
+        /// </summary>
+        private void SetupEventUIReferences()
+        {
+            if (EventUIManager.Instance == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventTestController] EventUIManager.Instance가 null입니다. UI 참조 설정을 건너뜁니다.");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log("[EventTestController] EventUIManager UI 참조 설정 시작");
+
+            // Inspector에서 설정된 UI 참조를 EventUIManager에 전달
+            EventUIManager.Instance.SetUIReferences(
+                eventCanvasGroup: eventCanvasGroup,
+                goldText: goldText,
+                healthText: healthText,
+                healthSlider: healthSlider
+            );
+
+            if (debugMode)
+            {
+                Debug.Log("[EventTestController] EventUIManager UI 참조 설정 완료");
+                EventUIManager.Instance.DebugUIStatus(); // UI 상태 디버그 출력
             }
         }
 
@@ -295,6 +446,75 @@ namespace Maglin.Event
             autoStartEvent = !autoStartEvent;
             if (debugMode)
                 Debug.Log($"[EventTestController] 자동 시작: {autoStartEvent}");
+        }
+
+        /// <summary>
+        /// 플레이어 입장 애니메이션 토글
+        /// </summary>
+        public void TogglePlayerEntrance()
+        {
+            enablePlayerEntrance = !enablePlayerEntrance;
+            if (debugMode)
+                Debug.Log($"[EventTestController] 플레이어 입장 애니메이션: {enablePlayerEntrance}");
+        }
+
+        /// <summary>
+        /// 플레이어 입장 애니메이션 수동 실행 (UI 버튼용)
+        /// </summary>
+        public void PlayPlayerEntranceAnimation()
+        {
+            if (PlayerEventManager.Instance != null)
+            {
+                StartCoroutine(PlayerEventManager.Instance.PlayPlayerEntranceAnimation());
+                if (debugMode)
+                    Debug.Log("[EventTestController] 플레이어 입장 애니메이션 수동 실행");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventTestController] PlayerEventManager.Instance가 null입니다!");
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 입장 애니메이션 상태 리셋 (UI 버튼용)
+        /// </summary>
+        public void ResetPlayerEntranceState()
+        {
+            if (PlayerEventManager.Instance != null)
+            {
+                PlayerEventManager.Instance.ResetEntranceAnimationState();
+                if (debugMode)
+                    Debug.Log("[EventTestController] 플레이어 입장 애니메이션 상태 리셋");
+            }
+        }
+
+        /// <summary>
+        /// 플레이어 위치 설정 (UI 버튼용)
+        /// </summary>
+        public void SetPlayerToGridPosition()
+        {
+            if (PlayerEventManager.Instance != null)
+            {
+                PlayerEventManager.Instance.SetPlayerGridPosition(playerGridPosition);
+                if (debugMode)
+                    Debug.Log($"[EventTestController] 플레이어를 그리드 위치로 설정: {playerGridPosition}");
+            }
+        }
+
+        /// <summary>
+        /// PlayerEventManager 디버그 정보 출력 (UI 버튼용)
+        /// </summary>
+        public void DebugPlayerEventManager()
+        {
+            if (PlayerEventManager.Instance != null)
+            {
+                PlayerEventManager.Instance.DebugPlayerEventInfo();
+            }
+            else
+            {
+                Debug.LogWarning("[EventTestController] PlayerEventManager.Instance가 null입니다!");
+            }
         }
 
         // OnValidate 제거 - 이제 EventManager의 availableEvents를 직접 사용

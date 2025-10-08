@@ -1,0 +1,132 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 324645b46a839461fad172ef019e0eb6, type: 3}
+  m_Name: Event03
+  m_EditorClassIdentifier: 
+  eventName: "\uBC84\uB824\uC9C4 \uC720\uBB3C"
+  eventDescription: "\uBC14\uB2E5\uC5D0 \uC54C \uC218 \uC5C6\uB294 \uBB3C\uCCB4\uAC00
+    \uB5A8\uC5B4\uC838 \uC788\uB2E4\n\uBB3C\uCCB4 \uC911\uC559\uC5D0 \uBB34\uC5B8\uAC00\uAC00
+    \uBE5B\uC744 \uB0B4\uACE0 \uC788\uB2E4"
+  eventImage: {fileID: 21300000, guid: 6c894ea59bfe0444fb1342035c019183, type: 3}
+  minFloor: 1
+  maxFloor: 999
+  spawnWeight: 0.1
+  isOneTimeOnly: 0
+  choices:
+  - choiceText: "\uBE5B\uC744 \uAC74\uB4DC\uB9B0\uB2E4"
+    resultText: choice 1 selected
+    rewards:
+    - rewardType: 0
+      amount: 5
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+    penalties: []
+    successRate: 0.8
+    failureText: Failed
+    failurePenalties:
+    - rewardType: 0
+      amount: -1
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+  - choiceText: "\uBE5B\uC744 \uACF5\uACA9\uD55C\uB2E4"
+    resultText: choice 2 selected
+    rewards:
+    - rewardType: 0
+      amount: 10
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+    penalties: []
+    successRate: 0.8
+    failureText: Failed
+    failurePenalties:
+    - rewardType: 0
+      amount: -1
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+  - choiceText: "\uBB34\uC2DC\uD558\uACE0 \uC9C0\uB098\uAC04\uB2E4"
+    resultText: choice 3 selected
+    rewards:
+    - rewardType: 2
+      amount: 10
+      cardData: {fileID: 11400000, guid: 3c2f27f5a520449bca484d621b5efd7b, type: 2}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+    penalties:
+    - rewardType: 0
+      amount: 10
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+    successRate: 1
+    failureText: Failed
+    failurePenalties:
+    - rewardType: 0
+      amount: -1
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+  - choiceText: choice 3 battle
+    resultText: choice 3 selected
+    rewards:
+    - rewardType: 7
+      amount: 0
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 11400000, guid: a04d41da3094d4652979a72820083345, type: 2}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+    penalties:
+    - rewardType: 0
+      amount: 10
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
+    successRate: 1
+    failureText: Failed
+    failurePenalties:
+    - rewardType: 0
+      amount: -1
+      cardData: {fileID: 0}
+      relicData: {fileID: 0}
+      battleData: {fileID: 0}
+      isRandom: 0
+      minAmount: 0
+      maxAmount: 0
