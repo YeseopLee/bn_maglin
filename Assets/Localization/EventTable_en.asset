@@ -1,0 +1,79 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9620f8c34305754d8cc9a7e49e852d9, type: 3}
+  m_Name: EventTable_en
+  m_EditorClassIdentifier: 
+  m_LocaleId:
+    m_Code: en
+  m_SharedData: {fileID: 11400000, guid: eb482bd51d9064809a1856d4c6123118, type: 2}
+  m_Metadata:
+    m_Items: []
+  m_TableData:
+  - m_Id: 10482164424704
+    m_Localized: EVENT01_C3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10472060346368
+    m_Localized: EVENT01_C2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10424383692800
+    m_Localized: EVENT01_C1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10356742152192
+    m_Localized: EVENT01 DESC
+    m_Metadata:
+      m_Items: []
+  - m_Id: 10212873330688
+    m_Localized: EVENT01
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19408658358272
+    m_Localized: EVENT02
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19414089981952
+    m_Localized: EVENT02 DESC
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19415889338368
+    m_Localized: EVENT02_C1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19420444352512
+    m_Localized: EVENT02_C2
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19422335983616
+    m_Localized: EVENT02_C3
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19423577497600
+    m_Localized: EVENT03
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19425427185664
+    m_Localized: EVENT03_DESCRIPTION
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19426677088256
+    m_Localized: EVENT03_C1
+    m_Metadata:
+      m_Items: []
+  - m_Id: 19427813744640
+    m_Localized: EVENT03_C1
+    m_Metadata:
+      m_Items: []
+  references:
+    version: 2
+    RefIds: []

@@ -99,7 +99,7 @@ namespace Maglin.UI
         /// </summary>
         private void OnChoiceSelected(EventChoice choice, bool isSuccess)
         {
-            string resultMessage = isSuccess ? choice.resultText : choice.failureText;
+            string resultMessage = isSuccess ? choice.GetResultText() : choice.GetFailureText();
 
             if (string.IsNullOrEmpty(resultMessage))
             {
@@ -223,7 +223,7 @@ namespace Maglin.UI
             TextMeshProUGUI buttonText = buttonObj.GetComponentInChildren<TextMeshProUGUI>();
             if (buttonText != null)
             {
-                buttonText.text = choice.choiceText;
+                buttonText.text = choice.GetChoiceText();
             }
 
             // 클릭 이벤트 설정

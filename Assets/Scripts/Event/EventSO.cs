@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Localization;
 using Maglin.Cards;
 using Maglin.Relics;
 using Maglin.Battle;
@@ -27,8 +28,8 @@ namespace Maglin.Event
     public class EventChoice
     {
         [Header("선택지 기본 정보")]
-        public string choiceText;           // 선택지 텍스트
-        public string resultText;           // 결과 텍스트
+        public LocalizedString choiceText;           // 선택지 텍스트 (다국어)
+        public LocalizedString resultText;           // 결과 텍스트 (다국어)
 
         [Header("보상/페널티")]
         public EventReward[] rewards;       // 보상 배열
@@ -37,8 +38,32 @@ namespace Maglin.Event
         [Header("확률")]
         [Range(0f, 1f)]
         public float successRate = 1f;      // 성공 확률 (1 = 100% 성공)
-        public string failureText;          // 실패 시 텍스트
+        public LocalizedString failureText;          // 실패 시 텍스트 (다국어)
         public EventReward[] failurePenalties; // 실패 시 페널티
+
+        /// <summary>
+        /// 선택지 텍스트 가져오기 (현재 언어)
+        /// </summary>
+        public string GetChoiceText()
+        {
+            return choiceText.GetLocalizedString();
+        }
+
+        /// <summary>
+        /// 결과 텍스트 가져오기 (현재 언어)
+        /// </summary>
+        public string GetResultText()
+        {
+            return resultText.GetLocalizedString();
+        }
+
+        /// <summary>
+        /// 실패 텍스트 가져오기 (현재 언어)
+        /// </summary>
+        public string GetFailureText()
+        {
+            return failureText.GetLocalizedString();
+        }
     }
 
     /// <summary>
@@ -63,8 +88,8 @@ namespace Maglin.Event
     public class EventSO : ScriptableObject
     {
         [Header("이벤트 기본 정보")]
-        [SerializeField] private string eventName;
-        [SerializeField][TextArea(3, 6)] private string eventDescription;
+        [SerializeField] private LocalizedString eventName;
+        [SerializeField] private LocalizedString eventDescription;
         [SerializeField] private Sprite eventImage;
 
         [Header("등장 조건")]
@@ -77,14 +102,20 @@ namespace Maglin.Event
         [SerializeField] private EventChoice[] choices;
 
         // Properties
-        public string EventName => eventName;
-        public string Description => eventDescription;
+        public string EventName => eventName.GetLocalizedString();
+        public string Description => eventDescription.GetLocalizedString();
         public Sprite Image => eventImage;
         public int MinFloor => minFloor;
         public int MaxFloor => maxFloor;
         public float SpawnWeight => spawnWeight;
         public bool IsOneTimeOnly => isOneTimeOnly;
         public EventChoice[] Choices => choices;
+
+        /// <summary>
+        /// LocalizedString 직접 접근 (UI에서 사용)
+        /// </summary>
+        public LocalizedString EventNameLocalized => eventName;
+        public LocalizedString DescriptionLocalized => eventDescription;
 
         /// <summary>
         /// 현재 층에서 이 이벤트가 등장 가능한지 확인
@@ -99,8 +130,8 @@ namespace Maglin.Event
         /// </summary>
         public bool IsValid()
         {
-            return !string.IsNullOrEmpty(eventName) &&
-                   !string.IsNullOrEmpty(eventDescription) &&
+            return !eventName.IsEmpty &&
+                   !eventDescription.IsEmpty &&
                    choices != null &&
                    choices.Length > 0;
         }

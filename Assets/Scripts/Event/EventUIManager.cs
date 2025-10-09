@@ -478,13 +478,13 @@ namespace Maglin.Event
         private void OnChoiceSelected(EventChoice choice, bool isSuccess)
         {
             if (debugMode)
-                Debug.Log($"[EventUIManager] 선택지 결과: {choice.choiceText} - {(isSuccess ? "성공" : "실패")}");
+                Debug.Log($"[EventUIManager] 선택지 결과: {choice.GetChoiceText()} - {(isSuccess ? "성공" : "실패")}");
 
             // 선택지 버튼들 비활성화
             DisableChoiceButtons();
 
             // 결과 텍스트 표시
-            string resultMessage = isSuccess ? choice.resultText : choice.failureText;
+            string resultMessage = isSuccess ? choice.GetResultText() : choice.GetFailureText();
             if (string.IsNullOrEmpty(resultMessage))
                 resultMessage = isSuccess ? "성공했습니다!" : "실패했습니다...";
 
@@ -648,7 +648,7 @@ namespace Maglin.Event
                 var choiceText = choiceTextObj.GetComponent<TextMeshProUGUI>();
                 if (choiceText != null)
                 {
-                    choiceText.text = choice.choiceText;
+                    choiceText.text = choice.GetChoiceText();
                 }
             }
 
@@ -664,7 +664,7 @@ namespace Maglin.Event
             }
 
             if (debugMode)
-                Debug.Log($"[EventUIManager] 프리팹 선택지 버튼 업데이트: {choice.choiceText}");
+                Debug.Log($"[EventUIManager] 프리팹 선택지 버튼 업데이트: {choice.GetChoiceText()}");
         }
 
         /// <summary>
@@ -694,7 +694,7 @@ namespace Maglin.Event
             choiceTextObj.transform.SetParent(content.transform, false);
 
             TextMeshProUGUI choiceText = choiceTextObj.AddComponent<TextMeshProUGUI>();
-            choiceText.text = choice.choiceText;
+            choiceText.text = choice.GetChoiceText();
             choiceText.fontSize = 16;
             choiceText.color = Color.white;
             choiceText.alignment = TextAlignmentOptions.TopLeft;
@@ -967,7 +967,7 @@ namespace Maglin.Event
         private void OnGoldChanged(int newGold)
         {
             UpdateGoldUI();
-            
+
             if (debugMode)
                 Debug.Log($"[EventUIManager] 골드 변경 감지: {newGold}");
         }
@@ -978,7 +978,7 @@ namespace Maglin.Event
         private void OnHealthChanged(int currentHealth, int maxHealth)
         {
             UpdateHealthUI();
-            
+
             if (debugMode)
                 Debug.Log($"[EventUIManager] 체력 변경 감지: {currentHealth}/{maxHealth}");
         }
@@ -1023,7 +1023,7 @@ namespace Maglin.Event
                 eventCanvasGroup.alpha = 1f;
                 eventCanvasGroup.interactable = true;
                 eventCanvasGroup.blocksRaycasts = true;
-                
+
                 // GameObject도 활성화 확인
                 if (!eventCanvasGroup.gameObject.activeInHierarchy)
                 {
@@ -1031,7 +1031,7 @@ namespace Maglin.Event
                     if (debugMode)
                         Debug.Log("[EventUIManager] EventUI GameObject 활성화됨");
                 }
-                
+
                 if (debugMode)
                 {
                     Debug.Log($"[EventUIManager] 이벤트 UI 표시 완료:");
@@ -1059,7 +1059,7 @@ namespace Maglin.Event
                 eventCanvasGroup.alpha = 0f;
                 eventCanvasGroup.interactable = false;
                 eventCanvasGroup.blocksRaycasts = false;
-                
+
                 if (debugMode)
                 {
                     Debug.Log($"[EventUIManager] 이벤트 UI 숨김:");

@@ -22,7 +22,9 @@ namespace Maglin.Core
     {
         [Header("UI References")]
         [SerializeField] private Button startButton;
+        [SerializeField] private Button optionButton;
         [SerializeField] private Button exitButton;
+        [SerializeField] private GameObject settingsOverlay;
 
         [Header("Manager Prefabs")]
         [SerializeField] private GameObject gameManagerPrefab;
@@ -48,6 +50,8 @@ namespace Maglin.Core
             // 버튼 이벤트 정리
             if (startButton != null)
                 startButton.onClick.RemoveAllListeners();
+            if (optionButton != null)
+                optionButton.onClick.RemoveAllListeners();
             if (exitButton != null)
                 exitButton.onClick.RemoveAllListeners();
         }
@@ -79,7 +83,7 @@ namespace Maglin.Core
         /// </summary>
         private void SetupUI()
         {
-            // 시작 버튼 자동 찾기
+            // 버튼 자동 찾기
             if (startButton == null)
             {
                 var startButtonObj = GameObject.Find("StartButton");
@@ -87,6 +91,18 @@ namespace Maglin.Core
                     startButton = startButtonObj.GetComponent<Button>();
             }
 
+            if (optionButton == null)
+            {
+                var optionButtonObj = GameObject.Find("OptionButton");
+                if (optionButtonObj != null)
+                    optionButton = optionButtonObj.GetComponent<Button>();
+            }
+
+            // 설정 오버레이 자동 찾기
+            if (settingsOverlay == null)
+            {
+                settingsOverlay = GameObject.Find("SettingsOverlay");
+            }
 
             // 버튼 이벤트 연결
             if (startButton != null)
@@ -100,9 +116,26 @@ namespace Maglin.Core
                 Debug.LogError("[MainGameController] 시작 버튼을 찾을 수 없습니다!");
             }
 
+            if (optionButton != null)
+            {
+                optionButton.onClick.AddListener(OnOptionButtonClicked);
+                if (debugMode)
+                    Debug.Log("[MainGameController] 옵션 버튼 이벤트 연결 완료");
+            }
+            else
+            {
+                Debug.LogError("[MainGameController] 옵션 버튼을 찾을 수 없습니다!");
+            }
+
             if (exitButton != null)
             {
                 exitButton.onClick.AddListener(OnExitGameClicked);
+            }
+
+            // 설정 오버레이 초기 상태 설정
+            if (settingsOverlay != null)
+            {
+                settingsOverlay.SetActive(false);
             }
         }
 
@@ -213,6 +246,17 @@ namespace Maglin.Core
                     Debug.Log("[MainGameController] RelicManager 생성 완료");
             }
 
+            // LanguageManager 초기화
+            if (LanguageManager.Instance == null)
+            {
+                var languageManagerObj = new GameObject("LanguageManager");
+                languageManagerObj.AddComponent<LanguageManager>();
+                DontDestroyOnLoad(languageManagerObj);
+
+                if (debugMode)
+                    Debug.Log("[MainGameController] LanguageManager 생성 완료");
+            }
+
             if (debugMode)
                 Debug.Log("[MainGameController] 모든 핵심 매니저 초기화 완료");
         }
@@ -235,6 +279,24 @@ namespace Maglin.Core
 
             startButton.interactable = false;
             await StartGameSequence();
+        }
+
+        /// <summary>
+        /// 옵션 버튼 클릭 이벤트
+        /// </summary>
+        public void OnOptionButtonClicked()
+        {
+            if (debugMode)
+                Debug.Log("[MainGameController] 옵션 버튼 클릭됨");
+
+            if (settingsOverlay != null)
+            {
+                settingsOverlay.SetActive(true);
+            }
+            else
+            {
+                Debug.LogError("[MainGameController] 설정 오버레이를 찾을 수 없습니다!");
+            }
         }
 
         /// <summary>
@@ -378,6 +440,7 @@ namespace Maglin.Core
             Debug.Log($"CardManager: {(CardManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"AudioManager: {(AudioManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"RelicManager: {(RelicManager.Instance != null ? "✓" : "✗")}");
+            Debug.Log($"LanguageManager: {(LanguageManager.Instance != null ? "✓" : "✗")}");
 
             if (SaveManager.Instance != null)
             {
