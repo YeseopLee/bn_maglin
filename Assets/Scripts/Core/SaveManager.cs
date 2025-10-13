@@ -37,6 +37,7 @@ namespace Maglin.Core
         [SerializeField] private string saveFileName = "GameSave.json";
         [SerializeField] private bool debugMode = true;
         [SerializeField] private bool autoSaveEnabled = true;
+        [SerializeField] private bool dontUseSaveFile = false;
 
         [Header("세이브 상태")]
         [SerializeField] private bool hasSaveFile = false;
@@ -54,8 +55,9 @@ namespace Maglin.Core
         private GameSaveData currentSaveData;
 
         // 프로퍼티
-        public bool HasSaveFile => hasSaveFile;
+        public bool HasSaveFile => hasSaveFile && !dontUseSaveFile;
         public bool AutoSaveEnabled => autoSaveEnabled;
+        public bool DontUseSaveFile => dontUseSaveFile;
         public GameSaveData CurrentSaveData => currentSaveData;
 
         #region Unity Lifecycle
@@ -116,7 +118,12 @@ namespace Maglin.Core
                     lastSaveTime = fileInfo.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss");
 
                     if (debugMode)
-                        Debug.Log($"[SaveManager] 기존 세이브 파일 발견: {lastSaveTime}");
+                    {
+                        if (dontUseSaveFile)
+                            Debug.Log($"[SaveManager] 세이브 파일 발견하였으나 사용 안함 설정으로 무시: {lastSaveTime}");
+                        else
+                            Debug.Log($"[SaveManager] 기존 세이브 파일 발견: {lastSaveTime}");
+                    }
                 }
                 catch (Exception e)
                 {
@@ -376,7 +383,12 @@ namespace Maglin.Core
                 if (!HasSaveFile)
                 {
                     if (debugMode)
-                        Debug.Log("[SaveManager] 로드할 세이브 파일이 없습니다.");
+                    {
+                        if (dontUseSaveFile && hasSaveFile)
+                            Debug.Log("[SaveManager] 세이브 파일 사용 안함 설정으로 로드하지 않습니다.");
+                        else
+                            Debug.Log("[SaveManager] 로드할 세이브 파일이 없습니다.");
+                    }
                     return null;
                 }
 
@@ -638,6 +650,17 @@ namespace Maglin.Core
             if (debugMode)
                 Debug.Log($"[SaveManager] 자동 저장: {(enabled ? "활성화" : "비활성화")}");
         }
+
+        /// <summary>
+        /// 세이브 파일 사용 안함 설정
+        /// </summary>
+        public void SetDontUseSaveFile(bool dontUse)
+        {
+            dontUseSaveFile = dontUse;
+
+            if (debugMode)
+                Debug.Log($"[SaveManager] 세이브 파일 사용 안함: {(dontUse ? "활성화" : "비활성화")}");
+        }
         #endregion
 
         #region Debug
@@ -649,7 +672,9 @@ namespace Maglin.Core
         {
             Debug.Log($"=== SaveManager Debug Info ===");
             Debug.Log($"Save File Path: {SaveFilePath}");
-            Debug.Log($"Has Save File: {hasSaveFile}");
+            Debug.Log($"Has Save File (Physical): {hasSaveFile}");
+            Debug.Log($"Has Save File (Effective): {HasSaveFile}");
+            Debug.Log($"Don't Use Save File: {dontUseSaveFile}");
             Debug.Log($"Last Save Time: {lastSaveTime}");
             Debug.Log($"Auto Save Enabled: {autoSaveEnabled}");
             Debug.Log($"Current Save Data: {(currentSaveData != null ? "Loaded" : "None")}");

@@ -1117,6 +1117,9 @@ namespace Maglin.Battle
 
                 // 패턴 시스템: 모든 몬스터의 턴 카운터 증가
                 MonsterBattleManager.Instance.IncrementMonsterTurnCounters();
+
+                // CC 효과 처리 (턴 시작 시) - 화상 피해 애니메이션 대기
+                yield return StartCoroutine(MonsterBattleManager.Instance.ProcessAllMonsterCCEffects());
             }
 
             // 살아있는 몬스터들 가져오기
@@ -1608,6 +1611,12 @@ namespace Maglin.Battle
                 StartCoroutine(SummonMonsterFromCard(cardData));
             }
 
+            // CC 효과 적용
+            if (cardData.EnableCCEffect && cardData.CCEffectType != CCEffectType.None && MonsterBattleManager.Instance != null)
+            {
+                ApplyCCEffectFromCard(cardData);
+            }
+
             // VFX 없는 카드 효과 적용 후 VFX 완료 알림 (VFX가 없으므로 즉시 완료)
             if (VFXEffectManager.Instance != null)
             {
@@ -1617,6 +1626,186 @@ namespace Maglin.Battle
 
             // 전투 종료 조건 확인
             CheckBattleEnd();
+        }
+
+        /// <summary>
+        /// 카드에서 CC 효과 적용 처리
+        /// </summary>
+        private void ApplyCCEffectFromCard(CardSO cardData)
+        {
+            if (cardData == null || !cardData.EnableCCEffect || cardData.CCEffectType == CCEffectType.None)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleTestController] CC 효과 적용 조건이 맞지 않습니다.");
+                return;
+            }
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] CC 효과 적용 시작: {cardData.CCEffectType}, 지속시간: {cardData.CCEffectDuration}턴");
+
+            // 타겟 타입에 따라 CC 효과 적용
+            switch (cardData.Target)
+            {
+                case TargetType.SingleEnemy:
+                    if (TargetManager.Instance != null && TargetManager.Instance.IsTargetValid())
+                    {
+                        var target = TargetManager.Instance.CurrentTarget;
+                        MonsterBattleManager.Instance.ApplyCCEffectToMonster(target, cardData.CCEffectType, cardData.CCEffectDuration, cardData.CCEffectValue);
+
+                        if (debugMode)
+                            Debug.Log($"[BattleTestController] {target.EnemyName}에게 {cardData.CCEffectType} 효과 적용");
+                    }
+                    break;
+
+                case TargetType.AllEnemies:
+                case TargetType.AllIncludingSelf:
+                    if (TargetManager.Instance != null)
+                    {
+                        var allMonsters = TargetManager.Instance.GetAliveEnemies();
+                        foreach (var monster in allMonsters)
+                        {
+                            if (monster != null && monster.IsAlive)
+                            {
+                                MonsterBattleManager.Instance.ApplyCCEffectToMonster(monster, cardData.CCEffectType, cardData.CCEffectDuration, cardData.CCEffectValue);
+
+                                if (debugMode)
+                                    Debug.Log($"[BattleTestController] {monster.EnemyName}에게 {cardData.CCEffectType} 효과 적용");
+                            }
+                        }
+                    }
+                    break;
+
+                case TargetType.ChainFrontHits:
+                    // 가장 앞 몬스터부터 targetCount만큼 CC 효과 적용
+                    if (TargetManager.Instance != null)
+                    {
+                        var allMonsters = TargetManager.Instance.GetAliveEnemies();
+                        var sortedMonsters = allMonsters.OrderBy(m => m.GridPosition.y).ToList();
+
+                        int appliedCount = 0;
+                        foreach (var monster in sortedMonsters)
+                        {
+                            if (appliedCount >= cardData.TargetCount) break;
+
+                            if (monster != null && monster.IsAlive)
+                            {
+                                MonsterBattleManager.Instance.ApplyCCEffectToMonster(monster, cardData.CCEffectType, cardData.CCEffectDuration, cardData.CCEffectValue);
+                                appliedCount++;
+
+                                if (debugMode)
+                                    Debug.Log($"[BattleTestController] {monster.EnemyName}에게 {cardData.CCEffectType} 효과 적용 (연쇄 {appliedCount})");
+                            }
+                        }
+                    }
+                    break;
+
+                case TargetType.PlayerFrontLine:
+                case TargetType.TargetFrontStrip:
+                case TargetType.TargetBackStrip:
+                case TargetType.TargetCenteredRange:
+                    // 범위 공격 타입들은 해당 범위의 몬스터들에게 CC 효과 적용
+                    if (TargetManager.Instance != null)
+                    {
+                        var affectedMonsters = GetMonstersInRangeForCCEffect(cardData.Target, cardData.TargetCount);
+                        foreach (var monster in affectedMonsters)
+                        {
+                            if (monster != null && monster.IsAlive)
+                            {
+                                MonsterBattleManager.Instance.ApplyCCEffectToMonster(monster, cardData.CCEffectType, cardData.CCEffectDuration, cardData.CCEffectValue);
+
+                                if (debugMode)
+                                    Debug.Log($"[BattleTestController] {monster.EnemyName}에게 {cardData.CCEffectType} 효과 적용 (범위)");
+                            }
+                        }
+                    }
+                    break;
+
+                case TargetType.Self:
+                    // 플레이어 대상은 CC 효과 적용하지 않음 (몬스터 전용)
+                    if (debugMode)
+                        Debug.Log("[BattleTestController] CC 효과는 몬스터 전용이므로 플레이어에게 적용하지 않습니다.");
+                    break;
+            }
+
+            if (debugMode)
+                Debug.Log($"[BattleTestController] CC 효과 적용 완료: {cardData.CCEffectType}");
+        }
+
+        /// <summary>
+        /// CC 효과 적용을 위한 범위 내 몬스터들 가져오기
+        /// </summary>
+        private List<Maglin.Enemy.Enemy> GetMonstersInRangeForCCEffect(TargetType targetType, int targetCount)
+        {
+            var monsters = new List<Maglin.Enemy.Enemy>();
+
+            if (TargetManager.Instance == null) return monsters;
+
+            var allMonsters = TargetManager.Instance.GetAliveEnemies();
+            if (allMonsters == null || allMonsters.Count == 0) return monsters;
+
+            switch (targetType)
+            {
+                case TargetType.PlayerFrontLine:
+                    // 플레이어 앞 targetCount칸 라인의 몬스터들
+                    var playerPos = PlayerBattleManager.Instance?.GetPlayerGridPosition() ?? Vector2Int.zero;
+                    for (int i = 1; i <= targetCount; i++)
+                    {
+                        var targetPos = new Vector2Int(playerPos.x, playerPos.y + i);
+                        var monster = allMonsters.FirstOrDefault(m => m.GridPosition == targetPos);
+                        if (monster != null)
+                        {
+                            monsters.Add(monster);
+                        }
+                    }
+                    break;
+
+                case TargetType.TargetFrontStrip:
+                    // 타겟 포함 플레이어쪽으로 targetCount칸 세로 스트립
+                    if (TargetManager.Instance.IsTargetValid())
+                    {
+                        var target = TargetManager.Instance.CurrentTarget;
+                        int tx = target.GridPosition.x;
+                        int minX = tx - (targetCount - 1);
+                        int maxX = tx;
+
+                        monsters = allMonsters
+                            .Where(m => m.GridPosition.x >= minX && m.GridPosition.x <= maxX)
+                            .ToList();
+                    }
+                    break;
+
+                case TargetType.TargetBackStrip:
+                    // 타겟 포함 플레이어 반대쪽으로 targetCount칸 세로 스트립
+                    if (TargetManager.Instance.IsTargetValid())
+                    {
+                        var target = TargetManager.Instance.CurrentTarget;
+                        int tx = target.GridPosition.x;
+                        int minX = tx;
+                        int maxX = tx + (targetCount - 1);
+
+                        monsters = allMonsters
+                            .Where(m => m.GridPosition.x >= minX && m.GridPosition.x <= maxX)
+                            .ToList();
+                    }
+                    break;
+
+                case TargetType.TargetCenteredRange:
+                    // 타겟을 중심으로 앞뒤로 targetCount칸씩
+                    if (TargetManager.Instance.IsTargetValid())
+                    {
+                        var target = TargetManager.Instance.CurrentTarget;
+                        int tx = target.GridPosition.x;
+                        int minX = tx - targetCount;
+                        int maxX = tx + targetCount;
+
+                        monsters = allMonsters
+                            .Where(m => m.GridPosition.x >= minX && m.GridPosition.x <= maxX)
+                            .ToList();
+                    }
+                    break;
+            }
+
+            return monsters;
         }
 
         /// <summary>
@@ -1846,6 +2035,18 @@ namespace Maglin.Battle
             if (shouldApplySummon && cardData.EnableMonsterSummon && cardData.MonsterToSummon != null && MonsterSpawnManager.Instance != null)
             {
                 StartCoroutine(SummonMonsterFromCard(cardData));
+            }
+
+            // CC 효과 적용 (다중 이펙트 시스템에서는 첫 번째 이펙트에서만)
+            bool shouldApplyCCEffect = shouldApplyDamage;
+            if (isMultipleEffectsSystem)
+            {
+                shouldApplyCCEffect = (hitArgs.vfxIndex == 0); // 다중 이펙트에서는 첫 번째만
+            }
+
+            if (shouldApplyCCEffect && cardData.EnableCCEffect && cardData.CCEffectType != CCEffectType.None && MonsterBattleManager.Instance != null)
+            {
+                ApplyCCEffectFromCard(cardData);
             }
 
             // VFX 히트 후 전투 종료 조건 확인 (다중 이펙트 시스템에서는 첫 번째 이펙트에서만)

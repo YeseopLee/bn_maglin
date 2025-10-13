@@ -119,6 +119,12 @@ namespace Maglin.Cards
         [SerializeField] private MonsterSummonPosition summonPosition = MonsterSummonPosition.None; // 소환 위치
         [SerializeField] private bool pushExistingMonster = true; // 기존 몬스터를 밀어낼지 여부
 
+        [Header("CC 효과")]
+        [SerializeField] private bool enableCCEffect = false; // CC 효과 활성화 여부
+        [SerializeField] private CCEffectType ccEffectType = CCEffectType.None; // 적용할 CC 효과 타입
+        [SerializeField] private int ccEffectDuration = 1; // CC 효과 지속 턴 수
+        [SerializeField] private float ccEffectValue = 0f; // CC 효과 수치 (0이면 기본값 사용)
+
         [Header("조합식 (조합 카드인 경우)")]
         [SerializeField] private CardCombinationData[] requiredCombinations;
 
@@ -150,6 +156,12 @@ namespace Maglin.Cards
         public EnemySO MonsterToSummon => monsterToSummon;
         public MonsterSummonPosition SummonPosition => summonPosition;
         public bool PushExistingMonster => pushExistingMonster;
+
+        // CC 효과 관련 Properties
+        public bool EnableCCEffect => enableCCEffect;
+        public CCEffectType CCEffectType => ccEffectType;
+        public int CCEffectDuration => ccEffectDuration;
+        public float CCEffectValue => ccEffectValue;
 
         /// <summary>
         /// 단독 사용이 가능한 카드인지 확인

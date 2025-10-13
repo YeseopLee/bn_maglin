@@ -171,6 +171,15 @@ namespace Maglin.Battle
         {
             if (monster == null || !monster.IsAlive) yield break;
 
+            // 기절 상태 체크
+            if (!CanMonsterAct(monster))
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.EnemyName}은 기절 상태로 이동을 건너뜁니다.");
+                yield return new WaitForSeconds(0.2f);
+                yield break;
+            }
+
             // 이번 턴에 이미 외부 요청으로 이동했다면 AI 이동 건너뛰기
             if (HasMonsterMovedThisTurn(monster))
             {
@@ -262,6 +271,14 @@ namespace Maglin.Battle
             if (monster == null || !monster.IsAlive) yield break;
             if (monster.IsNeutralObject) yield break; // 중립 오브젝트는 공격하지 않음
 
+            // 기절 상태 체크
+            if (!CanMonsterAct(monster))
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.EnemyName}은 기절 상태로 공격을 건너뜁니다.");
+                yield break;
+            }
+
             // 1. 패턴 실행 시도 (패턴이 있는 경우 우선 실행)
             var patternResult = ExecuteMonsterPatterns(monster);
             if (patternResult.executed)
@@ -323,6 +340,25 @@ namespace Maglin.Battle
             var targetObject = FindAttackableNeutralObject(monster);
             if (targetObject != null)
             {
+                // 암흑 상태 체크 (일반 공격만 해당)
+                if (ShouldAttackMiss(monster))
+                {
+                    if (debugMode)
+                        Debug.Log($"[MonsterBattleManager] {monster.EnemyName}의 중립 오브젝트 공격이 암흑 효과로 빗나갔습니다.");
+
+                    // 빗나감 애니메이션 실행
+                    if (MonsterAnimationManager.Instance != null)
+                    {
+                        MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack);
+                        yield return StartCoroutine(WaitForAttackAnimationComplete(monster));
+                    }
+
+                    // 공격 완료 이벤트 발생 (빗나감도 공격 시도로 간주)
+                    OnMonsterAttacked?.Invoke(monster);
+                    yield return new WaitForSeconds(0.2f);
+                    yield break;
+                }
+
                 var damage = monster.CurrentAttackDamage;
 
                 if (debugMode)
@@ -354,6 +390,25 @@ namespace Maglin.Battle
             // 2. 플레이어 공격 가능한지 확인
             if (ai.CanAttackPosition(playerGridPosition))
             {
+                // 암흑 상태 체크 (일반 공격만 해당)
+                if (ShouldAttackMiss(monster))
+                {
+                    if (debugMode)
+                        Debug.Log($"[MonsterBattleManager] {monster.EnemyName}의 플레이어 공격이 암흑 효과로 빗나갔습니다.");
+
+                    // 빗나감 애니메이션 실행
+                    if (MonsterAnimationManager.Instance != null)
+                    {
+                        MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Attack);
+                        yield return StartCoroutine(WaitForAttackAnimationComplete(monster));
+                    }
+
+                    // 공격 완료 이벤트 발생 (빗나감도 공격 시도로 간주)
+                    OnMonsterAttacked?.Invoke(monster);
+                    yield return new WaitForSeconds(0.2f);
+                    yield break;
+                }
+
                 var damage = monster.CurrentAttackDamage;
 
                 if (debugMode)
@@ -421,6 +476,92 @@ namespace Maglin.Battle
             {
                 MonsterPatternExecutor.Instance.IncrementTurnCounters();
             }
+        }
+
+        /// <summary>
+        /// 몬스터에게 CC 효과 적용
+        /// </summary>
+        public void ApplyCCEffectToMonster(Maglin.Enemy.Enemy monster, CCEffectType effectType, int duration, float effectValue = 0f)
+        {
+            if (monster == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[MonsterBattleManager] CC 효과를 적용할 몬스터가 null입니다.");
+                return;
+            }
+
+            // MonsterCCEffects 컴포넌트 가져오기 또는 추가
+            MonsterCCEffects ccEffects = monster.GetComponent<MonsterCCEffects>();
+            if (ccEffects == null)
+            {
+                ccEffects = monster.gameObject.AddComponent<MonsterCCEffects>();
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.name}에 MonsterCCEffects 컴포넌트 추가");
+            }
+
+            // CC 효과 적용
+            ccEffects.ApplyCCEffect(effectType, duration, effectValue);
+
+            if (debugMode)
+                Debug.Log($"[MonsterBattleManager] {monster.name}에게 {effectType} 효과 적용 ({duration}턴)");
+        }
+
+        /// <summary>
+        /// 모든 몬스터의 턴 시작 시 CC 효과 처리 (코루틴)
+        /// </summary>
+        public System.Collections.IEnumerator ProcessAllMonsterCCEffects()
+        {
+            var allMonsters = GetAllMonsters();
+            foreach (var monster in allMonsters)
+            {
+                if (monster != null)
+                {
+                    MonsterCCEffects ccEffects = monster.GetComponent<MonsterCCEffects>();
+                    if (ccEffects != null)
+                    {
+                        yield return StartCoroutine(ccEffects.ProcessTurnStartEffects());
+                    }
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("[MonsterBattleManager] 모든 몬스터 CC 효과 처리 완료");
+        }
+
+        /// <summary>
+        /// 몬스터가 행동 가능한지 확인 (기절 상태 체크)
+        /// </summary>
+        public bool CanMonsterAct(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return false;
+
+            MonsterCCEffects ccEffects = monster.GetComponent<MonsterCCEffects>();
+            if (ccEffects != null && ccEffects.IsStunned())
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.name}은 기절 상태로 행동할 수 없습니다.");
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 몬스터의 일반공격이 빗나가는지 확인 (암흑 상태 체크)
+        /// </summary>
+        public bool ShouldAttackMiss(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return false;
+
+            MonsterCCEffects ccEffects = monster.GetComponent<MonsterCCEffects>();
+            if (ccEffects != null && ccEffects.IsBlinded())
+            {
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.name}은 암흑 상태로 공격이 빗나갑니다.");
+                return true;
+            }
+
+            return false;
         }
         #endregion
 
@@ -518,7 +659,7 @@ namespace Maglin.Battle
             if (GridFieldManager.Instance != null && GridFieldManager.Instance.IsInitialized)
             {
                 Vector3 targetWorldPos = GridFieldManager.Instance.GridToWorldPositionWithSpriteAlignment(monster.gameObject, gridPos);
-                
+
                 // 현재 Y 위치 유지 (물리 시뮬레이션 결과 보존)
                 Vector3 currentPos = monster.transform.position;
                 Vector3 finalTargetPos = new Vector3(targetWorldPos.x, currentPos.y, targetWorldPos.z);
@@ -857,6 +998,56 @@ namespace Maglin.Battle
 
             // Hit 애니메이션 후 Idle로 복귀 (코루틴으로 처리)
             StartCoroutine(ReturnToIdleAfterHit(monster));
+        }
+
+        /// <summary>
+        /// 화상 피해용 Hit 애니메이션 재생 및 완료 대기 (코루틴)
+        /// </summary>
+        public System.Collections.IEnumerator PlayHitAnimationAndWait(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null || MonsterAnimationManager.Instance == null) yield break;
+
+            if (debugMode)
+                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 화상 피해 Hit 애니메이션 시작");
+
+            // Hit 애니메이션 재생
+            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Hit);
+
+            // Hit 애니메이션 완료까지 대기
+            yield return StartCoroutine(WaitForHitAnimationComplete(monster));
+
+            // Idle로 복귀
+            if (monster != null && monster.IsAlive && MonsterAnimationManager.Instance != null)
+            {
+                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
+            }
+
+            if (debugMode)
+                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 화상 피해 Hit 애니메이션 완료");
+        }
+
+        /// <summary>
+        /// Hit 애니메이션 완료까지 대기하는 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator WaitForHitAnimationComplete(Maglin.Enemy.Enemy monster)
+        {
+            if (monster?.EnemyData?.HitSprites != null && monster.EnemyData.HitSprites.Length > 0)
+            {
+                // 새로운 프레임 레이트 시스템 사용
+                float frameRate = monster.EnemyData.GetFrameRateForState(Maglin.Enemy.MonsterAnimationState.Hit);
+                float frameTime = 1f / Mathf.Max(0.1f, frameRate);
+                float hitAnimationDuration = monster.EnemyData.HitSprites.Length * frameTime;
+
+                if (debugMode)
+                    Debug.Log($"[MonsterBattleManager] {monster.EnemyName} Hit 애니메이션 대기: {hitAnimationDuration:F2}초");
+
+                yield return new WaitForSeconds(hitAnimationDuration);
+            }
+            else
+            {
+                // 기본 지속 시간
+                yield return new WaitForSeconds(0.3f);
+            }
         }
 
         /// <summary>

@@ -34,4 +34,8 @@ MonoBehaviour:
   monsterToSummon: {fileID: 0}
   summonPosition: 0
   pushExistingMonster: 1
+  enableCCEffect: 1
+  ccEffectType: 2
+  ccEffectDuration: 1
+  ccEffectValue: 0
   requiredCombinations: []
