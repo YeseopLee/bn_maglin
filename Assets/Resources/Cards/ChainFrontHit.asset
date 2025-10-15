@@ -15,11 +15,11 @@ MonoBehaviour:
   cardName: ChainFrontHit
   cardType: 1
   elementType: 0
-  baseDamage: 4
+  baseDamage: 1
   baseHeal: 0
   manaCost: 0
   targetType: 0
-  targetCount: 4
+  targetCount: 1
   cardDescription: ChainFrontHit
   cardImage: {fileID: 21300000, guid: 81991b601fcccd54aa5436782d9f4cdf, type: 3}
   cardEffect: {fileID: 11400000, guid: 29ba6967027c3d84998a0ecaeded3cb8, type: 2}
@@ -34,4 +34,8 @@ MonoBehaviour:
   monsterToSummon: {fileID: 0}
   summonPosition: 0
   pushExistingMonster: 1
+  enableCCEffect: 1
+  ccEffectType: 3
+  ccEffectDuration: 1
+  ccEffectValue: 0
   requiredCombinations: []

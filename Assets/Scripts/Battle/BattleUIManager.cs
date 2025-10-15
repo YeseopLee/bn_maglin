@@ -109,6 +109,12 @@ namespace Maglin.Battle
         [SerializeField] private GameObject relicPrefab; // 유물 프리팹
         [SerializeField] private GameObject monsterPrefab;
 
+        [Header("상태이상 아이콘")]
+        [SerializeField] private Sprite burnIcon; // 화상 아이콘
+        [SerializeField] private Sprite stunIcon; // 기절 아이콘
+        [SerializeField] private Sprite blindIcon; // 암흑 아이콘
+        [SerializeField] private Sprite chargeIcon; // 차징 아이콘
+
         [Header("보상 UI")]
         [SerializeField] private CanvasGroup rewardSelectionUI;
         [SerializeField] private Transform[] rewardSlots = new Transform[3];
@@ -137,6 +143,9 @@ namespace Maglin.Battle
 
         // 현재 보상 목록
         private RewardItem[] currentRewards;
+
+        // 상태이상 UI 순환 표시용
+        private Dictionary<Maglin.Enemy.Enemy, Coroutine> statusEffectCycleCoroutines = new Dictionary<Maglin.Enemy.Enemy, Coroutine>();
 
         #endregion
 
@@ -201,6 +210,9 @@ namespace Maglin.Battle
             // 자체 이벤트 구독
             OnCardClicked += HandleCardClicked;
 
+            // CC 효과 변경 이벤트 구독
+            Maglin.Battle.MonsterCCEffects.OnCCEffectChanged += UpdateMonsterStatusEffectUI;
+
             // 주의: 초기 UI 업데이트는 SetUIReferences에서 ForceUpdatePlayerUI로 즉시 처리됨
         }
 
@@ -250,10 +262,16 @@ namespace Maglin.Battle
 
             // 자체 이벤트 구독 해제
             OnCardClicked -= HandleCardClicked;
+
+            // CC 효과 변경 이벤트 구독 해제
+            Maglin.Battle.MonsterCCEffects.OnCCEffectChanged -= UpdateMonsterStatusEffectUI;
         }
 
         private void OnDestroy()
         {
+            // 모든 상태이상 순환 코루틴 정리
+            ClearAllStatusEffectCycles();
+
             if (_instance == this)
             {
                 _instance = null;
@@ -2225,6 +2243,367 @@ namespace Maglin.Battle
         /// 보상 건너뛰기 이벤트
         /// </summary>
         public static event System.Action OnRewardSkipped;
+        #endregion
+
+        #region Monster Health & Status UI Management
+
+        /// <summary>
+        /// 몬스터의 체력 슬라이더 업데이트
+        /// </summary>
+        public void UpdateMonsterHealthSlider(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return;
+
+            // HealthBarCanvas 찾기
+            var healthBarCanvas = monster.transform.Find("HealthBarCanvas");
+            if (healthBarCanvas == null) return;
+
+            var healthBarBackground = healthBarCanvas.Find("HealthBarBackground");
+            if (healthBarBackground == null) return;
+
+            var healthSlider = healthBarBackground.Find("HealthSlider");
+            if (healthSlider == null) return;
+
+            var slider = healthSlider.GetComponent<UnityEngine.UI.Slider>();
+            if (slider == null) return;
+
+            // 체력 비율 계산 (현재체력 / 최대체력)
+            float healthRatio = (float)monster.CurrentHealth / (float)monster.MaxHealth;
+            healthRatio = Mathf.Clamp01(healthRatio); // 0~1 사이로 제한
+
+            // 슬라이더 값 업데이트
+            slider.value = healthRatio;
+
+            // HealthText도 업데이트
+            var healthText = healthBarBackground.Find("HealthText");
+            if (healthText != null)
+            {
+                var textComponent = healthText.GetComponent<TMPro.TextMeshProUGUI>();
+                if (textComponent != null)
+                {
+                    textComponent.text = $"{monster.CurrentHealth}";
+                }
+            }
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] {monster.EnemyName} 체력 슬라이더 업데이트: {monster.CurrentHealth}/{monster.MaxHealth} ({healthRatio:F2})");
+        }
+
+        /// <summary>
+        /// 모든 몬스터의 체력 슬라이더 업데이트
+        /// </summary>
+        public void UpdateAllMonsterHealthSliders()
+        {
+            if (TargetManager.Instance != null)
+            {
+                var allMonsters = TargetManager.Instance.GetAliveEnemies();
+                foreach (var monster in allMonsters)
+                {
+                    if (monster != null)
+                    {
+                        UpdateMonsterHealthSlider(monster);
+                    }
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 모든 몬스터 체력 슬라이더 업데이트 완료");
+        }
+
+        /// <summary>
+        /// 몬스터의 체력 변경 이벤트 구독
+        /// </summary>
+        public void SubscribeToMonsterHealthEvents(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return;
+
+            // 체력 변경 이벤트 구독
+            monster.OnHealthChanged += (currentHealth, maxHealth) =>
+            {
+                UpdateMonsterHealthSlider(monster);
+            };
+
+            // 초기 체력 슬라이더 설정
+            UpdateMonsterHealthSlider(monster);
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] {monster.EnemyName} 체력 이벤트 구독 완료");
+        }
+
+        /// <summary>
+        /// 모든 몬스터의 체력 변경 이벤트 구독
+        /// </summary>
+        public void SubscribeToAllMonsterHealthEvents()
+        {
+            if (TargetManager.Instance != null)
+            {
+                var allMonsters = TargetManager.Instance.GetAliveEnemies();
+                foreach (var monster in allMonsters)
+                {
+                    if (monster != null)
+                    {
+                        SubscribeToMonsterHealthEvents(monster);
+                    }
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 모든 몬스터 체력 이벤트 구독 완료");
+        }
+        #endregion
+
+        #region Monster Status Effect UI Management
+        /// <summary>
+        /// 몬스터의 상태이상 UI 업데이트
+        /// </summary>
+        public void UpdateMonsterStatusEffectUI(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return;
+
+            // 몬스터의 CC 효과 컴포넌트 가져오기
+            var ccEffects = monster.GetComponent<Maglin.Battle.MonsterCCEffects>();
+            if (ccEffects == null) return;
+
+            // StatusCanvas 찾기
+            var statusCanvas = monster.transform.Find("StatusCanvas");
+            if (statusCanvas == null) return;
+
+            // 활성 상태이상 가져오기
+            var activeEffects = ccEffects.GetActiveEffects();
+
+            if (activeEffects.Count > 0)
+            {
+                // StatusCanvas 활성화
+                statusCanvas.gameObject.SetActive(true);
+
+                // 기존 순환 코루틴 중지
+                StopStatusEffectCycle(monster);
+
+                if (activeEffects.Count == 1)
+                {
+                    // 상태이상이 하나만 있으면 바로 표시
+                    var singleEffect = activeEffects.First();
+                    DisplaySingleStatusEffect(monster, singleEffect.Key, singleEffect.Value.remainingTurns);
+                }
+                else
+                {
+                    // 상태이상이 여러 개 있으면 순환 표시 시작
+                    StartStatusEffectCycle(monster, activeEffects);
+                }
+
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] {monster.EnemyName} 상태이상 UI 업데이트: {activeEffects.Count}개 효과");
+            }
+            else
+            {
+                // 상태이상이 없으면 StatusCanvas 비활성화 및 순환 중지
+                StopStatusEffectCycle(monster);
+                statusCanvas.gameObject.SetActive(false);
+
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] {monster.EnemyName} 상태이상 없음 - UI 숨김");
+            }
+        }
+
+        /// <summary>
+        /// 단일 상태이상 표시
+        /// </summary>
+        private void DisplaySingleStatusEffect(Maglin.Enemy.Enemy monster, Maglin.Battle.CCEffectType effectType, int remainingTurns)
+        {
+            var statusCanvas = monster.transform.Find("StatusCanvas");
+            if (statusCanvas == null) return;
+
+            var statusBackground = statusCanvas.Find("StatusBackground");
+            if (statusBackground == null) return;
+
+            var statusImage = statusBackground.Find("StatusImage")?.GetComponent<UnityEngine.UI.Image>();
+            var statusTurnText = statusBackground.Find("StatusTurnText")?.GetComponent<TMPro.TextMeshProUGUI>();
+
+            if (statusImage == null || statusTurnText == null) return;
+
+            // 상태이상 아이콘 설정
+            Sprite iconToShow = GetStatusEffectIcon(effectType);
+            if (iconToShow != null)
+            {
+                statusImage.sprite = iconToShow;
+                statusImage.color = Color.white;
+                statusTurnText.text = remainingTurns.ToString();
+
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] {monster.EnemyName} 단일 상태이상 표시: {effectType} ({remainingTurns}턴)");
+            }
+        }
+
+        /// <summary>
+        /// 상태이상 순환 표시 시작
+        /// </summary>
+        private void StartStatusEffectCycle(Maglin.Enemy.Enemy monster, Dictionary<Maglin.Battle.CCEffectType, Maglin.Battle.CCEffectData> activeEffects)
+        {
+            if (monster == null || activeEffects == null || activeEffects.Count <= 1) return;
+
+            // 우선순위에 따라 정렬된 상태이상 리스트 생성
+            var sortedEffects = GetSortedStatusEffects(activeEffects);
+
+            // 순환 코루틴 시작
+            var cycleCoroutine = StartCoroutine(StatusEffectCycleCoroutine(monster, sortedEffects));
+            statusEffectCycleCoroutines[monster] = cycleCoroutine;
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] {monster.EnemyName} 상태이상 순환 표시 시작: {sortedEffects.Count}개 효과");
+        }
+
+        /// <summary>
+        /// 상태이상 순환 표시 중지
+        /// </summary>
+        private void StopStatusEffectCycle(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return;
+
+            if (statusEffectCycleCoroutines.ContainsKey(monster))
+            {
+                if (statusEffectCycleCoroutines[monster] != null)
+                {
+                    StopCoroutine(statusEffectCycleCoroutines[monster]);
+                }
+                statusEffectCycleCoroutines.Remove(monster);
+
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] {monster.EnemyName} 상태이상 순환 표시 중지");
+            }
+        }
+
+        /// <summary>
+        /// 우선순위에 따라 정렬된 상태이상 리스트 반환
+        /// </summary>
+        private List<(Maglin.Battle.CCEffectType effectType, int remainingTurns)> GetSortedStatusEffects(Dictionary<Maglin.Battle.CCEffectType, Maglin.Battle.CCEffectData> activeEffects)
+        {
+            var sortedEffects = new List<(Maglin.Battle.CCEffectType effectType, int remainingTurns)>();
+
+            // 우선순위: 차징 > 기절 > 화상 > 암흑
+            if (activeEffects.ContainsKey(Maglin.Battle.CCEffectType.Charge))
+            {
+                sortedEffects.Add((Maglin.Battle.CCEffectType.Charge, activeEffects[Maglin.Battle.CCEffectType.Charge].remainingTurns));
+            }
+            if (activeEffects.ContainsKey(Maglin.Battle.CCEffectType.Stun))
+            {
+                sortedEffects.Add((Maglin.Battle.CCEffectType.Stun, activeEffects[Maglin.Battle.CCEffectType.Stun].remainingTurns));
+            }
+            if (activeEffects.ContainsKey(Maglin.Battle.CCEffectType.Burn))
+            {
+                sortedEffects.Add((Maglin.Battle.CCEffectType.Burn, activeEffects[Maglin.Battle.CCEffectType.Burn].remainingTurns));
+            }
+            if (activeEffects.ContainsKey(Maglin.Battle.CCEffectType.Blind))
+            {
+                sortedEffects.Add((Maglin.Battle.CCEffectType.Blind, activeEffects[Maglin.Battle.CCEffectType.Blind].remainingTurns));
+            }
+
+            return sortedEffects;
+        }
+
+        /// <summary>
+        /// 상태이상 순환 표시 코루틴
+        /// </summary>
+        private System.Collections.IEnumerator StatusEffectCycleCoroutine(Maglin.Enemy.Enemy monster, List<(Maglin.Battle.CCEffectType effectType, int remainingTurns)> effects)
+        {
+            if (monster == null || effects == null || effects.Count == 0) yield break;
+
+            int currentIndex = 0;
+
+            while (monster != null && monster.gameObject != null)
+            {
+                // 현재 인덱스의 상태이상 표시
+                var currentEffect = effects[currentIndex];
+                DisplaySingleStatusEffect(monster, currentEffect.effectType, currentEffect.remainingTurns);
+
+                // 1초 대기
+                yield return new WaitForSeconds(1f);
+
+                // 다음 상태이상으로 순환
+                currentIndex = (currentIndex + 1) % effects.Count;
+
+                // 몬스터가 죽었거나 상태이상이 변경되었는지 확인
+                if (monster == null || !monster.IsAlive)
+                {
+                    yield break;
+                }
+
+                // 상태이상이 변경되었는지 확인 (다른 곳에서 UpdateMonsterStatusEffectUI가 호출되면 자동으로 중지됨)
+            }
+        }
+
+        /// <summary>
+        /// 상태이상 타입에 따른 아이콘 반환
+        /// </summary>
+        private Sprite GetStatusEffectIcon(Maglin.Battle.CCEffectType effectType)
+        {
+            return effectType switch
+            {
+                Maglin.Battle.CCEffectType.Burn => burnIcon,
+                Maglin.Battle.CCEffectType.Stun => stunIcon,
+                Maglin.Battle.CCEffectType.Blind => blindIcon,
+                Maglin.Battle.CCEffectType.Charge => chargeIcon,
+                _ => null
+            };
+        }
+
+        /// <summary>
+        /// 모든 몬스터의 상태이상 UI 업데이트
+        /// </summary>
+        public void UpdateAllMonsterStatusEffectUI()
+        {
+            if (TargetManager.Instance != null)
+            {
+                var allMonsters = TargetManager.Instance.GetAliveEnemies();
+                foreach (var monster in allMonsters)
+                {
+                    if (monster != null)
+                    {
+                        UpdateMonsterStatusEffectUI(monster);
+                    }
+                }
+            }
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 모든 몬스터 상태이상 UI 업데이트 완료");
+        }
+
+        /// <summary>
+        /// 특정 몬스터의 상태이상 UI 숨기기
+        /// </summary>
+        public void HideMonsterStatusEffectUI(Maglin.Enemy.Enemy monster)
+        {
+            if (monster == null) return;
+
+            // 순환 코루틴 중지
+            StopStatusEffectCycle(monster);
+
+            var statusCanvas = monster.transform.Find("StatusCanvas");
+            if (statusCanvas != null)
+            {
+                statusCanvas.gameObject.SetActive(false);
+
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] {monster.EnemyName} 상태이상 UI 숨김");
+            }
+        }
+
+        /// <summary>
+        /// 모든 상태이상 순환 코루틴 정리 (씬 전환 시 등)
+        /// </summary>
+        public void ClearAllStatusEffectCycles()
+        {
+            foreach (var kvp in statusEffectCycleCoroutines)
+            {
+                if (kvp.Value != null)
+                {
+                    StopCoroutine(kvp.Value);
+                }
+            }
+            statusEffectCycleCoroutines.Clear();
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 모든 상태이상 순환 코루틴 정리 완료");
+        }
         #endregion
 
         /// <summary>

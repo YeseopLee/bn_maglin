@@ -1312,6 +1312,7 @@ MonoBehaviour:
   saveFileName: GameSave.json
   debugMode: 1
   autoSaveEnabled: 0
+  dontUseSaveFile: 1
   hasSaveFile: 0
   lastSaveTime: 
 --- !u!4 &417326407

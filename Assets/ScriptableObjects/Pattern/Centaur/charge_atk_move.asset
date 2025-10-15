@@ -19,7 +19,7 @@ MonoBehaviour:
   triggerInterval: 1
   turnOffset: 1
   blockNormalAttack: 1
-  chargeDuration: 2
+  chargeDuration: 1
   chargeDamage: 10
   chargeAttackType: 0
   chargeAttackRange: 1
@@ -41,11 +41,11 @@ MonoBehaviour:
   attackAndMoveSpeed: 5
   attackAndMoveMustMove: 0
   chargeAttackAndMoveDamage: 15
-  chargeAttackAndMoveType: 0
-  chargeAttackAndMoveRange: 1
+  chargeAttackAndMoveType: 1
+  chargeAttackAndMoveRange: 2
   chargeAttackAndMoveTarget: 0
   chargeAttackMoveDirection: 1
-  chargeAttackMoveDistance: 2
+  chargeAttackMoveDistance: 1
   chargeAttackAndMoveSpeed: 5
   chargeAttackAndMoveMustMove: 1
   patternSprites:

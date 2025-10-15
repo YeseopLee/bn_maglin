@@ -35,7 +35,7 @@ MonoBehaviour:
   summonPosition: 0
   pushExistingMonster: 1
   enableCCEffect: 1
-  ccEffectType: 2
+  ccEffectType: 1
   ccEffectDuration: 2
-  ccEffectValue: 0
+  ccEffectValue: 0.05
   requiredCombinations: []

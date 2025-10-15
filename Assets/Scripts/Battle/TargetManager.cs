@@ -798,17 +798,25 @@ namespace Maglin.Battle
         {
             if (monster == null || !monster.IsAlive) return;
 
+            bool actuallyMoved = false;
+
             switch (movementType)
             {
                 case MonsterMovementType.TowardsPlayer:
-                    MoveMonsterTowardsPlayer(monster, distance);
+                    actuallyMoved = MoveMonsterTowardsPlayer(monster, distance);
                     break;
                 case MonsterMovementType.AwayFromPlayer:
-                    MoveMonsterAwayFromPlayer(monster, distance);
+                    actuallyMoved = MoveMonsterAwayFromPlayer(monster, distance);
                     break;
                 case MonsterMovementType.Random:
-                    MoveMonsterToRandomPosition(monster);
+                    actuallyMoved = MoveMonsterToRandomPosition(monster);
                     break;
+            }
+
+            // 실제로 위치가 변경된 경우에만 차징 중단
+            if (actuallyMoved && MonsterPatternExecutor.Instance != null)
+            {
+                MonsterPatternExecutor.Instance.InterruptMonsterCharging(monster, $"카드 효과로 인한 위치 변경 ({movementType})");
             }
         }
 
@@ -925,9 +933,9 @@ namespace Maglin.Battle
         /// <summary>
         /// 몬스터를 플레이어쪽으로 n칸 이동 (겹치기 불가, 점프 불가)
         /// </summary>
-        private void MoveMonsterTowardsPlayer(Maglin.Enemy.Enemy monster, int distance)
+        private bool MoveMonsterTowardsPlayer(Maglin.Enemy.Enemy monster, int distance)
         {
-            if (monster == null || distance <= 0) return;
+            if (monster == null || distance <= 0) return false;
 
             Vector2Int currentPos = monster.GridPosition;
             Vector2Int targetPos = currentPos;
@@ -959,15 +967,19 @@ namespace Maglin.Battle
 
                 if (debugMode)
                     Debug.Log($"[TargetManager] {monster.EnemyName} 플레이어쪽으로 이동: {currentPos} -> {targetPos}");
+
+                return true; // 실제로 이동함
             }
+
+            return false; // 이동하지 않음
         }
 
         /// <summary>
         /// 몬스터를 플레이어 반대쪽으로 n칸 이동 (겹치기 불가, 점프 불가)
         /// </summary>
-        private void MoveMonsterAwayFromPlayer(Maglin.Enemy.Enemy monster, int distance)
+        private bool MoveMonsterAwayFromPlayer(Maglin.Enemy.Enemy monster, int distance)
         {
-            if (monster == null || distance <= 0) return;
+            if (monster == null || distance <= 0) return false;
 
             Vector2Int currentPos = monster.GridPosition;
             Vector2Int targetPos = currentPos;
@@ -996,15 +1008,19 @@ namespace Maglin.Battle
 
                 if (debugMode)
                     Debug.Log($"[TargetManager] {monster.EnemyName} 플레이어 반대쪽으로 이동: {currentPos} -> {targetPos}");
+
+                return true; // 실제로 이동함
             }
+
+            return false; // 이동하지 않음
         }
 
         /// <summary>
         /// 몬스터를 무작위 위치로 이동 (겹치기 불가)
         /// </summary>
-        private void MoveMonsterToRandomPosition(Maglin.Enemy.Enemy monster)
+        private bool MoveMonsterToRandomPosition(Maglin.Enemy.Enemy monster)
         {
-            if (monster == null) return;
+            if (monster == null) return false;
 
             Vector2Int currentPos = monster.GridPosition;
             List<Vector2Int> availablePositions = GetAvailablePositions();
@@ -1021,11 +1037,15 @@ namespace Maglin.Battle
 
                 if (debugMode)
                     Debug.Log($"[TargetManager] {monster.EnemyName} 무작위 위치로 이동: {currentPos} -> {targetPos}");
+
+                return true; // 실제로 이동함
             }
             else
             {
                 if (debugMode)
                     Debug.Log($"[TargetManager] {monster.EnemyName} 이동할 빈 공간이 없습니다.");
+
+                return false; // 이동 가능한 위치가 없음
             }
         }
 

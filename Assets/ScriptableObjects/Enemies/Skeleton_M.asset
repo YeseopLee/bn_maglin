@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: Skeleton_M
   enemyType: 0
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
-  maxHealth: 1
+  maxHealth: 50
   enemyElement: 0
   idleSprites:
   - {fileID: 833233887, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
@@ -46,6 +46,13 @@ MonoBehaviour:
   - {fileID: -741135268, guid: 8e827d1621bfdcd46839efd58b5330af, type: 3}
   hitSprites:
   - {fileID: 833233887, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
+  - {fileID: -1235141899, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
+  - {fileID: -1200046626, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
+  - {fileID: 1215245765, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
+  - {fileID: -975075041, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
+  - {fileID: -411489189, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
+  - {fileID: -633661920, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
+  - {fileID: 1323750552, guid: 1a0bf8b0d2ea0c344bd631aee9ad376e, type: 3}
   deathSprites:
   - {fileID: -38146502, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
   - {fileID: -2042439157, guid: fe75e850828cf094daa991b8f57f346f, type: 3}
@@ -62,7 +69,7 @@ MonoBehaviour:
   idleFrameRate: 8
   moveFrameRate: 10
   attackFrameRate: 9
-  hitFrameRate: 1
+  hitFrameRate: 8
   deathFrameRate: 12
   flipSpritesHorizontally: 1
   attackDamage: 10

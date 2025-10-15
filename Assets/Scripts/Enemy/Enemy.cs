@@ -303,14 +303,8 @@ namespace Maglin.Enemy
                 hitEffect.PlayHitEffect(actualDamage);
             }
 
-            // Hit 애니메이션 재생 (사망하지 않은 경우)
-            if (actualDamage > 0 && currentHealth > 0)
-            {
-                if (MonsterBattleManager.Instance != null)
-                {
-                    MonsterBattleManager.Instance.PlayHitAnimation(this);
-                }
-            }
+            // Hit 애니메이션 재생하지 않음 - 기존 애니메이션 상태 유지
+            // 히트 효과(빨간 점멸)만 MonsterHitEffect에서 처리됨
 
             // 사망 처리
             if (currentHealth <= 0)
@@ -456,8 +450,40 @@ namespace Maglin.Enemy
         {
             isCharging = charging;
 
+            // CC 효과 컴포넌트에 차징 상태 반영
+            var ccEffects = GetComponent<Maglin.Battle.MonsterCCEffects>();
+            if (ccEffects != null)
+            {
+                if (charging)
+                {
+                    // 차징 시작 - 남은 턴 수는 패턴에서 별도로 설정
+                    // 여기서는 기본값으로 1턴 설정 (실제 턴 수는 SetChargingTurns에서 업데이트)
+                    ccEffects.SetChargingState(1);
+                }
+                else
+                {
+                    // 차징 종료
+                    ccEffects.ClearChargingState();
+                }
+            }
+
             if (debugMode)
                 Debug.Log($"[Enemy] {EnemyName} 차징 상태: {isCharging}");
+        }
+
+        /// <summary>
+        /// 차징 남은 턴 수 설정 (패턴에서 호출)
+        /// </summary>
+        public void SetChargingTurns(int remainingTurns)
+        {
+            var ccEffects = GetComponent<Maglin.Battle.MonsterCCEffects>();
+            if (ccEffects != null && isCharging)
+            {
+                ccEffects.SetChargingState(remainingTurns);
+                
+                if (debugMode)
+                    Debug.Log($"[Enemy] {EnemyName} 차징 남은 턴 수 설정: {remainingTurns}턴");
+            }
         }
 
         /// <summary>
@@ -478,8 +504,16 @@ namespace Maglin.Enemy
         {
             if (enemyData != null && enemyData.MovementRestTurns > 0)
             {
-                // 이동한 턴의 종료 시 카운터 감소를 고려하여 +1 설정
-                movementRestCounter = enemyData.MovementRestTurns + 1;
+                // 이미 휴식 중인 경우 중복으로 휴식을 시작하지 않음
+                if (movementRestCounter > 0)
+                {
+                    if (debugMode)
+                        Debug.Log($"[Enemy] {EnemyName} 이미 이동 휴식 중 - 중복 휴식 시작 방지 (현재 카운터: {movementRestCounter})");
+                    return;
+                }
+
+                // 설정된 휴식 턴 수만큼 정확히 휴식
+                movementRestCounter = enemyData.MovementRestTurns;
 
                 if (debugMode)
                     Debug.Log($"[Enemy] {EnemyName} 이동 휴식 시작: {movementRestCounter}턴 (설정된 휴식 턴: {enemyData.MovementRestTurns}, 실제 카운터: {movementRestCounter})");

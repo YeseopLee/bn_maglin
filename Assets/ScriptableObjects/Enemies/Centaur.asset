@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: Centaur
   enemyType: 0
   enemyColor: {r: 1, g: 1, b: 1, a: 1}
-  maxHealth: 5
+  maxHealth: 500
   enemyElement: 0
   idleSprites:
   - {fileID: 452589155, guid: 9a6bddb3f1f094d1788cba56a3a6fb58, type: 3}

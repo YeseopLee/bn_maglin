@@ -103,6 +103,7 @@ namespace Maglin.Battle
 
         /// <summary>
         /// 외부에서 몬스터 이동 요청 (패턴별 커스텀 속도 지원)
+        /// 강제 이동 시에는 기존 애니메이션 상태를 유지합니다.
         /// </summary>
         public void RequestMonsterMovement(Maglin.Enemy.Enemy monster, Vector2Int newPosition, float? customMoveSpeed)
         {
@@ -117,11 +118,8 @@ namespace Maglin.Battle
                 CalculateMoveTime(monster, moveDistance, customMoveSpeed.Value) :
                 CalculateMoveTime(monster, moveDistance);
 
-            // Move 애니메이션 시작 (계산된 이동 시간에 맞춰)
-            if (MonsterAnimationManager.Instance != null)
-            {
-                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Move, null, totalMoveTime);
-            }
+            // 강제 이동 시에는 Move 애니메이션을 사용하지 않고 기존 애니메이션 상태 유지
+            // (카드 효과로 인한 강제 이동은 애니메이션 변경 없이 처리)
 
             // 몬스터의 그리드 위치 업데이트
             SetMonsterGridPosition(monster, newPosition);
@@ -138,7 +136,7 @@ namespace Maglin.Battle
             if (debugMode)
             {
                 string speedInfo = customMoveSpeed.HasValue ? $" (커스텀 속도: {customMoveSpeed.Value})" : "";
-                Debug.Log($"[MonsterBattleManager] 외부 이동 요청 처리: {monster.EnemyName} {previousPosition} -> {newPosition} (시간: {totalMoveTime:F2}초{speedInfo})");
+                Debug.Log($"[MonsterBattleManager] 외부 강제 이동 요청 처리 (기존 애니메이션 유지): {monster.EnemyName} {previousPosition} -> {newPosition} (시간: {totalMoveTime:F2}초{speedInfo})");
             }
         }
 
@@ -988,42 +986,30 @@ namespace Maglin.Battle
         }
 
         /// <summary>
-        /// 몬스터 Hit 애니메이션 재생
+        /// 몬스터 Hit 애니메이션 재생 (더 이상 사용되지 않음 - 기존 애니메이션 상태 유지)
         /// </summary>
+        [System.Obsolete("Hit 애니메이션은 더 이상 사용되지 않습니다. 기존 애니메이션 상태를 유지하고 MonsterHitEffect에서 빨간 점멸만 처리합니다.")]
         public void PlayHitAnimation(Maglin.Enemy.Enemy monster)
         {
-            if (monster == null || MonsterAnimationManager.Instance == null) return;
-
-            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Hit);
-
-            // Hit 애니메이션 후 Idle로 복귀 (코루틴으로 처리)
-            StartCoroutine(ReturnToIdleAfterHit(monster));
+            // Hit 애니메이션 재생하지 않음 - 기존 애니메이션 상태 유지
+            // 히트 효과(빨간 점멸)만 MonsterHitEffect에서 처리됨
+            if (debugMode)
+                Debug.Log($"[MonsterBattleManager] {monster?.EnemyName ?? "Unknown"} Hit 애니메이션 건너뜀 (기존 상태 유지)");
         }
 
         /// <summary>
-        /// 화상 피해용 Hit 애니메이션 재생 및 완료 대기 (코루틴)
+        /// 화상 피해용 Hit 애니메이션 재생 및 완료 대기 (더 이상 사용되지 않음 - 기존 애니메이션 상태 유지)
         /// </summary>
+        [System.Obsolete("Hit 애니메이션은 더 이상 사용되지 않습니다. 기존 애니메이션 상태를 유지하고 MonsterHitEffect에서 빨간 점멸만 처리합니다.")]
         public System.Collections.IEnumerator PlayHitAnimationAndWait(Maglin.Enemy.Enemy monster)
         {
-            if (monster == null || MonsterAnimationManager.Instance == null) yield break;
-
+            // Hit 애니메이션 재생하지 않음 - 기존 애니메이션 상태 유지
+            // 히트 효과(빨간 점멸)만 MonsterHitEffect에서 처리됨
             if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 화상 피해 Hit 애니메이션 시작");
+                Debug.Log($"[MonsterBattleManager] {monster?.EnemyName ?? "Unknown"} Hit 애니메이션 건너뜀 (기존 상태 유지)");
 
-            // Hit 애니메이션 재생
-            MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Hit);
-
-            // Hit 애니메이션 완료까지 대기
-            yield return StartCoroutine(WaitForHitAnimationComplete(monster));
-
-            // Idle로 복귀
-            if (monster != null && monster.IsAlive && MonsterAnimationManager.Instance != null)
-            {
-                MonsterAnimationManager.Instance.SetMonsterAnimationState(monster, Maglin.Enemy.MonsterAnimationState.Idle);
-            }
-
-            if (debugMode)
-                Debug.Log($"[MonsterBattleManager] {monster.EnemyName} 화상 피해 Hit 애니메이션 완료");
+            // 기본 대기 시간만 제공 (화상 피해 처리 타이밍용)
+            yield return new WaitForSeconds(0.3f);
         }
 
         /// <summary>

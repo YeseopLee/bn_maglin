@@ -743,6 +743,12 @@ namespace Maglin.Battle
             // 사망 이벤트 구독
             enemy.OnDeath += OnMonsterDeath;
 
+            // BattleUIManager의 체력 슬라이더 이벤트도 구독
+            if (BattleUIManager.Instance != null)
+            {
+                BattleUIManager.Instance.SubscribeToMonsterHealthEvents(enemy);
+            }
+
             // 초기 체력바 업데이트
             UpdateMonsterHealthBar(enemy, enemy.CurrentHealth, enemy.MaxHealth);
 
@@ -1539,6 +1545,12 @@ namespace Maglin.Battle
         private void PushMonsterAwayFromPlayer(Maglin.Enemy.Enemy monster, int distance)
         {
             if (monster == null) return;
+
+            // 몬스터가 차징 중이면 차징 중단
+            if (MonsterPatternExecutor.Instance != null)
+            {
+                MonsterPatternExecutor.Instance.InterruptMonsterCharging(monster, "몬스터 소환으로 인한 밀어내기");
+            }
 
             Vector2Int currentPos = monster.GridPosition;
             Vector2Int newPos = new Vector2Int(currentPos.x + distance, currentPos.y);

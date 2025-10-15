@@ -11627,6 +11627,10 @@ MonoBehaviour:
   cardHoverUIPrefab: {fileID: 350527894111610896, guid: db0a44fe26a564c9f845b9288569a5d5, type: 3}
   relicPrefab: {fileID: 8712803700989958103, guid: 57248f531ed73402696f4a5792dd40e9, type: 3}
   monsterPrefab: {fileID: 847121302028447297, guid: 14b2245367aac4529bd92141233f1203, type: 3}
+  burnIcon: {fileID: 21300000, guid: 1eeade70df238d847a83b90311be8425, type: 3}
+  stunIcon: {fileID: 21300000, guid: e272f84286071274c9ead3c0f8123f4f, type: 3}
+  blindIcon: {fileID: 21300000, guid: 17b0848c05130b04c8f104dfbec8629d, type: 3}
+  chargeIcon: {fileID: 21300000, guid: af2b3a12c724a6b40be2200a20a5aefa, type: 3}
   rewardSelectionUI: {fileID: 1130329581}
   rewardSlots:
   - {fileID: 1289091332}
@@ -32890,11 +32894,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 973e6196e65954cdd90198f657af03ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  offset: {x: 0, y: 3, z: -6}
-  followSpeed: 2
-  rotationSpeed: 2
-  followActiveMonster: 1
-  specificTarget: {fileID: 0}
 --- !u!114 &1734306300
 MonoBehaviour:
   m_ObjectHideFlags: 0

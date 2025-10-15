@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Maglin.Enemy;
 
 namespace Maglin.Battle
 {
@@ -11,7 +12,8 @@ namespace Maglin.Battle
         None,       // 효과 없음
         Burn,       // 화상 - 턴 시작 시 최대 체력의 5% 피해
         Stun,       // 기절 - 행동 불가
-        Blind       // 암흑 - 일반공격 100% 빗나감
+        Blind,      // 암흑 - 일반공격 100% 빗나감
+        Charge      // 차징 - 패턴 차징 중 (표시용)
     }
 
     /// <summary>
@@ -60,6 +62,7 @@ namespace Maglin.Battle
         public static event System.Action<Maglin.Enemy.Enemy, CCEffectType, int> OnCCEffectApplied;
         public static event System.Action<Maglin.Enemy.Enemy, CCEffectType> OnCCEffectRemoved;
         public static event System.Action<Maglin.Enemy.Enemy, CCEffectType, float> OnCCEffectTriggered;
+        public static event System.Action<Maglin.Enemy.Enemy> OnCCEffectChanged; // UI 업데이트용
 
         private Maglin.Enemy.Enemy monster;
 
@@ -128,8 +131,18 @@ namespace Maglin.Battle
                     Debug.Log($"[MonsterCCEffects] {monster.name}에게 {effectType} 효과 적용: {newEffect.remainingTurns}턴");
             }
 
+            // 기절 상태이상이 적용되면 차징 중단
+            if (effectType == CCEffectType.Stun)
+            {
+                if (MonsterPatternExecutor.Instance != null)
+                {
+                    MonsterPatternExecutor.Instance.InterruptMonsterCharging(monster, "기절 상태이상");
+                }
+            }
+
             // 이벤트 발생
             OnCCEffectApplied?.Invoke(monster, effectType, turns);
+            OnCCEffectChanged?.Invoke(monster); // UI 업데이트 이벤트
         }
 
         /// <summary>
@@ -141,6 +154,7 @@ namespace Maglin.Battle
             {
                 activeEffects.Remove(effectType);
                 OnCCEffectRemoved?.Invoke(monster, effectType);
+                OnCCEffectChanged?.Invoke(monster); // UI 업데이트 이벤트
 
                 if (debugMode)
                     Debug.Log($"[MonsterCCEffects] {monster.name}의 {effectType} 효과 제거");
@@ -213,8 +227,19 @@ namespace Maglin.Battle
                     yield return StartCoroutine(ProcessBurnEffectCoroutine(effectData));
                 }
 
-                // 턴 감소 (효과 적용 후에 감소)
-                CCEffectData updatedEffect = effectData.DecrementTurn();
+                // 차징 효과는 턴 감소하지 않음 (패턴 시스템에서 별도 관리)
+                CCEffectData updatedEffect;
+                if (effectType == CCEffectType.Charge)
+                {
+                    updatedEffect = effectData; // 차징은 턴 감소 없이 유지
+                    effectsToUpdate[effectType] = updatedEffect;
+                    continue; // 다음 효과로 넘어감
+                }
+                else
+                {
+                    // 일반 CC 효과는 턴 감소 (효과 적용 후에 감소)
+                    updatedEffect = effectData.DecrementTurn();
+                }
                 if (updatedEffect.IsValid)
                 {
                     effectsToUpdate[effectType] = updatedEffect;
@@ -240,6 +265,12 @@ namespace Maglin.Battle
             {
                 RemoveCCEffect(effectType);
             }
+
+            // 턴 처리 후 UI 업데이트 (효과가 변경되었을 수 있으므로)
+            if (effectsToUpdate.Count > 0 || effectsToRemove.Count > 0)
+            {
+                OnCCEffectChanged?.Invoke(monster);
+            }
         }
 
         /// <summary>
@@ -256,6 +287,50 @@ namespace Maglin.Battle
         public bool IsBlinded()
         {
             return HasCCEffect(CCEffectType.Blind);
+        }
+
+        /// <summary>
+        /// 차징 상태인지 확인
+        /// </summary>
+        public bool IsCharging()
+        {
+            return HasCCEffect(CCEffectType.Charge);
+        }
+
+        /// <summary>
+        /// 차징 상태 설정 (패턴 차징 시작 시 호출)
+        /// </summary>
+        public void SetChargingState(int remainingTurns)
+        {
+            if (remainingTurns > 0)
+            {
+                ApplyCCEffect(CCEffectType.Charge, remainingTurns, 1f);
+                
+                if (debugMode)
+                    Debug.Log($"[MonsterCCEffects] {monster.name} 차징 상태 설정: {remainingTurns}턴");
+            }
+        }
+
+        /// <summary>
+        /// 차징 상태 제거 (패턴 차징 완료/중단 시 호출)
+        /// </summary>
+        public void ClearChargingState()
+        {
+            if (HasCCEffect(CCEffectType.Charge))
+            {
+                RemoveCCEffect(CCEffectType.Charge);
+                
+                if (debugMode)
+                    Debug.Log($"[MonsterCCEffects] {monster.name} 차징 상태 제거");
+            }
+        }
+
+        /// <summary>
+        /// 차징 남은 턴 수 반환
+        /// </summary>
+        public int GetChargingTurns()
+        {
+            return GetRemainingTurns(CCEffectType.Charge);
         }
 
         /// <summary>
@@ -289,19 +364,13 @@ namespace Maglin.Battle
             // 이벤트 발생
             OnCCEffectTriggered?.Invoke(monster, CCEffectType.Burn, burnDamage);
 
-            // 실제 Hit 애니메이션 재생 및 완료 대기
-            if (Maglin.Battle.MonsterBattleManager.Instance != null)
-            {
-                yield return StartCoroutine(Maglin.Battle.MonsterBattleManager.Instance.PlayHitAnimationAndWait(monster));
-            }
-            else
-            {
-                // MonsterBattleManager가 없는 경우 기본 대기 시간
-                yield return new UnityEngine.WaitForSeconds(0.5f);
-            }
+            // Hit 애니메이션 재생하지 않음 - 기존 애니메이션 상태 유지
+            // 히트 효과(빨간 점멸)만 MonsterHitEffect에서 처리됨
+            // 화상 피해 처리 완료를 위한 기본 대기 시간
+            yield return new UnityEngine.WaitForSeconds(0.3f);
 
             if (debugMode)
-                Debug.Log($"[MonsterCCEffects] {monster.name} 화상 피해 애니메이션 완료");
+                Debug.Log($"[MonsterCCEffects] {monster.name} 화상 피해 처리 완료");
         }
 
         /// <summary>

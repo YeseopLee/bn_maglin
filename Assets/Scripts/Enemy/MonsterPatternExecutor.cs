@@ -202,6 +202,51 @@ namespace Maglin.Enemy
         }
 
         /// <summary>
+        /// 몬스터의 차징 상태를 중단 (기절이나 위치 변경 시)
+        /// </summary>
+        public void InterruptMonsterCharging(Enemy monster, string reason = "")
+        {
+            if (monster == null || !chargeStates.ContainsKey(monster)) return;
+
+            bool wasCharging = false;
+            var chargingPatterns = new List<MonsterPatternSO>();
+
+            // 차징 중인 패턴들 찾기
+            foreach (var patternEntry in chargeStates[monster].ToList())
+            {
+                if (patternEntry.Value > 0)
+                {
+                    wasCharging = true;
+                    chargingPatterns.Add(patternEntry.Key);
+
+                    // 차징 상태 초기화
+                    chargeStates[monster][patternEntry.Key] = 0;
+
+                    // 차징 이펙트 제거
+                    EndChargeEffects(monster, patternEntry.Key);
+                }
+            }
+
+            // 차징 시작 시 저장된 플레이어 위치도 초기화
+            if (chargePlayerPositions.ContainsKey(monster))
+            {
+                foreach (var pattern in chargingPatterns)
+                {
+                    if (chargePlayerPositions[monster].ContainsKey(pattern))
+                    {
+                        chargePlayerPositions[monster][pattern] = Vector2Int.zero;
+                    }
+                }
+            }
+
+            if (wasCharging && debugMode)
+            {
+                string patternNames = string.Join(", ", chargingPatterns.Select(p => p.PatternName));
+                Debug.Log($"[MonsterPatternExecutor] {monster.EnemyName}의 차징 중단됨 - 패턴: [{patternNames}], 이유: {reason}");
+            }
+        }
+
+        /// <summary>
         /// 모든 몬스터의 턴 카운터 증가
         /// </summary>
         public void IncrementTurnCounters()

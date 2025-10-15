@@ -6,6 +6,8 @@ namespace Maglin.Battle
 {
     /// <summary>
     /// 몬스터 히트 효과를 처리하는 컴포넌트
+    /// 몬스터가 공격을 받을 때 별도의 Hit 애니메이션 없이 기존 애니메이션 상태를 유지하면서
+    /// 빨간 점멸, 쉐이크, 스케일 효과만 적용합니다.
     /// </summary>
     public class MonsterHitEffect : MonoBehaviour
     {
