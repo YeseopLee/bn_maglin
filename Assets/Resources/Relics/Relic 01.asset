@@ -22,11 +22,6 @@ MonoBehaviour:
     secondaryValue: 0
     isPercentage: 0
     customEffectDescription: 
-  - effectType: 5
-    effectValue: 50
-    secondaryValue: 0
-    isPercentage: 0
-    customEffectDescription: 
   - effectType: 9
     effectValue: 50
     secondaryValue: 0

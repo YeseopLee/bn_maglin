@@ -128,6 +128,7 @@ namespace Maglin.Player
 
         // 카드 사용 횟수 추적 (전투별)
         private int cardUseCountThisBattle = 0;
+        private int damageNegateUsedThisBattle = 0; // 이번 전투에서 피해 무효화 사용 횟수
         private int currentFrameIndex = 0;
         private Coroutine animationCoroutine = null;
         private bool isPlayingAnimation = false;
@@ -708,6 +709,17 @@ namespace Maglin.Player
         public void TakeDamage(int damage, Maglin.Enemy.Enemy attacker)
         {
             if (damage <= 0) return;
+
+            // 피해 무효화 효과 확인
+            if (CheckDamageNegate())
+            {
+                if (debugMode)
+                {
+                    string attackerName = attacker != null ? attacker.EnemyName : "Unknown";
+                    Debug.Log($"[PlayerManager] 피해 무효화! {damage} 데미지가 무효화됨 (공격자: {attackerName})");
+                }
+                return; // 피해를 받지 않음
+            }
 
             int oldHealth = currentHealth;
             currentHealth = Mathf.Max(currentHealth - damage, 0);
@@ -1359,6 +1371,39 @@ namespace Maglin.Player
         }
 
         /// <summary>
+        /// 피해 무효화 효과 확인 및 처리
+        /// </summary>
+        private bool CheckDamageNegate()
+        {
+            if (currentRelics == null) return false;
+
+            foreach (var relic in currentRelics)
+            {
+                if (relic == null || relic.Effects == null) continue;
+
+                foreach (var effect in relic.Effects)
+                {
+                    if (effect.EffectType == RelicEffectType.DamageNegate)
+                    {
+                        int maxNegates = Mathf.RoundToInt(effect.EffectValue); // 전투당 무효화 가능 횟수
+
+                        if (damageNegateUsedThisBattle < maxNegates)
+                        {
+                            damageNegateUsedThisBattle++;
+
+                            if (debugMode)
+                                Debug.Log($"[PlayerManager] 피해 무효화 사용 ({relic.RelicName}): {damageNegateUsedThisBattle}/{maxNegates}회");
+
+                            return true; // 피해 무효화 성공
+                        }
+                    }
+                }
+            }
+
+            return false; // 무효화 불가
+        }
+
+        /// <summary>
         /// 체력으로 드로우 가능 여부 및 배수 반환
         /// </summary>
         public float GetDrawWithHealthMultiplier()
@@ -1985,6 +2030,9 @@ namespace Maglin.Player
 
             // 카드 사용 횟수 초기화
             cardUseCountThisBattle = 0;
+
+            // 피해 무효화 사용 횟수 초기화
+            damageNegateUsedThisBattle = 0;
 
             // 전투 시작 시 필요한 초기화 작업
             RecoverManaForTurn();

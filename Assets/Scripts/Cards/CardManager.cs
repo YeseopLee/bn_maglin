@@ -628,35 +628,70 @@ namespace Maglin.Cards
             }
 
             // 비용 지불 처리
+            int manaSpent = 0;
+            int healthSpent = 0;
+
             if (actualCostToPay > 0)
             {
-                // 마나 확인
-                bool canPayWithMana = PlayerManager.Instance.SpendMana(actualCostToPay);
+                int currentMana = PlayerManager.Instance.CurrentMana;
 
-                if (!canPayWithMana && healthMultiplier > 0)
+                // 마나가 충분한 경우
+                if (currentMana >= actualCostToPay)
                 {
-                    // 마나가 부족하지만 체력으로 드로우 가능한 유물이 있는 경우
-                    int healthCost = Mathf.RoundToInt(actualCostToPay * healthMultiplier);
+                    PlayerManager.Instance.SpendMana(actualCostToPay);
+                    manaSpent = actualCostToPay;
 
-                    if (PlayerManager.Instance.CurrentHealth > healthCost)
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 마나로 드로우 - 마나 소모: {actualCostToPay}");
+                }
+                // 마나가 부족한 경우
+                else if (healthMultiplier > 0)
+                {
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 하이브리드 드로우 시작 - 필요: {actualCostToPay}, 현재 마나: {currentMana}, 체력 배수: {healthMultiplier}");
+
+                    // 남은 마나를 모두 사용
+                    manaSpent = currentMana;
+                    if (manaSpent > 0)
                     {
-                        PlayerManager.Instance.TakeDamage(healthCost);
+                        PlayerManager.Instance.SpendMana(manaSpent);
+                        if (debugMode)
+                            Debug.Log($"[CardManager] 마나 {manaSpent} 소모 완료");
+                    }
+
+                    // 부족한 만큼 체력으로 지불
+                    int remainingCost = actualCostToPay - manaSpent;
+                    healthSpent = Mathf.RoundToInt(remainingCost * healthMultiplier);
+
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 부족분: {remainingCost}, 필요 체력: {healthSpent} (계산: {remainingCost} * {healthMultiplier})");
+
+                    if (PlayerManager.Instance.CurrentHealth > healthSpent)
+                    {
+                        int healthBefore = PlayerManager.Instance.CurrentHealth;
+                        PlayerManager.Instance.TakeDamage(healthSpent);
                         drewWithHealth = true;
 
                         if (debugMode)
-                            Debug.Log($"[CardManager] 체력으로 드로우 시도 - 체력 소모: {healthCost} (배수: {healthMultiplier})");
+                            Debug.Log($"[CardManager] 하이브리드 드로우 완료 - 마나: {manaSpent}, 체력: {healthBefore} -> {PlayerManager.Instance.CurrentHealth} (-{healthSpent})");
                     }
                     else
                     {
+                        // 체력도 부족하면 사용한 마나 환불
+                        if (manaSpent > 0)
+                        {
+                            PlayerManager.Instance.RestoreMana(manaSpent);
+                        }
+
                         if (debugMode)
-                            Debug.Log($"[CardManager] 추가 드로우 실패 - 마나와 체력 모두 부족 (필요 마나: {actualCostToPay}, 필요 체력: {healthCost})");
+                            Debug.Log($"[CardManager] 추가 드로우 실패 - 체력 부족 (필요: {healthSpent}, 현재: {PlayerManager.Instance.CurrentHealth})");
                         return false;
                     }
                 }
-                else if (!canPayWithMana)
+                else
                 {
                     if (debugMode)
-                        Debug.Log($"[CardManager] 추가 드로우 실패 - 마나 부족 (필요: {actualCostToPay})");
+                        Debug.Log($"[CardManager] 추가 드로우 실패 - 마나 부족 (필요: {actualCostToPay}, 현재: {currentMana})");
                     return false;
                 }
             }
@@ -700,13 +735,17 @@ namespace Maglin.Cards
             else
             {
                 // 드로우 실패 시 지불한 자원 환불
-                if (actualCostToPay > 0 && !drewWithHealth)
+                if (manaSpent > 0)
                 {
-                    PlayerManager.Instance.RestoreMana(actualCostToPay);
+                    PlayerManager.Instance.RestoreMana(manaSpent);
+                }
+                if (healthSpent > 0)
+                {
+                    PlayerManager.Instance.Heal(healthSpent);
                 }
 
                 if (debugMode)
-                    Debug.Log("[CardManager] 추가 드로우 실패 - 드로우할 카드 없음");
+                    Debug.Log($"[CardManager] 추가 드로우 실패 - 드로우할 카드 없음 (환불: 마나 {manaSpent}, 체력 {healthSpent})");
 
                 return false;
             }
@@ -779,9 +818,15 @@ namespace Maglin.Cards
             // DrawCountAttack 유물에서 SecondaryValue(드로우 간격) 가져오기
             foreach (var relic in PlayerManager.Instance.CurrentRelics)
             {
-                if (relic.EffectType == RelicEffectType.DrawCountAttack)
+                if (relic.Effects == null) continue;
+
+                // 유물의 모든 효과를 확인
+                foreach (var effect in relic.Effects)
                 {
-                    return Mathf.Max(1, Mathf.RoundToInt(relic.SecondaryValue)); // 최소 1로 보장
+                    if (effect.EffectType == RelicEffectType.DrawCountAttack)
+                    {
+                        return Mathf.Max(1, Mathf.RoundToInt(effect.SecondaryValue)); // 최소 1로 보장
+                    }
                 }
             }
 
@@ -1743,35 +1788,70 @@ namespace Maglin.Cards
             }
 
             // 비용 지불 처리
+            int manaSpent = 0;
+            int healthSpent = 0;
+
             if (actualCostToPay > 0)
             {
-                // 마나 확인
-                bool canPayWithMana = PlayerManager.Instance.SpendMana(actualCostToPay);
+                int currentMana = PlayerManager.Instance.CurrentMana;
 
-                if (!canPayWithMana && healthMultiplier > 0)
+                // 마나가 충분한 경우
+                if (currentMana >= actualCostToPay)
                 {
-                    // 마나가 부족하지만 체력으로 드로우 가능한 유물이 있는 경우
-                    int healthCost = Mathf.RoundToInt(actualCostToPay * healthMultiplier);
+                    PlayerManager.Instance.SpendMana(actualCostToPay);
+                    manaSpent = actualCostToPay;
 
-                    if (PlayerManager.Instance.CurrentHealth > healthCost)
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 마나로 Card 인스턴스 드로우 - 마나 소모: {actualCostToPay}");
+                }
+                // 마나가 부족한 경우
+                else if (healthMultiplier > 0)
+                {
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 하이브리드 Card 인스턴스 드로우 시작 - 필요: {actualCostToPay}, 현재 마나: {currentMana}, 체력 배수: {healthMultiplier}");
+
+                    // 남은 마나를 모두 사용
+                    manaSpent = currentMana;
+                    if (manaSpent > 0)
                     {
-                        PlayerManager.Instance.TakeDamage(healthCost);
+                        PlayerManager.Instance.SpendMana(manaSpent);
+                        if (debugMode)
+                            Debug.Log($"[CardManager] 마나 {manaSpent} 소모 완료");
+                    }
+
+                    // 부족한 만큼 체력으로 지불
+                    int remainingCost = actualCostToPay - manaSpent;
+                    healthSpent = Mathf.RoundToInt(remainingCost * healthMultiplier);
+
+                    if (debugMode)
+                        Debug.Log($"[CardManager] 부족분: {remainingCost}, 필요 체력: {healthSpent} (계산: {remainingCost} * {healthMultiplier})");
+
+                    if (PlayerManager.Instance.CurrentHealth > healthSpent)
+                    {
+                        int healthBefore = PlayerManager.Instance.CurrentHealth;
+                        PlayerManager.Instance.TakeDamage(healthSpent);
                         drewWithHealth = true;
 
                         if (debugMode)
-                            Debug.Log($"[CardManager] Card 인스턴스 체력으로 드로우 시도 - 체력 소모: {healthCost} (배수: {healthMultiplier})");
+                            Debug.Log($"[CardManager] 하이브리드 Card 인스턴스 드로우 완료 - 마나: {manaSpent}, 체력: {healthBefore} -> {PlayerManager.Instance.CurrentHealth} (-{healthSpent})");
                     }
                     else
                     {
+                        // 체력도 부족하면 사용한 마나 환불
+                        if (manaSpent > 0)
+                        {
+                            PlayerManager.Instance.RestoreMana(manaSpent);
+                        }
+
                         if (debugMode)
-                            Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 마나와 체력 모두 부족 (필요 마나: {actualCostToPay}, 필요 체력: {healthCost})");
+                            Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 체력 부족 (필요: {healthSpent}, 현재: {PlayerManager.Instance.CurrentHealth})");
                         return null;
                     }
                 }
-                else if (!canPayWithMana)
+                else
                 {
                     if (debugMode)
-                        Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 마나 부족 (필요: {actualCostToPay})");
+                        Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 마나 부족 (필요: {actualCostToPay}, 현재: {currentMana})");
                     return null;
                 }
             }
@@ -1816,13 +1896,17 @@ namespace Maglin.Cards
             else
             {
                 // 드로우 실패 시 지불한 자원 환불
-                if (actualCostToPay > 0 && !drewWithHealth)
+                if (manaSpent > 0)
                 {
-                    PlayerManager.Instance.RestoreMana(actualCostToPay);
+                    PlayerManager.Instance.RestoreMana(manaSpent);
+                }
+                if (healthSpent > 0)
+                {
+                    PlayerManager.Instance.Heal(healthSpent);
                 }
 
                 if (debugMode)
-                    Debug.Log("[CardManager] 추가 Card 인스턴스 드로우 실패 - 드로우할 카드 없음");
+                    Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 실패 - 드로우할 카드 없음 (환불: 마나 {manaSpent}, 체력 {healthSpent})");
 
                 return null;
             }
