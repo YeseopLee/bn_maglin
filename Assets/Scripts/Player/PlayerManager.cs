@@ -265,9 +265,9 @@ namespace Maglin.Player
                 // 씬에 할당된 스프라이트 정보를 기존 인스턴스로 복사
                 if (debugMode)
                     Debug.Log("[PlayerManager] 씬의 스프라이트 데이터를 기존 인스턴스로 복사");
-                
+
                 CopySpritesToExistingInstance(_instance);
-                
+
                 Debug.LogWarning("[PlayerManager] 중복된 PlayerManager 감지됨. 스프라이트 복사 후 삭제합니다.");
                 Destroy(gameObject);
                 return;
@@ -754,38 +754,42 @@ namespace Maglin.Player
 
             foreach (var relic in currentRelics)
             {
-                if (relic == null) continue;
+                if (relic == null || relic.Effects == null) continue;
 
-                switch (relic.EffectType)
+                // 유물의 모든 효과를 확인
+                foreach (var effect in relic.Effects)
                 {
-                    case RelicEffectType.CounterAttackSingle:
-                        // 공격한 몬스터에게만 반격
-                        if (attacker != null && attacker.IsAlive)
-                        {
-                            int counterDamage = Mathf.RoundToInt(relic.EffectValue);
-                            attacker.TakeDamage(counterDamage, Maglin.Cards.ElementType.None);
+                    switch (effect.EffectType)
+                    {
+                        case RelicEffectType.CounterAttackSingle:
+                            // 공격한 몬스터에게만 반격
+                            if (attacker != null && attacker.IsAlive)
+                            {
+                                int counterDamage = Mathf.RoundToInt(effect.EffectValue);
+                                attacker.TakeDamage(counterDamage, Maglin.Cards.ElementType.None);
+
+                                if (debugMode)
+                                    Debug.Log($"[PlayerManager] 단일 반격 ({relic.RelicName}): {attacker.EnemyName}에게 {counterDamage} 피해");
+                            }
+                            break;
+
+                        case RelicEffectType.CounterAttackAll:
+                            // 모든 몬스터에게 반격
+                            var allMonsters = FindAllAliveMonsters();
+                            int aoeCounterDamage = Mathf.RoundToInt(effect.EffectValue);
+
+                            foreach (var monster in allMonsters)
+                            {
+                                if (monster != null && monster.IsAlive)
+                                {
+                                    monster.TakeDamage(aoeCounterDamage, Maglin.Cards.ElementType.None);
+                                }
+                            }
 
                             if (debugMode)
-                                Debug.Log($"[PlayerManager] 단일 반격: {attacker.EnemyName}에게 {counterDamage} 피해");
-                        }
-                        break;
-
-                    case RelicEffectType.CounterAttackAll:
-                        // 모든 몬스터에게 반격
-                        var allMonsters = FindAllAliveMonsters();
-                        int aoeCounterDamage = Mathf.RoundToInt(relic.EffectValue);
-
-                        foreach (var monster in allMonsters)
-                        {
-                            if (monster != null && monster.IsAlive)
-                            {
-                                monster.TakeDamage(aoeCounterDamage, Maglin.Cards.ElementType.None);
-                            }
-                        }
-
-                        if (debugMode)
-                            Debug.Log($"[PlayerManager] 전체 반격: 모든 몬스터({allMonsters.Count}마리)에게 {aoeCounterDamage} 피해");
-                        break;
+                                Debug.Log($"[PlayerManager] 전체 반격 ({relic.RelicName}): 모든 몬스터({allMonsters.Count}마리)에게 {aoeCounterDamage} 피해");
+                            break;
+                    }
                 }
             }
         }
@@ -837,26 +841,32 @@ namespace Maglin.Player
 
             foreach (var relic in currentRelics)
             {
-                if (relic == null || relic.EffectType != RelicEffectType.CardUseCountAttack) continue;
+                if (relic == null || relic.Effects == null) continue;
 
-                int attackInterval = Mathf.Max(1, Mathf.RoundToInt(relic.SecondaryValue));
-                int attackDamage = Mathf.RoundToInt(relic.EffectValue);
-
-                // N회마다 공격
-                if (cardUseCountThisBattle % attackInterval == 0)
+                // 유물의 모든 효과를 확인
+                foreach (var effect in relic.Effects)
                 {
-                    var allMonsters = FindAllAliveMonsters();
+                    if (effect.EffectType != RelicEffectType.CardUseCountAttack) continue;
 
-                    foreach (var monster in allMonsters)
+                    int attackInterval = Mathf.Max(1, Mathf.RoundToInt(effect.SecondaryValue));
+                    int attackDamage = Mathf.RoundToInt(effect.EffectValue);
+
+                    // N회마다 공격
+                    if (cardUseCountThisBattle % attackInterval == 0)
                     {
-                        if (monster != null && monster.IsAlive)
-                        {
-                            monster.TakeDamage(attackDamage, Maglin.Cards.ElementType.None);
-                        }
-                    }
+                        var allMonsters = FindAllAliveMonsters();
 
-                    if (debugMode)
-                        Debug.Log($"[PlayerManager] 카드 사용 카운트 공격: {attackInterval}회마다 모든 몬스터({allMonsters.Count}마리)에게 {attackDamage} 피해");
+                        foreach (var monster in allMonsters)
+                        {
+                            if (monster != null && monster.IsAlive)
+                            {
+                                monster.TakeDamage(attackDamage, Maglin.Cards.ElementType.None);
+                            }
+                        }
+
+                        if (debugMode)
+                            Debug.Log($"[PlayerManager] 카드 사용 카운트 공격 ({relic.RelicName}): {attackInterval}회마다 모든 몬스터({allMonsters.Count}마리)에게 {attackDamage} 피해");
+                    }
                 }
             }
         }
@@ -1207,41 +1217,59 @@ namespace Maglin.Player
         }
 
         /// <summary>
-        /// 개별 유물 효과 적용
+        /// 개별 유물 효과 적용 - 여러 효과를 모두 적용
         /// </summary>
         private void ApplyRelicEffect(RelicSO relic)
         {
-            switch (relic.EffectType)
+            if (relic.Effects == null) return;
+
+            // 유물의 모든 효과를 적용
+            foreach (var effect in relic.Effects)
             {
-                case RelicEffectType.MaxHealthIncrease:
-                    if (relic.IsPercentage)
-                        calculatedMaxHealth = Mathf.RoundToInt(calculatedMaxHealth * (1f + relic.EffectValue / 100f));
-                    else
-                        calculatedMaxHealth += Mathf.RoundToInt(relic.EffectValue);
-                    break;
+                switch (effect.EffectType)
+                {
+                    case RelicEffectType.MaxHealthIncrease:
+                        int oldHealth = calculatedMaxHealth;
+                        if (effect.IsPercentage)
+                            calculatedMaxHealth = Mathf.RoundToInt(calculatedMaxHealth * (1f + effect.EffectValue / 100f));
+                        else
+                            calculatedMaxHealth += Mathf.RoundToInt(effect.EffectValue);
 
-                case RelicEffectType.MaxManaIncrease:
-                    if (relic.IsPercentage)
-                        calculatedMaxMana = Mathf.RoundToInt(calculatedMaxMana * (1f + relic.EffectValue / 100f));
-                    else
-                        calculatedMaxMana += Mathf.RoundToInt(relic.EffectValue);
-                    break;
+                        if (debugMode)
+                            Debug.Log($"[PlayerManager] {relic.RelicName} - MaxHealth: {oldHealth} -> {calculatedMaxHealth} (효과값: {effect.EffectValue}, 퍼센트: {effect.IsPercentage})");
+                        break;
 
-                case RelicEffectType.MaxHandSizeIncrease:
-                    if (relic.IsPercentage)
-                        calculatedMaxHandSize = Mathf.RoundToInt(calculatedMaxHandSize * (1f + relic.EffectValue / 100f));
-                    else
-                        calculatedMaxHandSize += Mathf.RoundToInt(relic.EffectValue);
-                    break;
+                    case RelicEffectType.MaxManaIncrease:
+                        int oldMana = calculatedMaxMana;
+                        if (effect.IsPercentage)
+                            calculatedMaxMana = Mathf.RoundToInt(calculatedMaxMana * (1f + effect.EffectValue / 100f));
+                        else
+                            calculatedMaxMana += Mathf.RoundToInt(effect.EffectValue);
 
-                // 다른 효과들은 GetRelicModifier 메서드를 통해 처리
-                default:
-                    break;
+                        if (debugMode)
+                            Debug.Log($"[PlayerManager] {relic.RelicName} - MaxMana: {oldMana} -> {calculatedMaxMana} (효과값: {effect.EffectValue}, 퍼센트: {effect.IsPercentage})");
+                        break;
+
+                    case RelicEffectType.MaxHandSizeIncrease:
+                        int oldHandSize = calculatedMaxHandSize;
+                        if (effect.IsPercentage)
+                            calculatedMaxHandSize = Mathf.RoundToInt(calculatedMaxHandSize * (1f + effect.EffectValue / 100f));
+                        else
+                            calculatedMaxHandSize += Mathf.RoundToInt(effect.EffectValue);
+
+                        if (debugMode)
+                            Debug.Log($"[PlayerManager] {relic.RelicName} - MaxHandSize: {oldHandSize} -> {calculatedMaxHandSize} (효과값: {effect.EffectValue}, 퍼센트: {effect.IsPercentage})");
+                        break;
+
+                    // 다른 효과들은 GetRelicModifier 메서드를 통해 처리
+                    default:
+                        break;
+                }
             }
         }
 
         /// <summary>
-        /// 특정 효과 타입의 유물 수정자 반환
+        /// 특정 효과 타입의 유물 수정자 반환 - 여러 효과를 모두 계산
         /// </summary>
         public float GetRelicModifier(RelicEffectType effectType, bool asMultiplier = false)
         {
@@ -1249,18 +1277,24 @@ namespace Maglin.Player
 
             foreach (var relic in currentRelics)
             {
-                if (relic.EffectType == effectType)
+                if (relic.Effects == null) continue;
+
+                // 유물의 모든 효과를 확인
+                foreach (var effect in relic.Effects)
                 {
-                    if (asMultiplier)
+                    if (effect.EffectType == effectType)
                     {
-                        if (relic.IsPercentage)
-                            totalModifier *= (1f + relic.EffectValue / 100f);
+                        if (asMultiplier)
+                        {
+                            if (effect.IsPercentage)
+                                totalModifier *= (1f + effect.EffectValue / 100f);
+                            else
+                                totalModifier *= (1f + effect.EffectValue);
+                        }
                         else
-                            totalModifier *= (1f + relic.EffectValue);
-                    }
-                    else
-                    {
-                        totalModifier += relic.EffectValue;
+                        {
+                            totalModifier += effect.EffectValue;
+                        }
                     }
                 }
             }
@@ -1281,20 +1315,47 @@ namespace Maglin.Player
         /// </summary>
         public bool HasFirstDrawFree()
         {
-            float modifier = GetRelicModifier(RelicEffectType.FirstDrawFree);
-            bool hasEffect = modifier > 0;
+            // 효과가 있는지 여부만 체크 (값에 상관없이)
+            bool hasEffect = HasRelicEffect(RelicEffectType.FirstDrawFree);
 
             if (debugMode)
             {
-                Debug.Log($"[PlayerManager] FirstDrawFree 유물 확인: modifier={modifier}, hasEffect={hasEffect}");
+                Debug.Log($"[PlayerManager] FirstDrawFree 유물 확인: hasEffect={hasEffect}");
                 Debug.Log($"[PlayerManager] 현재 보유 유물 수: {currentRelics.Count}");
                 foreach (var relic in currentRelics)
                 {
-                    Debug.Log($"[PlayerManager] 유물: {relic.RelicName}, 타입: {relic.EffectType}, 값: {relic.EffectValue}");
+                    if (relic.Effects != null)
+                    {
+                        foreach (var effect in relic.Effects)
+                        {
+                            Debug.Log($"[PlayerManager] 유물: {relic.RelicName}, 효과타입: {effect.EffectType}, 값: {effect.EffectValue}");
+                        }
+                    }
                 }
             }
 
             return hasEffect;
+        }
+
+        /// <summary>
+        /// 특정 효과를 가진 유물이 있는지 확인
+        /// </summary>
+        private bool HasRelicEffect(RelicEffectType effectType)
+        {
+            if (currentRelics == null) return false;
+
+            foreach (var relic in currentRelics)
+            {
+                if (relic == null || relic.Effects == null) continue;
+
+                foreach (var effect in relic.Effects)
+                {
+                    if (effect.EffectType == effectType)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

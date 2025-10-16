@@ -206,11 +206,11 @@ namespace Maglin.Relics
             {
                 string description = relicData.Description;
 
-                // 효과값 정보 추가
-                if (relicData.EffectType != RelicEffectType.CustomEffect)
+                // 모든 효과값 정보 추가
+                string effectInfo = relicData.GetEffectValueString();
+                if (!string.IsNullOrEmpty(effectInfo))
                 {
-                    string effectInfo = relicData.GetEffectValueString();
-                    description += $"\n\n<color=yellow>효과: {effectInfo}</color>";
+                    description += $"\n\n<color=yellow>효과:\n{effectInfo}</color>";
                 }
 
                 relicDescriptionText.text = description;

@@ -124,7 +124,18 @@ namespace Maglin.Relics
                 if (relic != null)
                 {
                     relicsByType[relic.Type].Add(relic);
-                    relicsByEffect[relic.EffectType].Add(relic);
+
+                    // 여러 효과를 모두 분류에 추가
+                    if (relic.Effects != null)
+                    {
+                        foreach (var effect in relic.Effects)
+                        {
+                            if (!relicsByEffect[effect.EffectType].Contains(relic))
+                            {
+                                relicsByEffect[effect.EffectType].Add(relic);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -329,29 +340,44 @@ namespace Maglin.Relics
         }
 
         /// <summary>
-        /// 유물 효과 처리 (적용/제거)
+        /// 유물 효과 처리 (적용/제거) - 여러 효과를 모두 처리
         /// </summary>
         private void ProcessRelicEffect(RelicSO relic, bool isApplying)
         {
             if (relic == null || effectHandlers == null) return;
 
-            if (effectHandlers.TryGetValue(relic.EffectType, out IRelicEffect handler))
+            // 유물의 모든 효과를 처리
+            if (relic.Effects != null)
             {
-                var context = new RelicEffectContext(isApplying);
+                foreach (var effect in relic.Effects)
+                {
+                    if (effectHandlers.TryGetValue(effect.EffectType, out IRelicEffect handler))
+                    {
+                        // context에 현재 처리 중인 효과 전달
+                        var context = new RelicEffectContext(
+                            isApplying: isApplying,
+                            debugMode: debugMode,
+                            currentEffect: effect
+                        );
 
-                if (isApplying)
-                {
-                    handler.ApplyEffect(relic, context);
+                        if (isApplying)
+                        {
+                            handler.ApplyEffect(relic, context);
+                        }
+                        else
+                        {
+                            handler.RemoveEffect(relic, context);
+                        }
+
+                        if (debugMode)
+                            Debug.Log($"[RelicManager] {relic.RelicName}의 효과 {effect.EffectType} {(isApplying ? "적용" : "제거")}");
+                    }
+                    else
+                    {
+                        if (debugMode)
+                            Debug.LogWarning($"[RelicManager] {effect.EffectType}에 대한 효과 처리기가 없습니다.");
+                    }
                 }
-                else
-                {
-                    handler.RemoveEffect(relic, context);
-                }
-            }
-            else
-            {
-                if (debugMode)
-                    Debug.LogWarning($"[RelicManager] {relic.EffectType}에 대한 효과 처리기가 없습니다.");
             }
         }
         #endregion

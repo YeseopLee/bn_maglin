@@ -39,13 +39,15 @@ namespace Maglin.Relics
         public float BaseValue { get; set; } = 0f;    // 기본값 (데미지, 체력 등)
         public object AdditionalData { get; set; }    // 추가 데이터
         public bool DebugMode { get; set; } = false;  // 디버그 모드 여부
+        public RelicEffect CurrentEffect { get; set; } // 현재 처리 중인 효과
 
-        public RelicEffectContext(bool isApplying = true, float baseValue = 0f, object additionalData = null, bool debugMode = false)
+        public RelicEffectContext(bool isApplying = true, float baseValue = 0f, object additionalData = null, bool debugMode = false, RelicEffect currentEffect = null)
         {
             IsApplying = isApplying;
             BaseValue = baseValue;
             AdditionalData = additionalData;
             DebugMode = debugMode;
+            CurrentEffect = currentEffect;
         }
     }
 
@@ -104,7 +106,10 @@ namespace Maglin.Relics
     {
         public void ApplyEffect(RelicSO relic, RelicEffectContext context)
         {
-            switch (relic.EffectType)
+            // 현재 처리 중인 효과를 context에서 가져옴
+            if (context.CurrentEffect == null) return;
+
+            switch (context.CurrentEffect.EffectType)
             {
                 case RelicEffectType.DrawCostReduction:
                 case RelicEffectType.FirstDrawFree:
@@ -113,7 +118,7 @@ namespace Maglin.Relics
                     // 드로우 관련 효과는 실시간으로 적용되므로 여기서는 등록만
                     if (RelicManager.Instance != null)
                     {
-                        RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
+                        RelicManager.Instance.TriggerRelicEffect(relic, context.CurrentEffect.EffectValue);
                     }
                     break;
             }
@@ -140,15 +145,17 @@ namespace Maglin.Relics
     {
         public void ApplyEffect(RelicSO relic, RelicEffectContext context)
         {
-            if (relic.EffectType != RelicEffectType.CustomEffect) return;
+            // 현재 처리 중인 효과를 context에서 가져옴
+            if (context.CurrentEffect == null) return;
+            if (context.CurrentEffect.EffectType != RelicEffectType.CustomEffect) return;
 
             // 커스텀 효과는 유물별로 개별 구현 필요
             // 이곳에서는 기본적인 로깅만 수행
-            Debug.Log($"[CustomEffect] {relic.RelicName} 커스텀 효과 적용: {relic.CustomEffectDescription}");
+            Debug.Log($"[CustomEffect] {relic.RelicName} 커스텀 효과 적용: {context.CurrentEffect.CustomEffectDescription}");
 
             if (RelicManager.Instance != null)
             {
-                RelicManager.Instance.TriggerRelicEffect(relic, relic.EffectValue);
+                RelicManager.Instance.TriggerRelicEffect(relic, context.CurrentEffect.EffectValue);
             }
         }
 
@@ -171,9 +178,9 @@ namespace Maglin.Relics
         public void ApplyEffect(RelicSO relic, RelicEffectContext context)
         {
             // 반격 효과는 PlayerManager에서 TakeDamage 시점에 처리되므로 여기서는 로그만
-            if (context.DebugMode)
+            if (context.DebugMode && context.CurrentEffect != null)
             {
-                string effectDescription = relic.EffectType == RelicEffectType.CounterAttackSingle
+                string effectDescription = context.CurrentEffect.EffectType == RelicEffectType.CounterAttackSingle
                     ? "단일 반격"
                     : "전체 반격";
                 Debug.Log($"[CounterAttackEffect] {relic.RelicName} {effectDescription} 효과 활성화 (피해 시 자동 발동)");

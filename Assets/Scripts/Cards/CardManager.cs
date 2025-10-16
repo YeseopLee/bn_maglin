@@ -104,6 +104,7 @@ namespace Maglin.Cards
         [Header("드로우 효과 추적")]
         [SerializeField] private int drawCountThisBattle = 0; // 이번 전투에서 드로우 횟수 (유물 효과용)
         [SerializeField] private int additionalDrawsThisBattle = 0; // 이번 전투에서 추가 드로우 횟수 (첫 드로우 무료 효과용)
+        [SerializeField] private int paidDrawsThisTurn = 0; // 이번 턴에서 비용을 지불한 드로우 횟수 (비용 증가 계산용)
 
         [Header("디버그")]
         [SerializeField] private bool debugMode = true; // 드로우 디버그를 위해 활성화
@@ -672,8 +673,14 @@ namespace Maglin.Cards
                 additionalDrawsThisBattle++;
                 drawCountThisBattle++;
 
-                // 다음 드로우 비용 계산 (항상 증가 패턴 유지)
-                int nextBaseCost = baseDrawCost + (drawCostIncrease * additionalDrawsThisTurn);
+                // 비용을 지불한 경우에만 paidDrawsThisTurn 증가
+                if (actualCostToPay > 0)
+                {
+                    paidDrawsThisTurn++;
+                }
+
+                // 다음 드로우 비용 계산 (실제로 비용을 지불한 드로우 횟수 기준)
+                int nextBaseCost = baseDrawCost + (drawCostIncrease * paidDrawsThisTurn);
                 currentDrawCost = CalculateActualDrawCost(nextBaseCost);
 
                 OnHandChanged?.Invoke(hand);
@@ -685,7 +692,7 @@ namespace Maglin.Cards
                 if (debugMode)
                 {
                     string paymentMethod = actualCostToPay == 0 ? "무료" : (drewWithHealth ? "체력" : "마나");
-                    Debug.Log($"[CardManager] 추가 드로우 성공 ({paymentMethod}로 지불) - 다음 비용: {currentDrawCost}, 전투 드로우 횟수: {drawCountThisBattle}");
+                    Debug.Log($"[CardManager] 추가 드로우 성공 ({paymentMethod}로 지불) - 지불한 드로우: {paidDrawsThisTurn}, 다음 비용: {currentDrawCost}, 전투 드로우 횟수: {drawCountThisBattle}");
                 }
 
                 return true;
@@ -710,10 +717,11 @@ namespace Maglin.Cards
         /// </summary>
         private void ResetDrawCosts()
         {
-            // 기본 드로우 비용 계산 (항상 additionalDrawsThisTurn 기준으로)
-            currentDrawCost = CalculateActualDrawCost(baseDrawCost + (drawCostIncrease * additionalDrawsThisTurn));
+            // 기본 드로우 비용 계산 (실제로 비용을 지불한 드로우 횟수 기준)
+            currentDrawCost = CalculateActualDrawCost(baseDrawCost + (drawCostIncrease * paidDrawsThisTurn));
 
-            additionalDrawsThisTurn = 0; // 턴별 드로우 횟수만 초기화
+            additionalDrawsThisTurn = 0; // 턴별 드로우 횟수 초기화
+            paidDrawsThisTurn = 0; // 비용 지불 횟수도 초기화
             OnDrawCostChanged?.Invoke(currentDrawCost);
 
             if (debugMode)
@@ -1781,8 +1789,14 @@ namespace Maglin.Cards
                 additionalDrawsThisBattle++;
                 drawCountThisBattle++;
 
-                // 다음 드로우 비용 계산 (항상 증가 패턴 유지)
-                int nextBaseCost = baseDrawCost + (drawCostIncrease * additionalDrawsThisTurn);
+                // 비용을 지불한 경우에만 paidDrawsThisTurn 증가
+                if (actualCostToPay > 0)
+                {
+                    paidDrawsThisTurn++;
+                }
+
+                // 다음 드로우 비용 계산 (실제로 비용을 지불한 드로우 횟수 기준)
+                int nextBaseCost = baseDrawCost + (drawCostIncrease * paidDrawsThisTurn);
                 currentDrawCost = CalculateActualDrawCost(nextBaseCost);
 
                 OnHandCardsChanged?.Invoke(handCards);
@@ -1794,7 +1808,7 @@ namespace Maglin.Cards
                 if (debugMode)
                 {
                     string paymentMethod = actualCostToPay == 0 ? "무료" : (drewWithHealth ? "체력" : "마나");
-                    Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 성공 ({paymentMethod}로 지불) - 다음 비용: {currentDrawCost}, 전투 드로우 횟수: {drawCountThisBattle}");
+                    Debug.Log($"[CardManager] 추가 Card 인스턴스 드로우 성공 ({paymentMethod}로 지불) - 지불한 드로우: {paidDrawsThisTurn}, 다음 비용: {currentDrawCost}, 전투 드로우 횟수: {drawCountThisBattle}");
                 }
 
                 return drawnCard;
