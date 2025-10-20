@@ -18,6 +18,12 @@ namespace Maglin.Event
         [SerializeField] private TextMeshProUGUI goldText;
         [SerializeField] private TextMeshProUGUI healthText;
         [SerializeField] private Slider healthSlider;
+        [SerializeField] private TextMeshProUGUI manaText;
+        [SerializeField] private Slider manaSlider;
+
+        [Header("유물 UI")]
+        [SerializeField] private Transform relicPanel;
+        [SerializeField] private GameObject relicPrefab;
 
         [Header("이벤트 정보 UI")]
         [SerializeField] private Image eventImage;
@@ -39,6 +45,7 @@ namespace Maglin.Event
         // 현재 상태
         private EventSO currentEvent;
         private List<GameObject> choiceButtons = new List<GameObject>();
+        private List<GameObject> relicUIs = new List<GameObject>();
 
         [Header("디버그")]
         [SerializeField] private bool debugMode = true;
@@ -69,6 +76,12 @@ namespace Maglin.Event
             UpdatePlayerStatusRealtime();
         }
 
+        private void LateUpdate()
+        {
+            // LateUpdate에서도 한 번 더 업데이트 (다른 시스템의 변경사항 반영)
+            UpdatePlayerStatusRealtime();
+        }
+
         /// <summary>
         /// 초기 업데이트 (다른 매니저들이 초기화된 후)
         /// </summary>
@@ -76,8 +89,21 @@ namespace Maglin.Event
         {
             yield return new WaitForEndOfFrame();
 
-            // 플레이어 상태 초기 업데이트
-            UpdatePlayerStatus();
+            // PlayerManager가 초기화될 때까지 대기
+            while (PlayerManager.Instance == null)
+            {
+                yield return null;
+            }
+
+            if (debugMode)
+                Debug.Log("[EventUIManager] PlayerManager 인스턴스 확인 완료");
+
+            // 플레이어 상태 강제 업데이트 (초기값 덮어쓰기)
+            ForceUpdatePlayerUI();
+
+            // RelicPanel 찾기 및 초기 유물 UI 업데이트
+            FindRelicPanel();
+            UpdateRelicUI();
 
             // 이벤트가 이미 시작되지 않은 경우에만 UI 숨김
             if (currentEvent == null)
@@ -98,6 +124,9 @@ namespace Maglin.Event
             // PlayerManager static 이벤트 구독
             PlayerManager.OnGoldChanged += OnGoldChanged;
             PlayerManager.OnHealthChanged += OnHealthChanged;
+            PlayerManager.OnManaChanged += OnManaChanged;
+            PlayerManager.OnRelicAdded += OnRelicAdded;
+            PlayerManager.OnRelicRemoved += OnRelicRemoved;
         }
 
         /// <summary>
@@ -135,6 +164,9 @@ namespace Maglin.Event
             // PlayerManager static 이벤트 구독 해제
             PlayerManager.OnGoldChanged -= OnGoldChanged;
             PlayerManager.OnHealthChanged -= OnHealthChanged;
+            PlayerManager.OnManaChanged -= OnManaChanged;
+            PlayerManager.OnRelicAdded -= OnRelicAdded;
+            PlayerManager.OnRelicRemoved -= OnRelicRemoved;
         }
 
         /// <summary>
@@ -171,79 +203,15 @@ namespace Maglin.Event
                 Debug.Log("[EventUIManager] UI 초기화 완료");
         }
 
-        /// <summary>
-        /// UI 참조 설정 (외부에서 호출)
-        /// </summary>
-        public void SetUIReferences(
-            CanvasGroup eventCanvasGroup = null,
-            TextMeshProUGUI goldText = null,
-            TextMeshProUGUI healthText = null,
-            Slider healthSlider = null,
-            Image eventImage = null,
-            TextMeshProUGUI eventTitle = null,
-            TextMeshProUGUI eventDescription = null,
-            Transform choicesContent = null,
-            GameObject choiceButtonPrefab = null,
-            CanvasGroup resultCanvasGroup = null,
-            TextMeshProUGUI resultText = null,
-            Button continueButton = null)
-        {
-            // 메인 UI 참조
-            if (eventCanvasGroup != null)
-                this.eventCanvasGroup = eventCanvasGroup;
-
-            // 플레이어 상태 UI 참조
-            if (goldText != null)
-                this.goldText = goldText;
-
-            if (healthText != null)
-                this.healthText = healthText;
-
-            if (healthSlider != null)
-                this.healthSlider = healthSlider;
-
-            // 이벤트 정보 UI 참조
-            if (eventImage != null)
-                this.eventImage = eventImage;
-
-            if (eventTitle != null)
-                this.eventTitle = eventTitle;
-
-            if (eventDescription != null)
-                this.eventDescription = eventDescription;
-
-            // 선택지 UI 참조
-            if (choicesContent != null)
-                this.choicesContent = choicesContent;
-
-            if (choiceButtonPrefab != null)
-                this.choiceButtonPrefab = choiceButtonPrefab;
-
-            // 결과 UI 참조
-            if (resultCanvasGroup != null)
-                this.resultCanvasGroup = resultCanvasGroup;
-
-            if (resultText != null)
-                this.resultText = resultText;
-
-            if (continueButton != null)
-                this.continueButton = continueButton;
-
-            if (debugMode)
-                Debug.Log("[EventUIManager] UI 참조 설정 완료");
-
-            // UI 참조 설정 후 버튼 이벤트 연결
-            SetupButtonEvents();
-
-            // 플레이어 상태 즉시 업데이트
-            ForceUpdatePlayerUI();
-        }
 
         /// <summary>
-        /// UI 참조 자동 찾기
+        /// UI 참조 자동 찾기 (Inspector에서 할당되지 않은 경우에만)
         /// </summary>
         private void FindUIReferences()
         {
+            if (debugMode)
+                Debug.Log("[EventUIManager] UI 참조 자동 찾기 시작");
+
             // 메인 이벤트 UI 찾기
             if (eventCanvasGroup == null)
             {
@@ -251,7 +219,19 @@ namespace Maglin.Event
                 if (eventUI != null)
                 {
                     eventCanvasGroup = eventUI.GetComponent<CanvasGroup>();
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] EventUI CanvasGroup 자동 찾기 완료");
                 }
+                else
+                {
+                    if (debugMode)
+                        Debug.LogWarning("[EventUIManager] EventUI GameObject를 찾을 수 없습니다!");
+                }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.Log("[EventUIManager] EventUI CanvasGroup은 Inspector에서 할당됨");
             }
 
             // 플레이어 상태 UI 찾기
@@ -265,14 +245,22 @@ namespace Maglin.Event
 
             // 결과 UI 찾기
             FindResultUI();
+
+            if (debugMode)
+                Debug.Log("[EventUIManager] UI 참조 자동 찾기 완료");
         }
 
         /// <summary>
-        /// 플레이어 상태 UI 찾기
+        /// 플레이어 상태 UI 찾기 (Inspector에서 할당되지 않은 경우에만)
         /// </summary>
         private void FindPlayerStatusUI()
         {
-            if (eventCanvasGroup == null) return;
+            if (eventCanvasGroup == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventUIManager] eventCanvasGroup이 null이어서 플레이어 상태 UI를 찾을 수 없습니다!");
+                return;
+            }
 
             if (goldText == null)
             {
@@ -281,7 +269,17 @@ namespace Maglin.Event
                 if (goldTextObj != null)
                 {
                     goldText = goldTextObj.GetComponent<TextMeshProUGUI>();
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] GoldText 자동 찾기 완료");
                 }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[EventUIManager] PlayerStatusPanel/GoldText를 찾을 수 없습니다!");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[EventUIManager] GoldText는 Inspector에서 할당됨");
             }
 
             if (healthText == null)
@@ -291,7 +289,17 @@ namespace Maglin.Event
                 if (healthTextObj != null)
                 {
                     healthText = healthTextObj.GetComponent<TextMeshProUGUI>();
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] HealthText 자동 찾기 완료");
                 }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[EventUIManager] PlayerStatusPanel/HealthText를 찾을 수 없습니다!");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[EventUIManager] HealthText는 Inspector에서 할당됨");
             }
 
             if (healthSlider == null)
@@ -301,15 +309,67 @@ namespace Maglin.Event
                 if (healthSliderObj != null)
                 {
                     healthSlider = healthSliderObj.GetComponent<Slider>();
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] HealthSlider 자동 찾기 완료");
                 }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[EventUIManager] PlayerStatusPanel/HealthSlider를 찾을 수 없습니다!");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[EventUIManager] HealthSlider는 Inspector에서 할당됨");
+            }
+
+            if (manaText == null)
+            {
+                // EventUI > PlayerStatusPanel > ManaText
+                var manaTextObj = eventCanvasGroup.transform.Find("PlayerStatusPanel/ManaText");
+                if (manaTextObj != null)
+                {
+                    manaText = manaTextObj.GetComponent<TextMeshProUGUI>();
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] ManaText 자동 찾기 완료");
+                }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[EventUIManager] PlayerStatusPanel/ManaText를 찾을 수 없습니다!");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[EventUIManager] ManaText는 Inspector에서 할당됨");
+            }
+
+            if (manaSlider == null)
+            {
+                // EventUI > PlayerStatusPanel > ManaSlider
+                var manaSliderObj = eventCanvasGroup.transform.Find("PlayerStatusPanel/ManaSlider");
+                if (manaSliderObj != null)
+                {
+                    manaSlider = manaSliderObj.GetComponent<Slider>();
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] ManaSlider 자동 찾기 완료");
+                }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[EventUIManager] PlayerStatusPanel/ManaSlider를 찾을 수 없습니다!");
+                }
+            }
+            else if (debugMode)
+            {
+                Debug.Log("[EventUIManager] ManaSlider는 Inspector에서 할당됨");
             }
 
             if (debugMode)
             {
-                Debug.Log($"[EventUIManager] 플레이어 상태 UI 찾기 완료:");
-                Debug.Log($"  - 골드 텍스트: {(goldText != null ? "찾음" : "없음")}");
-                Debug.Log($"  - 체력 텍스트: {(healthText != null ? "찾음" : "없음")}");
-                Debug.Log($"  - 체력 슬라이더: {(healthSlider != null ? "찾음" : "없음")}");
+                Debug.Log($"[EventUIManager] 플레이어 상태 UI 최종 상태:");
+                Debug.Log($"  - 골드 텍스트: {(goldText != null ? $"설정됨 ({goldText.gameObject.name})" : "없음")}");
+                Debug.Log($"  - 체력 텍스트: {(healthText != null ? $"설정됨 ({healthText.gameObject.name})" : "없음")}");
+                Debug.Log($"  - 체력 슬라이더: {(healthSlider != null ? $"설정됨 ({healthSlider.gameObject.name})" : "없음")}");
+                Debug.Log($"  - 마나 텍스트: {(manaText != null ? $"설정됨 ({manaText.gameObject.name})" : "없음")}");
+                Debug.Log($"  - 마나 슬라이더: {(manaSlider != null ? $"설정됨 ({manaSlider.gameObject.name})" : "없음")}");
             }
         }
 
@@ -759,6 +819,7 @@ namespace Maglin.Event
         {
             UpdateGoldUI();
             UpdateHealthUI();
+            UpdateManaUI();
         }
 
         /// <summary>
@@ -770,12 +831,24 @@ namespace Maglin.Event
             {
                 if (PlayerManager.Instance != null)
                 {
-                    goldText.text = $"골드: {PlayerManager.Instance.CurrentGold}";
+                    string newGoldText = $"{PlayerManager.Instance.CurrentGold}";
+                    goldText.text = newGoldText;
+
+                    if (debugMode)
+                        Debug.Log($"[EventUIManager] UpdateGoldUI - 골드 업데이트: {newGoldText} (PlayerManager: {PlayerManager.Instance.CurrentGold})");
                 }
                 else
                 {
-                    goldText.text = "골드: 100"; // 기본값
+                    goldText.text = "0"; // 기본값
+
+                    if (debugMode)
+                        Debug.LogWarning("[EventUIManager] UpdateGoldUI - PlayerManager.Instance가 null입니다!");
                 }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventUIManager] UpdateGoldUI - goldText가 null입니다!");
             }
         }
 
@@ -792,7 +865,16 @@ namespace Maglin.Event
                 // 텍스트 업데이트
                 if (healthText != null)
                 {
-                    healthText.text = $"체력: {currentHealth}/{maxHealth}";
+                    string newHealthText = $"{currentHealth}/{maxHealth}";
+                    healthText.text = newHealthText;
+
+                    if (debugMode)
+                        Debug.Log($"[EventUIManager] UpdateHealthUI - 체력 텍스트 업데이트: {newHealthText} (PlayerManager: {currentHealth}/{maxHealth})");
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.LogWarning("[EventUIManager] UpdateHealthUI - healthText가 null입니다!");
                 }
 
                 // 슬라이더 업데이트
@@ -802,26 +884,104 @@ namespace Maglin.Event
                     {
                         float healthRatio = (float)currentHealth / maxHealth;
                         healthSlider.value = healthRatio;
+
+                        if (debugMode)
+                            Debug.Log($"[EventUIManager] UpdateHealthUI - 체력 슬라이더 업데이트: {healthRatio:F2}");
                     }
                     else
                     {
                         healthSlider.value = 0f;
+
+                        if (debugMode)
+                            Debug.LogWarning("[EventUIManager] UpdateHealthUI - maxHealth가 0입니다!");
                     }
                 }
-
-                if (debugMode)
-                    Debug.Log($"[EventUIManager] 체력 UI 업데이트: {currentHealth}/{maxHealth}");
+                else
+                {
+                    if (debugMode)
+                        Debug.LogWarning("[EventUIManager] UpdateHealthUI - healthSlider가 null입니다!");
+                }
             }
             else
             {
+                if (debugMode)
+                    Debug.LogWarning("[EventUIManager] UpdateHealthUI - PlayerManager.Instance가 null입니다!");
+
                 // PlayerManager가 아직 초기화되지 않은 경우 기본값 표시
                 if (healthText != null)
                 {
-                    healthText.text = "체력: 100/100"; // 기본값
+                    healthText.text = "100/100"; // 기본값
                 }
                 if (healthSlider != null)
                 {
                     healthSlider.value = 1f; // 100%
+                }
+            }
+        }
+
+        /// <summary>
+        /// 마나 UI 업데이트
+        /// </summary>
+        private void UpdateManaUI()
+        {
+            if (PlayerManager.Instance != null)
+            {
+                int currentMana = PlayerManager.Instance.CurrentMana;
+                int maxMana = PlayerManager.Instance.MaxMana;
+
+                // 텍스트 업데이트
+                if (manaText != null)
+                {
+                    string newManaText = $"{currentMana}/{maxMana}";
+                    manaText.text = newManaText;
+
+                    if (debugMode)
+                        Debug.Log($"[EventUIManager] UpdateManaUI - 마나 텍스트 업데이트: {newManaText} (PlayerManager: {currentMana}/{maxMana})");
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.LogWarning("[EventUIManager] UpdateManaUI - manaText가 null입니다!");
+                }
+
+                // 슬라이더 업데이트
+                if (manaSlider != null)
+                {
+                    if (maxMana > 0)
+                    {
+                        float manaRatio = (float)currentMana / maxMana;
+                        manaSlider.value = manaRatio;
+
+                        if (debugMode)
+                            Debug.Log($"[EventUIManager] UpdateManaUI - 마나 슬라이더 업데이트: {manaRatio:F2}");
+                    }
+                    else
+                    {
+                        manaSlider.value = 0f;
+
+                        if (debugMode)
+                            Debug.LogWarning("[EventUIManager] UpdateManaUI - maxMana가 0입니다!");
+                    }
+                }
+                else
+                {
+                    if (debugMode)
+                        Debug.LogWarning("[EventUIManager] UpdateManaUI - manaSlider가 null입니다!");
+                }
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventUIManager] UpdateManaUI - PlayerManager.Instance가 null입니다!");
+
+                // PlayerManager가 아직 초기화되지 않은 경우 기본값 표시
+                if (manaText != null)
+                {
+                    manaText.text = "30/30"; // 기본값
+                }
+                if (manaSlider != null)
+                {
+                    manaSlider.value = 1f; // 100%
                 }
             }
         }
@@ -832,33 +992,57 @@ namespace Maglin.Event
         public void ForceUpdatePlayerUI()
         {
             if (debugMode)
-                Debug.Log("[EventUIManager] 플레이어 UI 강제 업데이트 시작");
+            {
+                Debug.Log("[EventUIManager] ========== 플레이어 UI 강제 업데이트 시작 ==========");
+                Debug.Log($"[EventUIManager] PlayerManager.Instance: {(PlayerManager.Instance != null ? "존재함" : "null")}");
+                if (PlayerManager.Instance != null)
+                {
+                    Debug.Log($"[EventUIManager] PlayerManager 골드: {PlayerManager.Instance.CurrentGold}");
+                    Debug.Log($"[EventUIManager] PlayerManager 체력: {PlayerManager.Instance.CurrentHealth}/{PlayerManager.Instance.MaxHealth}");
+                    Debug.Log($"[EventUIManager] PlayerManager 마나: {PlayerManager.Instance.CurrentMana}/{PlayerManager.Instance.MaxMana}");
+                }
+                Debug.Log($"[EventUIManager] goldText: {(goldText != null ? $"존재함 (현재값: {goldText.text})" : "null")}");
+                Debug.Log($"[EventUIManager] healthText: {(healthText != null ? $"존재함 (현재값: {healthText.text})" : "null")}");
+                Debug.Log($"[EventUIManager] healthSlider: {(healthSlider != null ? $"존재함 (현재값: {healthSlider.value})" : "null")}");
+                Debug.Log($"[EventUIManager] manaText: {(manaText != null ? $"존재함 (현재값: {manaText.text})" : "null")}");
+                Debug.Log($"[EventUIManager] manaSlider: {(manaSlider != null ? $"존재함 (현재값: {manaSlider.value})" : "null")}");
+            }
 
             UpdateGoldUI();
             UpdateHealthUI();
+            UpdateManaUI();
+            UpdateRelicUI();
 
             if (debugMode)
-                Debug.Log("[EventUIManager] 플레이어 UI 강제 업데이트 완료");
+            {
+                Debug.Log("[EventUIManager] ========== 플레이어 UI 강제 업데이트 완료 ==========");
+                if (goldText != null)
+                    Debug.Log($"[EventUIManager] 최종 goldText: {goldText.text}");
+                if (healthText != null)
+                    Debug.Log($"[EventUIManager] 최종 healthText: {healthText.text}");
+                if (manaText != null)
+                    Debug.Log($"[EventUIManager] 최종 manaText: {manaText.text}");
+            }
         }
 
         /// <summary>
-        /// 플레이어 상태 실시간 업데이트 (변화가 있을 때만)
+        /// 플레이어 상태 실시간 업데이트 (매 프레임 강제 업데이트)
         /// </summary>
         private void UpdatePlayerStatusRealtime()
         {
-            if (PlayerManager.Instance == null) return;
-
-            // 골드 실시간 업데이트 (변화가 있을 때만)
-            if (goldText != null)
+            if (PlayerManager.Instance == null)
             {
-                string newGoldText = $"골드: {PlayerManager.Instance.CurrentGold}";
-                if (goldText.text != newGoldText)
-                {
-                    goldText.text = newGoldText;
-                }
+                return;
             }
 
-            // 체력 실시간 업데이트 (변화가 있을 때만)
+            // 골드 실시간 업데이트 (강제 업데이트)
+            if (goldText != null)
+            {
+                string newGoldText = $"{PlayerManager.Instance.CurrentGold}";
+                goldText.text = newGoldText;
+            }
+
+            // 체력 실시간 업데이트 (강제 업데이트)
             if (healthText != null || healthSlider != null)
             {
                 int currentHealth = PlayerManager.Instance.CurrentHealth;
@@ -867,21 +1051,36 @@ namespace Maglin.Event
                 // 체력 텍스트 업데이트
                 if (healthText != null)
                 {
-                    string newHealthText = $"체력: {currentHealth}/{maxHealth}";
-                    if (healthText.text != newHealthText)
-                    {
-                        healthText.text = newHealthText;
-                    }
+                    string newHealthText = $"{currentHealth}/{maxHealth}";
+                    healthText.text = newHealthText;
                 }
 
                 // 체력 슬라이더 업데이트
                 if (healthSlider != null && maxHealth > 0)
                 {
                     float healthRatio = (float)currentHealth / maxHealth;
-                    if (Mathf.Abs(healthSlider.value - healthRatio) > 0.01f)
-                    {
-                        healthSlider.value = healthRatio;
-                    }
+                    healthSlider.value = healthRatio;
+                }
+            }
+
+            // 마나 실시간 업데이트 (강제 업데이트)
+            if (manaText != null || manaSlider != null)
+            {
+                int currentMana = PlayerManager.Instance.CurrentMana;
+                int maxMana = PlayerManager.Instance.MaxMana;
+
+                // 마나 텍스트 업데이트
+                if (manaText != null)
+                {
+                    string newManaText = $"{currentMana}/{maxMana}";
+                    manaText.text = newManaText;
+                }
+
+                // 마나 슬라이더 업데이트
+                if (manaSlider != null && maxMana > 0)
+                {
+                    float manaRatio = (float)currentMana / maxMana;
+                    manaSlider.value = manaRatio;
                 }
             }
         }
@@ -984,6 +1183,17 @@ namespace Maglin.Event
         }
 
         /// <summary>
+        /// 마나 변경 이벤트 처리
+        /// </summary>
+        private void OnManaChanged(int currentMana, int maxMana)
+        {
+            UpdateManaUI();
+
+            if (debugMode)
+                Debug.Log($"[EventUIManager] 마나 변경 감지: {currentMana}/{maxMana}");
+        }
+
+        /// <summary>
         /// 선택지 버튼 클릭 이벤트 처리
         /// </summary>
         private void OnChoiceButtonClicked(int choiceIndex)
@@ -1073,6 +1283,150 @@ namespace Maglin.Event
         }
 
         /// <summary>
+        /// RelicPanel 찾기 및 유물 UI 초기화
+        /// </summary>
+        private void FindRelicPanel()
+        {
+            if (relicPanel == null)
+            {
+                // Inspector에 할당되지 않은 경우 자동으로 찾기
+                var relicPanelObj = GameObject.Find("RelicPanel");
+                if (relicPanelObj != null)
+                {
+                    relicPanel = relicPanelObj.transform;
+                    if (debugMode)
+                        Debug.Log("[EventUIManager] RelicPanel 자동 찾기 완료");
+                }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[EventUIManager] RelicPanel을 찾을 수 없습니다! Inspector에서 할당하거나 씬에 'RelicPanel' GameObject를 추가하세요.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 유물 추가 이벤트 처리
+        /// </summary>
+        private void OnRelicAdded(Maglin.Relics.RelicSO relic)
+        {
+            if (debugMode)
+                Debug.Log($"[EventUIManager] 유물 추가 감지: {relic.RelicName}");
+
+            UpdateRelicUI();
+        }
+
+        /// <summary>
+        /// 유물 제거 이벤트 처리
+        /// </summary>
+        private void OnRelicRemoved(Maglin.Relics.RelicSO relic)
+        {
+            if (debugMode)
+                Debug.Log($"[EventUIManager] 유물 제거 감지: {relic.RelicName}");
+
+            UpdateRelicUI();
+        }
+
+        /// <summary>
+        /// 유물 UI 업데이트
+        /// </summary>
+        private void UpdateRelicUI()
+        {
+            if (relicPanel == null || relicPrefab == null)
+            {
+                if (debugMode && relicPanel == null)
+                    Debug.LogWarning("[EventUIManager] RelicPanel이 할당되지 않았습니다!");
+                if (debugMode && relicPrefab == null)
+                    Debug.LogWarning("[EventUIManager] RelicPrefab이 할당되지 않았습니다!");
+                return;
+            }
+
+            if (PlayerManager.Instance == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[EventUIManager] PlayerManager.Instance가 null입니다!");
+                return;
+            }
+
+            // 기존 유물 UI 제거
+            ClearRelicUIs();
+
+            // 현재 보유 중인 유물들 가져오기
+            var currentRelics = PlayerManager.Instance.CurrentRelics;
+
+            if (debugMode)
+                Debug.Log($"[EventUIManager] 현재 보유 유물 수: {currentRelics.Count}");
+
+            // 각 유물에 대해 UI 생성
+            foreach (var relic in currentRelics)
+            {
+                CreateRelicUI(relic);
+            }
+        }
+
+        /// <summary>
+        /// 개별 유물 UI 생성
+        /// </summary>
+        private void CreateRelicUI(Maglin.Relics.RelicSO relic)
+        {
+            if (relic == null || relicPrefab == null || relicPanel == null)
+                return;
+
+            // RelicPrefab 인스턴스화
+            GameObject relicUI = Instantiate(relicPrefab, relicPanel);
+
+            // RelicUI 컴포넌트를 통해 데이터 설정
+            UpdateRelicUIInfo(relicUI, relic);
+
+            // 생성된 UI를 리스트에 추가
+            relicUIs.Add(relicUI);
+
+            if (debugMode)
+                Debug.Log($"[EventUIManager] 유물 UI 생성 완료: {relic.RelicName}");
+        }
+
+        /// <summary>
+        /// 유물 UI 정보 업데이트
+        /// </summary>
+        private void UpdateRelicUIInfo(GameObject relicUI, Maglin.Relics.RelicSO relicData)
+        {
+            if (relicUI == null || relicData == null)
+                return;
+
+            // RelicUI 컴포넌트 찾기
+            var relicUIComponent = relicUI.GetComponent<Maglin.Relics.RelicUI>();
+            if (relicUIComponent != null)
+            {
+                // RelicUI의 SetRelicData 메서드를 통해 데이터 설정
+                relicUIComponent.SetRelicData(relicData);
+
+                if (debugMode)
+                    Debug.Log($"[EventUIManager] RelicUI 컴포넌트를 통해 데이터 설정: {relicData.RelicName}");
+            }
+            else if (debugMode)
+            {
+                Debug.LogWarning("[EventUIManager] RelicUI 컴포넌트를 찾을 수 없습니다!");
+            }
+        }
+
+        /// <summary>
+        /// 모든 유물 UI 제거
+        /// </summary>
+        private void ClearRelicUIs()
+        {
+            foreach (var relicUI in relicUIs)
+            {
+                if (relicUI != null)
+                {
+                    Destroy(relicUI);
+                }
+            }
+            relicUIs.Clear();
+
+            if (debugMode)
+                Debug.Log("[EventUIManager] 유물 UI 모두 제거됨");
+        }
+
+        /// <summary>
         /// UI 상태 디버그 정보 출력
         /// </summary>
         [System.Diagnostics.Conditional("UNITY_EDITOR")]
@@ -1085,6 +1439,8 @@ namespace Maglin.Event
             Debug.Log($"  - goldText: {(goldText != null ? "설정됨" : "null")}");
             Debug.Log($"  - healthText: {(healthText != null ? "설정됨" : "null")}");
             Debug.Log($"  - healthSlider: {(healthSlider != null ? "설정됨" : "null")}");
+            Debug.Log($"  - manaText: {(manaText != null ? "설정됨" : "null")}");
+            Debug.Log($"  - manaSlider: {(manaSlider != null ? "설정됨" : "null")}");
             Debug.Log($"  - eventImage: {(eventImage != null ? "설정됨" : "null")}");
             Debug.Log($"  - eventTitle: {(eventTitle != null ? "설정됨" : "null")}");
             Debug.Log($"  - eventDescription: {(eventDescription != null ? "설정됨" : "null")}");
@@ -1093,11 +1449,15 @@ namespace Maglin.Event
             Debug.Log($"  - resultCanvasGroup: {(resultCanvasGroup != null ? "설정됨" : "null")}");
             Debug.Log($"  - resultText: {(resultText != null ? "설정됨" : "null")}");
             Debug.Log($"  - continueButton: {(continueButton != null ? "설정됨" : "null")}");
+            Debug.Log($"  - relicPanel: {(relicPanel != null ? "설정됨" : "null")}");
+            Debug.Log($"  - relicPrefab: {(relicPrefab != null ? "설정됨" : "null")}");
 
             if (PlayerManager.Instance != null)
             {
                 Debug.Log($"  - 플레이어 골드: {PlayerManager.Instance.CurrentGold}");
                 Debug.Log($"  - 플레이어 체력: {PlayerManager.Instance.CurrentHealth}/{PlayerManager.Instance.MaxHealth}");
+                Debug.Log($"  - 플레이어 마나: {PlayerManager.Instance.CurrentMana}/{PlayerManager.Instance.MaxMana}");
+                Debug.Log($"  - 보유 유물 수: {PlayerManager.Instance.CurrentRelics.Count}");
             }
             else
             {

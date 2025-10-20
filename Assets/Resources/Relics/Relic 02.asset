@@ -15,31 +15,36 @@ MonoBehaviour:
   relicName: Relic02
   relicType: 0
   relicDescription: Relic02 Description
-  relicImage: {fileID: 21300000, guid: cb055051a792b49afb89cc5a1401935e, type: 3}
+  relicImage: {fileID: 21300000, guid: 04cf8cde4a3bd492199782453fd7ed3c, type: 3}
   effects:
   - effectType: 8
     effectValue: 5
-    secondaryValue: 0
+    secondaryValue: 15
     isPercentage: 0
     customEffectDescription: 
   - effectType: 3
-    effectValue: 1
-    secondaryValue: 3
-    isPercentage: 0
-    customEffectDescription: 
-  - effectType: 11
-    effectValue: 1
-    secondaryValue: 0
+    effectValue: 3
+    secondaryValue: 1
     isPercentage: 0
     customEffectDescription: 
   - effectType: 12
-    effectValue: 2
-    secondaryValue: 5
+    effectValue: 55
+    secondaryValue: 1
     isPercentage: 0
     customEffectDescription: 
   - effectType: 1
     effectValue: 1
     secondaryValue: 1
+    isPercentage: 0
+    customEffectDescription: 
+  - effectType: 2
+    effectValue: 1
+    secondaryValue: 1
+    isPercentage: 0
+    customEffectDescription: 
+  - effectType: 0
+    effectValue: 5
+    secondaryValue: 0
     isPercentage: 0
     customEffectDescription: 
   canStack: 0

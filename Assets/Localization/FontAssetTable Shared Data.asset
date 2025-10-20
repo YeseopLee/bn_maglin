@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: FontAssetTable Shared Data
+  m_EditorClassIdentifier: 
+  m_TableCollectionName: FontAssetTable
+  m_TableCollectionNameGuidString: 10ce292591d2549f5ba0795befd3df82
+  m_Entries:
+  - m_Id: 9134137344
+    m_Key: New Entry
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items:
+    - rid: 7789444403007586311
+  m_KeyGenerator:
+    rid: 7789444403007586310
+  references:
+    version: 2
+    RefIds:
+    - rid: 7789444403007586310
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1760947790579
+    - rid: 7789444403007586311
+      type: {class: AssetTypeMetadata, ns: UnityEngine.Localization.Metadata, asm: Unity.Localization}
+      data:
+        m_Entries:
+        - m_KeyId: 9134137344
+          m_TableCodes:
+          - ko-KR
+          - en
+          - zh-CN
+        m_TypeString: TMPro.TMP_FontAsset, Unity.TextMeshPro, Version=0.0.0.0, Culture=neutral,
+          PublicKeyToken=null

@@ -1,12 +1,15 @@
 using UnityEngine;
 using UnityEngine.Localization.Settings;
+using UnityEngine.Localization.Tables;
+using TMPro;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 
 namespace Maglin.Core
 {
     /// <summary>
-    /// 언어 설정을 관리하는 매니저
+    /// 언어 설정 및 폰트 자동 변경을 관리하는 매니저
     /// </summary>
     public class LanguageManager : MonoBehaviour
     {
@@ -15,11 +18,23 @@ namespace Maglin.Core
         [Header("Language Settings")]
         [SerializeField] private bool debugMode = true;
 
+        [Header("Font Asset Settings")]
+        [SerializeField] private string fontAssetTableName = "FontAssetTable";
+        [SerializeField] private string fontAssetEntryKey = "New Entry";
+        [SerializeField] private bool autoRegisterTextComponents = true;
+
+        // 캐시된 폰트 에셋
+        private Dictionary<string, TMP_FontAsset> cachedFontAssets = new Dictionary<string, TMP_FontAsset>();
+
+        // 씬에 있는 모든 TextMeshPro 컴포넌트 추적
+        private HashSet<TMP_Text> registeredTextComponents = new HashSet<TMP_Text>();
+
         // 지원하는 언어 목록
         public enum SupportedLanguage
         {
             Korean = 0,
-            English = 1
+            English = 1,
+            ChineseSimplified = 2
         }
 
         // 현재 선택된 언어
@@ -32,14 +47,16 @@ namespace Maglin.Core
         private readonly string[] languageDisplayNames = new string[]
         {
             "한국어",
-            "English"
+            "English",
+            "简体中文"
         };
 
         // Unity Localization과의 매핑을 위한 Locale 코드
         private readonly string[] localeIdentifiers = new string[]
         {
             "ko-KR", // Korean
-            "en"  // English
+            "en",    // English
+            "zh-CN"  // Chinese Simplified
         };
 
         #region Unity Events
@@ -75,6 +92,11 @@ namespace Maglin.Core
                 Debug.Log($"[LanguageManager] 초기화 완료 - 현재 언어: {GetCurrentLanguageDisplayName()}");
         }
 
+        private void OnDestroy()
+        {
+            // 필요시 정리 작업
+        }
+
         /// <summary>
         /// Unity Localization 초기 설정
         /// </summary>
@@ -93,6 +115,14 @@ namespace Maglin.Core
 
                 if (debugMode)
                     Debug.Log($"[LanguageManager] 초기 Locale 설정: {locale.Identifier}");
+            }
+
+            // 초기 폰트 설정
+            if (autoRegisterTextComponents)
+            {
+                yield return new WaitForSeconds(0.5f);
+                RegisterAllTextComponentsInScene();
+                yield return ApplyCurrentLanguageFont();
             }
         }
 
@@ -153,6 +183,9 @@ namespace Maglin.Core
 
                 // Unity Localization 시스템에 언어 변경 적용
                 StartCoroutine(ApplyLocalizationChange());
+
+                // 폰트 변경 적용
+                StartCoroutine(ApplyCurrentLanguageFont());
 
                 // 언어 변경 이벤트 발생
                 OnLanguageChanged?.Invoke(currentLanguage);
@@ -244,6 +277,12 @@ namespace Maglin.Core
             SetLanguage(SupportedLanguage.English);
         }
 
+        [ContextMenu("Switch to Chinese")]
+        public void SwitchToChinese()
+        {
+            SetLanguage(SupportedLanguage.ChineseSimplified);
+        }
+
         [ContextMenu("Test Next Language")]
         public void TestNextLanguage()
         {
@@ -260,6 +299,230 @@ namespace Maglin.Core
         public void PrintCurrentLanguage()
         {
             Debug.Log($"현재 언어: {GetCurrentLanguageDisplayName()} ({currentLanguage})");
+        }
+
+        [ContextMenu("Register All Text Components")]
+        public void DebugRegisterAll()
+        {
+            RegisterAllTextComponentsInScene();
+        }
+
+        [ContextMenu("Apply Current Language Font")]
+        public void DebugApplyFont()
+        {
+            StartCoroutine(ApplyCurrentLanguageFont());
+        }
+
+        [ContextMenu("Print Registered Components Count")]
+        public void DebugPrintCount()
+        {
+            registeredTextComponents.RemoveWhere(text => text == null);
+            Debug.Log($"[LanguageManager] 등록된 TextMeshPro 컴포넌트 수: {registeredTextComponents.Count}");
+        }
+
+        [ContextMenu("Clear Font Cache")]
+        public void DebugClearCache()
+        {
+            cachedFontAssets.Clear();
+            Debug.Log("[LanguageManager] 폰트 캐시 클리어");
+        }
+
+        [ContextMenu("Refresh All Fonts")]
+        public void DebugRefreshFonts()
+        {
+            RefreshAllFonts();
+        }
+        #endregion
+
+        #region Font Management
+        /// <summary>
+        /// 현재 선택된 언어에 맞는 폰트를 모든 TextMeshPro 컴포넌트에 적용
+        /// </summary>
+        private IEnumerator ApplyCurrentLanguageFont()
+        {
+            yield return LocalizationSettings.InitializationOperation;
+
+            TMP_FontAsset fontAsset = null;
+            yield return LoadFontAssetForCurrentLocale((asset) => fontAsset = asset);
+
+            if (fontAsset != null)
+            {
+                ApplyFontToAllRegisteredText(fontAsset);
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning("[LanguageManager] 현재 언어에 맞는 폰트를 찾을 수 없습니다.");
+            }
+        }
+
+        /// <summary>
+        /// 현재 Locale에 맞는 폰트 에셋 로드
+        /// </summary>
+        private IEnumerator LoadFontAssetForCurrentLocale(System.Action<TMP_FontAsset> onComplete)
+        {
+            var currentLocale = LocalizationSettings.SelectedLocale;
+            if (currentLocale == null)
+            {
+                Debug.LogError("[LanguageManager] 선택된 Locale이 없습니다!");
+                onComplete?.Invoke(null);
+                yield break;
+            }
+
+            string localeCode = currentLocale.Identifier.Code;
+
+            if (cachedFontAssets.TryGetValue(localeCode, out TMP_FontAsset cachedFont))
+            {
+                if (debugMode)
+                    Debug.Log($"[LanguageManager] 캐시된 폰트 사용: {localeCode}");
+                onComplete?.Invoke(cachedFont);
+                yield break;
+            }
+
+            var loadOperation = LocalizationSettings.AssetDatabase.GetTableAsync(fontAssetTableName);
+            yield return loadOperation;
+
+            if (loadOperation.Status == UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationStatus.Succeeded)
+            {
+                var assetTable = loadOperation.Result as AssetTable;
+
+                if (assetTable != null)
+                {
+                    var entry = assetTable.GetEntry(fontAssetEntryKey);
+
+                    if (entry != null)
+                    {
+                        var fontLoadOperation = assetTable.GetAssetAsync<TMP_FontAsset>(entry.KeyId);
+                        yield return fontLoadOperation;
+
+                        if (fontLoadOperation.Status == UnityEngine.ResourceManagement.AsyncOperations.AsyncOperationStatus.Succeeded)
+                        {
+                            TMP_FontAsset fontAsset = fontLoadOperation.Result;
+                            cachedFontAssets[localeCode] = fontAsset;
+
+                            if (debugMode)
+                                Debug.Log($"[LanguageManager] 폰트 로드 성공: {localeCode} - {fontAsset.name}");
+
+                            onComplete?.Invoke(fontAsset);
+                        }
+                        else
+                        {
+                            Debug.LogError($"[LanguageManager] 폰트 에셋 로드 실패: {fontAssetEntryKey}");
+                            onComplete?.Invoke(null);
+                        }
+                    }
+                    else
+                    {
+                        Debug.LogError($"[LanguageManager] 폰트 테이블에서 '{fontAssetEntryKey}' 엔트리를 찾을 수 없습니다!");
+                        onComplete?.Invoke(null);
+                    }
+                }
+                else
+                {
+                    Debug.LogError($"[LanguageManager] Asset Table '{fontAssetTableName}'을 AssetTable로 캐스팅할 수 없습니다!");
+                    onComplete?.Invoke(null);
+                }
+            }
+            else
+            {
+                Debug.LogError($"[LanguageManager] Asset Table '{fontAssetTableName}' 로드 실패!");
+                onComplete?.Invoke(null);
+            }
+        }
+
+        /// <summary>
+        /// 모든 등록된 TextMeshPro 컴포넌트에 폰트 적용
+        /// </summary>
+        private void ApplyFontToAllRegisteredText(TMP_FontAsset fontAsset)
+        {
+            registeredTextComponents.RemoveWhere(text => text == null);
+
+            int appliedCount = 0;
+            foreach (var textComponent in registeredTextComponents)
+            {
+                if (textComponent != null)
+                {
+                    textComponent.font = fontAsset;
+                    appliedCount++;
+                }
+            }
+
+            if (debugMode)
+                Debug.Log($"[LanguageManager] {appliedCount}개의 TextMeshPro 컴포넌트에 폰트 적용: {fontAsset.name}");
+
+            Canvas.ForceUpdateCanvases();
+        }
+
+        /// <summary>
+        /// 현재 씬의 모든 TextMeshPro 컴포넌트를 찾아서 등록
+        /// </summary>
+        public void RegisterAllTextComponentsInScene()
+        {
+            TMP_Text[] allTextComponents = FindObjectsOfType<TMP_Text>(true);
+
+            int newRegistrations = 0;
+            foreach (var textComponent in allTextComponents)
+            {
+                if (RegisterTextComponent(textComponent))
+                {
+                    newRegistrations++;
+                }
+            }
+
+            if (debugMode)
+                Debug.Log($"[LanguageManager] {newRegistrations}개의 새로운 TextMeshPro 컴포넌트 등록 (총 {registeredTextComponents.Count}개)");
+        }
+
+        /// <summary>
+        /// 특정 TextMeshPro 컴포넌트를 등록
+        /// </summary>
+        public bool RegisterTextComponent(TMP_Text textComponent)
+        {
+            if (textComponent == null)
+                return false;
+
+            return registeredTextComponents.Add(textComponent);
+        }
+
+        /// <summary>
+        /// 특정 TextMeshPro 컴포넌트의 등록을 해제
+        /// </summary>
+        public void UnregisterTextComponent(TMP_Text textComponent)
+        {
+            if (textComponent == null)
+                return;
+
+            registeredTextComponents.Remove(textComponent);
+        }
+
+        /// <summary>
+        /// 새로운 씬이 로드될 때 호출 (씬 전환 시 사용)
+        /// </summary>
+        public void OnSceneLoaded()
+        {
+            if (autoRegisterTextComponents)
+            {
+                StartCoroutine(OnSceneLoadedCoroutine());
+            }
+        }
+
+        private IEnumerator OnSceneLoadedCoroutine()
+        {
+            yield return new WaitForSeconds(0.5f);
+            RegisterAllTextComponentsInScene();
+            yield return ApplyCurrentLanguageFont();
+        }
+
+        /// <summary>
+        /// 수동으로 현재 언어의 폰트를 다시 적용
+        /// </summary>
+        public void RefreshAllFonts()
+        {
+            if (autoRegisterTextComponents)
+            {
+                RegisterAllTextComponentsInScene();
+            }
+            StartCoroutine(ApplyCurrentLanguageFont());
         }
         #endregion
     }

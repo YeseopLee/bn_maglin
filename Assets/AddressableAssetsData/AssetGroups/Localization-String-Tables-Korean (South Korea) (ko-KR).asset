@@ -22,6 +22,7 @@ MonoBehaviour:
     m_ReadOnly: 1
     m_SerializedLabels:
     - Locale-ko-KR
+    - Preload
     FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 4f981bf9272b041be95d4a0e7a656d41
     m_Address: UiTable_ko-KR

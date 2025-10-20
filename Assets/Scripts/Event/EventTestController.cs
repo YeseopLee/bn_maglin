@@ -12,12 +12,6 @@ namespace Maglin.Event
         [Header("테스트 설정")]
         [SerializeField] private int testFloor = 1;
 
-        [Header("UI 참조 (옵션)")]
-        [SerializeField] private CanvasGroup eventCanvasGroup;
-        [SerializeField] private TMPro.TextMeshProUGUI goldText;
-        [SerializeField] private TMPro.TextMeshProUGUI healthText;
-        [SerializeField] private UnityEngine.UI.Slider healthSlider;
-
         [Header("플레이어 입장 애니메이션")]
         [SerializeField] private bool enablePlayerEntrance = true;
         [SerializeField] private Vector2Int playerGridPosition = new Vector2Int(0, 0); // 플레이어 그리드 위치 (BattleTestController와 동일)
@@ -25,7 +19,6 @@ namespace Maglin.Event
         [Header("디버그")]
         [SerializeField] private bool debugMode = true;
         [SerializeField] private bool autoStartEvent = true;
-        [SerializeField] private bool setupUIReferences = true;
 
         private void Start()
         {
@@ -46,20 +39,18 @@ namespace Maglin.Event
                 yield return StartCoroutine(InitializePlayerEventManager());
             }
 
-            // EventUIManager UI 참조 설정
-            if (setupUIReferences)
-            {
-                SetupEventUIReferences();
-            }
+            // EventUIManager는 자체적으로 UI 참조를 찾아서 설정함 (FindUIReferences)
+            if (debugMode)
+                Debug.Log("[EventTestController] EventUIManager가 자동으로 UI 참조를 설정합니다.");
 
             // 플레이어 입장 애니메이션 실행
             if (enablePlayerEntrance && PlayerEventManager.Instance != null)
             {
                 if (debugMode)
                     Debug.Log("[EventTestController] 플레이어 입장 애니메이션 시작");
-                
+
                 yield return StartCoroutine(PlayerEventManager.Instance.PlayPlayerEntranceAnimation());
-                
+
                 if (debugMode)
                     Debug.Log("[EventTestController] 플레이어 입장 애니메이션 완료");
             }
@@ -69,12 +60,12 @@ namespace Maglin.Event
             {
                 if (debugMode)
                     Debug.Log("[EventTestController] 입장 애니메이션 완료 후 이벤트 시작 대기");
-                
+
                 yield return new WaitForSeconds(0.5f); // 잠시 대기
-                
+
                 if (debugMode)
                     Debug.Log("[EventTestController] 이벤트 시작");
-                
+
                 StartRandomEventForTest();
             }
 
@@ -108,9 +99,9 @@ namespace Maglin.Event
                 {
                     if (debugMode)
                         Debug.Log("[EventTestController] GridFieldManager.InitializeGridField() 호출");
-                    
+
                     GridFieldManager.Instance.InitializeGridField();
-                    
+
                     // 한 프레임 대기 후 초기화 확인
                     yield return null;
                 }
@@ -145,35 +136,6 @@ namespace Maglin.Event
                 Debug.Log("[EventTestController] PlayerEventManager 초기화 완료");
         }
 
-        /// <summary>
-        /// EventUIManager에 UI 참조 설정
-        /// </summary>
-        private void SetupEventUIReferences()
-        {
-            if (EventUIManager.Instance == null)
-            {
-                if (debugMode)
-                    Debug.LogWarning("[EventTestController] EventUIManager.Instance가 null입니다. UI 참조 설정을 건너뜁니다.");
-                return;
-            }
-
-            if (debugMode)
-                Debug.Log("[EventTestController] EventUIManager UI 참조 설정 시작");
-
-            // Inspector에서 설정된 UI 참조를 EventUIManager에 전달
-            EventUIManager.Instance.SetUIReferences(
-                eventCanvasGroup: eventCanvasGroup,
-                goldText: goldText,
-                healthText: healthText,
-                healthSlider: healthSlider
-            );
-
-            if (debugMode)
-            {
-                Debug.Log("[EventTestController] EventUIManager UI 참조 설정 완료");
-                EventUIManager.Instance.DebugUIStatus(); // UI 상태 디버그 출력
-            }
-        }
 
         /// <summary>
         /// EventManager의 실제 설정을 사용한 이벤트 시작

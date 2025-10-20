@@ -24,7 +24,6 @@ namespace Maglin.Core
         [SerializeField] private Button startButton;
         [SerializeField] private Button optionButton;
         [SerializeField] private Button exitButton;
-        [SerializeField] private GameObject settingsOverlay;
 
         [Header("Manager Prefabs")]
         [SerializeField] private GameObject gameManagerPrefab;
@@ -98,12 +97,6 @@ namespace Maglin.Core
                     optionButton = optionButtonObj.GetComponent<Button>();
             }
 
-            // 설정 오버레이 자동 찾기
-            if (settingsOverlay == null)
-            {
-                settingsOverlay = GameObject.Find("SettingsOverlay");
-            }
-
             // 버튼 이벤트 연결
             if (startButton != null)
             {
@@ -130,12 +123,6 @@ namespace Maglin.Core
             if (exitButton != null)
             {
                 exitButton.onClick.AddListener(OnExitGameClicked);
-            }
-
-            // 설정 오버레이 초기 상태 설정
-            if (settingsOverlay != null)
-            {
-                settingsOverlay.SetActive(false);
             }
         }
 
@@ -257,6 +244,17 @@ namespace Maglin.Core
                     Debug.Log("[MainGameController] LanguageManager 생성 완료");
             }
 
+            // SettingOverlayManager 초기화
+            if (Maglin.UI.SettingOverlayManager.Instance == null)
+            {
+                var settingOverlayManagerObj = new GameObject("SettingOverlayManager");
+                settingOverlayManagerObj.AddComponent<Maglin.UI.SettingOverlayManager>();
+                DontDestroyOnLoad(settingOverlayManagerObj);
+
+                if (debugMode)
+                    Debug.Log("[MainGameController] SettingOverlayManager 생성 완료");
+            }
+
             if (debugMode)
                 Debug.Log("[MainGameController] 모든 핵심 매니저 초기화 완료");
         }
@@ -289,13 +287,13 @@ namespace Maglin.Core
             if (debugMode)
                 Debug.Log("[MainGameController] 옵션 버튼 클릭됨");
 
-            if (settingsOverlay != null)
+            if (Maglin.UI.SettingOverlayManager.Instance != null)
             {
-                settingsOverlay.SetActive(true);
+                Maglin.UI.SettingOverlayManager.Instance.OpenOverlay();
             }
             else
             {
-                Debug.LogError("[MainGameController] 설정 오버레이를 찾을 수 없습니다!");
+                Debug.LogError("[MainGameController] SettingOverlayManager를 찾을 수 없습니다!");
             }
         }
 
@@ -441,6 +439,7 @@ namespace Maglin.Core
             Debug.Log($"AudioManager: {(AudioManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"RelicManager: {(RelicManager.Instance != null ? "✓" : "✗")}");
             Debug.Log($"LanguageManager: {(LanguageManager.Instance != null ? "✓" : "✗")}");
+            Debug.Log($"SettingOverlayManager: {(Maglin.UI.SettingOverlayManager.Instance != null ? "✓" : "✗")}");
 
             if (SaveManager.Instance != null)
             {

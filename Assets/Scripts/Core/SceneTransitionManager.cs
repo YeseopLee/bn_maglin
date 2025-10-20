@@ -196,6 +196,12 @@ namespace Core
                 // 잠깐 대기 (씬 초기화 시간)
                 await Task.Delay(100);
 
+                // LanguageManager에게 씬 로드 알림
+                if (LanguageManager.Instance != null)
+                {
+                    LanguageManager.Instance.OnSceneLoaded();
+                }
+
                 // 3. 페이드 아웃
                 await FadeOut(fadeOutDuration);
 

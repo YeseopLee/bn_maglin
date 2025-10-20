@@ -109,6 +109,9 @@ namespace Maglin.Battle
         [SerializeField] private GameObject relicPrefab; // 유물 프리팹
         [SerializeField] private GameObject monsterPrefab;
 
+        [Header("유물 UI")]
+        [SerializeField] private Transform relicPanel; // 유물 표시 패널
+
         [Header("상태이상 아이콘")]
         [SerializeField] private Sprite burnIcon; // 화상 아이콘
         [SerializeField] private Sprite stunIcon; // 기절 아이콘
@@ -127,6 +130,7 @@ namespace Maglin.Battle
 
         // 생성된 UI 오브젝트들
         private List<GameObject> handCardUIs = new List<GameObject>();
+        private List<GameObject> relicUIs = new List<GameObject>(); // 유물 UI 리스트
 
         // 조합 슬롯에 배치된 카드들
         private Card elementSlotCard = null;
@@ -187,6 +191,8 @@ namespace Maglin.Battle
                 PlayerManager.OnHealthChanged += (current, max) => UpdateHealthUI();
                 PlayerManager.OnManaChanged += (current, max) => UpdateManaUI();
                 PlayerManager.OnGoldChanged += (gold) => UpdateGoldUI();
+                PlayerManager.OnRelicAdded += OnRelicAdded;
+                PlayerManager.OnRelicRemoved += OnRelicRemoved;
             }
 
             if (BattleManager.Instance != null)
@@ -240,6 +246,8 @@ namespace Maglin.Battle
                 PlayerManager.OnHealthChanged -= (current, max) => UpdateHealthUI();
                 PlayerManager.OnManaChanged -= (current, max) => UpdateManaUI();
                 PlayerManager.OnGoldChanged -= (gold) => UpdateGoldUI();
+                PlayerManager.OnRelicAdded -= OnRelicAdded;
+                PlayerManager.OnRelicRemoved -= OnRelicRemoved;
             }
 
             if (BattleManager.Instance != null)
@@ -311,6 +319,9 @@ namespace Maglin.Battle
 
             // 보상 UI 찾기 및 설정
             FindRewardUI();
+
+            // 유물 패널 찾기
+            FindRelicPanel();
 
             if (debugMode)
                 Debug.Log("[BattleUIManager] UI 매니저 초기화 완료");
@@ -608,6 +619,37 @@ namespace Maglin.Battle
 
             if (debugMode)
                 Debug.Log($"[BattleUIManager] 필드 슬롯 찾기 완료: {fieldSlots?.Length ?? 0}개");
+        }
+
+        /// <summary>
+        /// 유물 패널 찾기 및 설정
+        /// </summary>
+        private void FindRelicPanel()
+        {
+            if (debugMode)
+                Debug.Log("[BattleUIManager] FindRelicPanel 시작");
+
+            // RelicPanel 찾기
+            if (relicPanel == null)
+            {
+                var relicPanelObject = GameObject.Find("RelicPanel");
+                if (relicPanelObject != null)
+                {
+                    relicPanel = relicPanelObject.transform;
+                    if (debugMode)
+                        Debug.Log($"[BattleUIManager] RelicPanel 발견: {relicPanel.name}");
+                }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[BattleUIManager] RelicPanel을 찾을 수 없습니다. Inspector에서 할당하거나 씬에 추가하세요.");
+                }
+            }
+
+            // PlayerManager에서 현재 보유 유물 가져와서 UI 업데이트
+            if (PlayerManager.Instance != null)
+            {
+                UpdateRelicUI();
+            }
         }
 
         /// <summary>
@@ -1111,6 +1153,7 @@ namespace Maglin.Battle
             UpdateDeckCountUI();
             UpdateTurnUI();
             UpdateButtonStates();
+            UpdateRelicUI(); // 유물 UI 업데이트 추가
 
             // 타겟 UI 초기화 (약간의 지연을 두어 TargetManager 초기화 완료 대기)
             StartCoroutine(DelayedTargetUIUpdate());
@@ -1163,6 +1206,7 @@ namespace Maglin.Battle
             UpdateDeckCountUI();
             UpdateTurnUI();
             UpdateButtonStates();
+            UpdateRelicUI(); // 유물 UI 업데이트 추가
         }
 
         /// <summary>
@@ -2984,6 +3028,129 @@ namespace Maglin.Battle
             }
             return null;
         }
+
+        #region Relic UI Management
+        /// <summary>
+        /// 유물 추가 이벤트 핸들러
+        /// </summary>
+        private void OnRelicAdded(RelicSO relic)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 유물 추가됨: {relic?.RelicName}");
+
+            UpdateRelicUI();
+        }
+
+        /// <summary>
+        /// 유물 제거 이벤트 핸들러
+        /// </summary>
+        private void OnRelicRemoved(RelicSO relic)
+        {
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 유물 제거됨: {relic?.RelicName}");
+
+            UpdateRelicUI();
+        }
+
+        /// <summary>
+        /// 유물 UI 업데이트
+        /// </summary>
+        public void UpdateRelicUI()
+        {
+            if (relicPanel == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleUIManager] RelicPanel이 null입니다.");
+                return;
+            }
+
+            if (relicPrefab == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleUIManager] RelicPrefab이 null입니다.");
+                return;
+            }
+
+            if (PlayerManager.Instance == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[BattleUIManager] PlayerManager가 null입니다.");
+                return;
+            }
+
+            // 기존 유물 UI 제거
+            ClearRelicUIs();
+
+            // 현재 보유 유물 가져오기
+            var currentRelics = PlayerManager.Instance.CurrentRelics;
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 유물 UI 업데이트: {currentRelics.Count}개");
+
+            // 각 유물에 대해 UI 생성
+            foreach (var relic in currentRelics)
+            {
+                if (relic != null)
+                {
+                    CreateRelicUI(relic);
+                }
+            }
+        }
+
+        /// <summary>
+        /// 개별 유물 UI 생성
+        /// </summary>
+        private void CreateRelicUI(RelicSO relic)
+        {
+            if (relicPanel == null || relicPrefab == null || relic == null) return;
+
+            // RelicPrefab 인스턴스화
+            GameObject relicUI = Instantiate(relicPrefab, relicPanel);
+
+            // RelicUI 컴포넌트 가져오기
+            var relicUIComponent = relicUI.GetComponent<Maglin.Relics.RelicUI>();
+            if (relicUIComponent != null)
+            {
+                // RelicUI 컴포넌트에 데이터 설정
+                relicUIComponent.SetRelicData(relic);
+
+                if (debugMode)
+                    Debug.Log($"[BattleUIManager] RelicUI 컴포넌트에 데이터 설정 완료: {relic.RelicName}");
+            }
+            else
+            {
+                if (debugMode)
+                    Debug.LogWarning($"[BattleUIManager] RelicUI 컴포넌트를 찾을 수 없습니다. 수동으로 정보 업데이트 시도");
+
+                // 폴백: 수동으로 유물 정보 업데이트
+                UpdateRelicUIInfo(relicUI, relic);
+            }
+
+            // 생성된 UI를 리스트에 추가
+            relicUIs.Add(relicUI);
+
+            if (debugMode)
+                Debug.Log($"[BattleUIManager] 유물 UI 생성: {relic.RelicName}");
+        }
+
+        /// <summary>
+        /// 기존 유물 UI 모두 제거
+        /// </summary>
+        private void ClearRelicUIs()
+        {
+            foreach (var relicUI in relicUIs)
+            {
+                if (relicUI != null)
+                {
+                    Destroy(relicUI);
+                }
+            }
+            relicUIs.Clear();
+
+            if (debugMode)
+                Debug.Log("[BattleUIManager] 기존 유물 UI 제거 완료");
+        }
+        #endregion
 
         #region Card Draw Animation Event Handlers
         /// <summary>

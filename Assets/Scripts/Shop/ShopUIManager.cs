@@ -20,6 +20,13 @@ namespace Maglin.Shop
         [SerializeField] private CanvasGroup shopCanvasGroup;
         [SerializeField] private TextMeshProUGUI goldText;
         [SerializeField] private TextMeshProUGUI healthText;
+        [SerializeField] private Slider healthSlider;
+        [SerializeField] private TextMeshProUGUI manaText;
+        [SerializeField] private Slider manaSlider;
+
+        [Header("유물 UI")]
+        [SerializeField] private Transform relicPanel;
+        [SerializeField] private GameObject relicDisplayPrefab; // 보유 유물 표시용 프리팹
 
         [Header("상품 슬롯")]
         [SerializeField] private Transform[] itemSlots = new Transform[8]; // 통합된 아이템 슬롯 (카드5개 + 유물3개)
@@ -47,6 +54,7 @@ namespace Maglin.Shop
         private ShopItem[] currentItems;
         private bool[] itemsPurchased;
         private List<GameObject> cardRemovalUIs = new List<GameObject>();
+        private List<GameObject> relicUIs = new List<GameObject>(); // 보유 유물 UI 리스트
         private CardSO selectedCardToRemove; // 제거할 선택된 카드
         private int selectedCardIndex = -1; // 선택된 카드의 인덱스
 
@@ -135,6 +143,10 @@ namespace Maglin.Shop
             // 플레이어 상태 초기 업데이트
             UpdatePlayerStatus();
 
+            // RelicPanel 찾기 및 초기 유물 UI 업데이트
+            FindRelicPanel();
+            UpdateRelicUI();
+
             // ShopManager가 있고 상점이 아직 초기화되지 않았다면 자동으로 상점 진입
             if (ShopManager.Instance != null && ShopManager.Instance.CurrentItems == null)
             {
@@ -160,6 +172,9 @@ namespace Maglin.Shop
             // PlayerManager static 이벤트 구독
             PlayerManager.OnGoldChanged += OnGoldChanged;
             PlayerManager.OnHealthChanged += OnHealthChanged;
+            PlayerManager.OnManaChanged += OnManaChanged;
+            PlayerManager.OnRelicAdded += OnRelicAdded;
+            PlayerManager.OnRelicRemoved += OnRelicRemoved;
         }
 
         /// <summary>
@@ -199,6 +214,9 @@ namespace Maglin.Shop
             // PlayerManager static 이벤트 구독 해제
             PlayerManager.OnGoldChanged -= OnGoldChanged;
             PlayerManager.OnHealthChanged -= OnHealthChanged;
+            PlayerManager.OnManaChanged -= OnManaChanged;
+            PlayerManager.OnRelicAdded -= OnRelicAdded;
+            PlayerManager.OnRelicRemoved -= OnRelicRemoved;
         }
 
         /// <summary>
@@ -266,6 +284,33 @@ namespace Maglin.Shop
                 if (healthTextObj != null)
                 {
                     healthText = healthTextObj.GetComponent<TextMeshProUGUI>();
+                }
+            }
+
+            if (healthSlider == null)
+            {
+                var healthSliderObj = GameObject.Find("HealthSlider");
+                if (healthSliderObj != null)
+                {
+                    healthSlider = healthSliderObj.GetComponent<Slider>();
+                }
+            }
+
+            if (manaText == null)
+            {
+                var manaTextObj = GameObject.Find("ManaText");
+                if (manaTextObj != null)
+                {
+                    manaText = manaTextObj.GetComponent<TextMeshProUGUI>();
+                }
+            }
+
+            if (manaSlider == null)
+            {
+                var manaSliderObj = GameObject.Find("ManaSlider");
+                if (manaSliderObj != null)
+                {
+                    manaSlider = manaSliderObj.GetComponent<Slider>();
                 }
             }
 
@@ -510,21 +555,96 @@ namespace Maglin.Shop
                 return;
             }
 
-            // 골드 업데이트
-            if (goldText != null)
+            UpdateGoldUI();
+            UpdateHealthUI();
+            UpdateManaUI();
+            UpdateRelicUI();
+        }
+
+        /// <summary>
+        /// 골드 UI 업데이트
+        /// </summary>
+        private void UpdateGoldUI()
+        {
+            if (goldText != null && PlayerManager.Instance != null)
             {
                 goldText.text = $"{PlayerManager.Instance.CurrentGold}";
             }
+        }
 
-            // 체력 업데이트
+        /// <summary>
+        /// 체력 UI 업데이트
+        /// </summary>
+        private void UpdateHealthUI()
+        {
+            if (PlayerManager.Instance == null)
+                return;
+
+            int currentHealth = PlayerManager.Instance.CurrentHealth;
+            int maxHealth = PlayerManager.Instance.MaxHealth;
+
+            // 텍스트 업데이트
             if (healthText != null)
             {
-                int currentHealth = PlayerManager.Instance.CurrentHealth;
-                int maxHealth = PlayerManager.Instance.MaxHealth;
                 healthText.text = $"{currentHealth}/{maxHealth}";
 
                 if (debugMode)
-                    Debug.Log($"[ShopUIManager] 체력 UI 업데이트: {currentHealth}/{maxHealth}");
+                    Debug.Log($"[ShopUIManager] 체력 텍스트 업데이트: {currentHealth}/{maxHealth}");
+            }
+
+            // 슬라이더 업데이트
+            if (healthSlider != null)
+            {
+                if (maxHealth > 0)
+                {
+                    float healthRatio = (float)currentHealth / maxHealth;
+                    healthSlider.value = healthRatio;
+
+                    if (debugMode)
+                        Debug.Log($"[ShopUIManager] 체력 슬라이더 업데이트: {healthRatio:F2}");
+                }
+                else
+                {
+                    healthSlider.value = 0f;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 마나 UI 업데이트
+        /// </summary>
+        private void UpdateManaUI()
+        {
+            if (PlayerManager.Instance == null)
+                return;
+
+            int currentMana = PlayerManager.Instance.CurrentMana;
+            int maxMana = PlayerManager.Instance.MaxMana;
+
+            // 텍스트 업데이트
+            if (manaText != null)
+            {
+                manaText.text = $"{currentMana}/{maxMana}";
+
+                if (debugMode)
+                    Debug.Log($"[ShopUIManager] 마나 텍스트 업데이트: {currentMana}/{maxMana}");
+            }
+
+            // 슬라이더 업데이트
+            if (manaSlider != null)
+            {
+                if (maxMana > 0)
+                {
+                    float manaRatio = (float)currentMana / maxMana;
+                    manaSlider.value = manaRatio;
+
+                    if (debugMode)
+                        Debug.Log($"[ShopUIManager] 마나 슬라이더 업데이트: {manaRatio:F2}");
+                }
+                else
+                {
+                    manaSlider.value = 0f;
+                }
             }
         }
 
@@ -1490,7 +1610,7 @@ namespace Maglin.Shop
         /// </summary>
         private void OnGoldChanged(int newGold)
         {
-            UpdatePlayerStatus();
+            UpdateGoldUI();
             UpdateShopItems(); // 골드 변경 시 모든 상품 버튼 상태 업데이트
         }
 
@@ -1499,8 +1619,19 @@ namespace Maglin.Shop
         /// </summary>
         private void OnHealthChanged(int currentHealth, int maxHealth)
         {
-            UpdatePlayerStatus();
+            UpdateHealthUI();
             UpdateShopItems(); // 체력 회복 버튼 상태 업데이트
+        }
+
+        /// <summary>
+        /// 마나 변경 이벤트 처리
+        /// </summary>
+        private void OnManaChanged(int currentMana, int maxMana)
+        {
+            UpdateManaUI();
+
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] 마나 변경 감지: {currentMana}/{maxMana}");
         }
 
         /// <summary>
@@ -1870,6 +2001,153 @@ namespace Maglin.Shop
             {
                 Debug.LogWarning("[ShopUIManager] 카드 제거에 실패했습니다!");
             }
+        }
+
+        /// <summary>
+        /// RelicPanel 찾기 및 유물 UI 초기화
+        /// </summary>
+        private void FindRelicPanel()
+        {
+            if (relicPanel == null)
+            {
+                // Inspector에 할당되지 않은 경우 자동으로 찾기
+                var relicPanelObj = GameObject.Find("RelicPanel");
+                if (relicPanelObj != null)
+                {
+                    relicPanel = relicPanelObj.transform;
+                    if (debugMode)
+                        Debug.Log("[ShopUIManager] RelicPanel 자동 찾기 완료");
+                }
+                else if (debugMode)
+                {
+                    Debug.LogWarning("[ShopUIManager] RelicPanel을 찾을 수 없습니다! Inspector에서 할당하거나 씬에 'RelicPanel' GameObject를 추가하세요.");
+                }
+            }
+        }
+
+        /// <summary>
+        /// 유물 추가 이벤트 처리
+        /// </summary>
+        private void OnRelicAdded(Maglin.Relics.RelicSO relic)
+        {
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] 유물 추가 감지: {relic.RelicName}");
+
+            UpdateRelicUI();
+        }
+
+        /// <summary>
+        /// 유물 제거 이벤트 처리
+        /// </summary>
+        private void OnRelicRemoved(Maglin.Relics.RelicSO relic)
+        {
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] 유물 제거 감지: {relic.RelicName}");
+
+            UpdateRelicUI();
+        }
+
+        /// <summary>
+        /// 유물 UI 업데이트 (보유 유물 표시용)
+        /// </summary>
+        private void UpdateRelicUI()
+        {
+            // relicDisplayPrefab을 사용하거나, 없으면 relicPrefab을 폴백으로 사용
+            GameObject prefabToUse = relicDisplayPrefab != null ? relicDisplayPrefab : relicPrefab;
+
+            if (relicPanel == null || prefabToUse == null)
+            {
+                if (debugMode && relicPanel == null)
+                    Debug.LogWarning("[ShopUIManager] RelicPanel이 할당되지 않았습니다!");
+                if (debugMode && prefabToUse == null)
+                    Debug.LogWarning("[ShopUIManager] RelicDisplayPrefab과 RelicPrefab 둘 다 할당되지 않았습니다!");
+                return;
+            }
+
+            if (PlayerManager.Instance == null)
+            {
+                if (debugMode)
+                    Debug.LogWarning("[ShopUIManager] PlayerManager.Instance가 null입니다!");
+                return;
+            }
+
+            // 기존 유물 UI 제거
+            ClearRelicDisplayUIs();
+
+            // 현재 보유 중인 유물들 가져오기
+            var currentRelics = PlayerManager.Instance.CurrentRelics;
+
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] 현재 보유 유물 수: {currentRelics.Count}");
+
+            // 각 유물에 대해 UI 생성
+            foreach (var relic in currentRelics)
+            {
+                CreateRelicDisplayUI(relic, prefabToUse);
+            }
+        }
+
+        /// <summary>
+        /// 개별 유물 표시 UI 생성
+        /// </summary>
+        private void CreateRelicDisplayUI(Maglin.Relics.RelicSO relic, GameObject prefab)
+        {
+            if (relic == null || prefab == null || relicPanel == null)
+                return;
+
+            // RelicPrefab 인스턴스화
+            GameObject relicUI = Instantiate(prefab, relicPanel);
+
+            // RelicUI 컴포넌트를 통해 데이터 설정
+            UpdateRelicDisplayInfo(relicUI, relic);
+
+            // 생성된 UI를 리스트에 추가
+            relicUIs.Add(relicUI);
+
+            if (debugMode)
+                Debug.Log($"[ShopUIManager] 보유 유물 UI 생성 완료: {relic.RelicName}");
+        }
+
+        /// <summary>
+        /// 유물 표시 UI 정보 업데이트
+        /// </summary>
+        private void UpdateRelicDisplayInfo(GameObject relicUI, Maglin.Relics.RelicSO relicData)
+        {
+            if (relicUI == null || relicData == null)
+                return;
+
+            // RelicUI 컴포넌트 찾기
+            var relicUIComponent = relicUI.GetComponent<Maglin.Relics.RelicUI>();
+            if (relicUIComponent != null)
+            {
+                // RelicUI의 SetRelicData 메서드를 통해 데이터 설정
+                relicUIComponent.SetRelicData(relicData);
+
+                if (debugMode)
+                    Debug.Log($"[ShopUIManager] RelicUI 컴포넌트를 통해 데이터 설정: {relicData.RelicName}");
+            }
+            else if (debugMode)
+            {
+                Debug.LogWarning("[ShopUIManager] RelicUI 컴포넌트를 찾을 수 없습니다!");
+            }
+        }
+
+        /// <summary>
+        /// 모든 보유 유물 UI 제거
+        /// </summary>
+        private void ClearRelicDisplayUIs()
+        {
+            foreach (var relicUI in relicUIs)
+            {
+                if (relicUI != null)
+                {
+                    Destroy(relicUI);
+                }
+            }
+            relicUIs.Clear();
+
+            if (debugMode)
+                Debug.Log("[ShopUIManager] 보유 유물 UI 모두 제거됨");
         }
 
         /// <summary>

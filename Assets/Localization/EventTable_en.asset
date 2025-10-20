@@ -31,47 +31,27 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 10356742152192
-    m_Localized: EVENT01 DESC
+    m_Localized: EVENT01_DESCRIPTION
     m_Metadata:
       m_Items: []
   - m_Id: 10212873330688
-    m_Localized: EVENT01
+    m_Localized: "\uC601\uC5B401"
     m_Metadata:
       m_Items: []
-  - m_Id: 19408658358272
-    m_Localized: EVENT02
+  - m_Id: 3933339454005248
+    m_Localized: EVENT01_R1
     m_Metadata:
       m_Items: []
-  - m_Id: 19414089981952
-    m_Localized: EVENT02 DESC
+  - m_Id: 3933465744498688
+    m_Localized: EVENT01_R2_1
     m_Metadata:
       m_Items: []
-  - m_Id: 19415889338368
-    m_Localized: EVENT02_C1
+  - m_Id: 3933546648428544
+    m_Localized: EVENT01_R2_2
     m_Metadata:
       m_Items: []
-  - m_Id: 19420444352512
-    m_Localized: EVENT02_C2
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19422335983616
-    m_Localized: EVENT02_C3
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19423577497600
-    m_Localized: EVENT03
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19425427185664
-    m_Localized: EVENT03_DESCRIPTION
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19426677088256
-    m_Localized: EVENT03_C1
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19427813744640
-    m_Localized: EVENT03_C1
+  - m_Id: 3933718740721664
+    m_Localized: EVENT01_R3
     m_Metadata:
       m_Items: []
   references:

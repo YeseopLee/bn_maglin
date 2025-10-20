@@ -12,75 +12,60 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 324645b46a839461fad172ef019e0eb6, type: 3}
   m_Name: Event01
   m_EditorClassIdentifier: 
-  eventName: "\uAE30\uC0AC\uC758 \uC2DC\uCCB4"
-  eventDescription: "\uBC14\uC704 \uC606\uC5D0 \uAE30\uC0AC\uAC00 \uC549\uC544\uC788\uB2E4.\n\uC5B8\uB73B
-    \uBCF4\uAE30\uC5D0 \uC774\uBBF8 \uC0AC\uB9DD\uD55C\uAC83\uC73C\uB85C \uBCF4\uC778\uB2E4."
-  eventImage: {fileID: 21300000, guid: 6eed8f9b502442044b2b9709ff9b4c76, type: 3}
+  eventName:
+    m_TableReference:
+      m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+    m_TableEntryReference:
+      m_KeyId: 10212873330688
+      m_Key: 
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  eventDescription:
+    m_TableReference:
+      m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+    m_TableEntryReference:
+      m_KeyId: 10356742152192
+      m_Key: 
+    m_FallbackState: 0
+    m_WaitForCompletion: 0
+    m_LocalVariables: []
+  eventImage: {fileID: 21300000, guid: 156522ecd9a2f4848a5c3cdf9963740c, type: 3}
   minFloor: 1
   maxFloor: 999
   spawnWeight: 0.1
   isOneTimeOnly: 0
   choices:
-  - choiceText: "\uC804\uB9AC\uD488\uC744 \uCC59\uAE34\uB2E4"
-    resultText: choice 1 selected
+  - choiceText:
+      m_TableReference:
+        m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+      m_TableEntryReference:
+        m_KeyId: 10424383692800
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+    resultText:
+      m_TableReference:
+        m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+      m_TableEntryReference:
+        m_KeyId: 3933339454005248
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
     rewards:
-    - rewardType: 0
-      amount: 5
+    - rewardType: 4
+      amount: 1
       cardData: {fileID: 0}
-      relicData: {fileID: 0}
-      battleData: {fileID: 0}
-      isRandom: 0
-      minAmount: 0
-      maxAmount: 0
-    penalties: []
-    successRate: 0.8
-    failureText: Failed
-    failurePenalties:
-    - rewardType: 0
-      amount: -1
-      cardData: {fileID: 0}
-      relicData: {fileID: 0}
-      battleData: {fileID: 0}
-      isRandom: 0
-      minAmount: 0
-      maxAmount: 0
-  - choiceText: "\uBA85\uBCF5\uC744 \uBE4C\uC5B4\uC900\uB2E4"
-    resultText: choice 2 selected
-    rewards:
-    - rewardType: 0
-      amount: 10
-      cardData: {fileID: 0}
-      relicData: {fileID: 0}
-      battleData: {fileID: 0}
-      isRandom: 0
-      minAmount: 0
-      maxAmount: 0
-    penalties: []
-    successRate: 0.8
-    failureText: Failed
-    failurePenalties:
-    - rewardType: 0
-      amount: -1
-      cardData: {fileID: 0}
-      relicData: {fileID: 0}
-      battleData: {fileID: 0}
-      isRandom: 0
-      minAmount: 0
-      maxAmount: 0
-  - choiceText: "\uBB34\uC2DC\uD558\uACE0 \uC9C0\uB098\uAC04\uB2E4"
-    resultText: choice 3 selected
-    rewards:
-    - rewardType: 2
-      amount: 10
-      cardData: {fileID: 11400000, guid: 3c2f27f5a520449bca484d621b5efd7b, type: 2}
-      relicData: {fileID: 0}
+      relicData: {fileID: 11400000, guid: 3dc4e52fdeb8d4d8bbedcf380acff288, type: 2}
       battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
     penalties:
-    - rewardType: 0
-      amount: 10
+    - rewardType: 1
+      amount: -20
       cardData: {fileID: 0}
       relicData: {fileID: 0}
       battleData: {fileID: 0}
@@ -88,28 +73,35 @@ MonoBehaviour:
       minAmount: 0
       maxAmount: 0
     successRate: 1
-    failureText: Failed
-    failurePenalties:
-    - rewardType: 0
-      amount: -1
-      cardData: {fileID: 0}
-      relicData: {fileID: 0}
-      battleData: {fileID: 0}
-      isRandom: 0
-      minAmount: 0
-      maxAmount: 0
-  - choiceText: choice 3 battle
-    resultText: choice 3 selected
+    failureText:
+      m_TableReference:
+        m_TableCollectionName: 
+      m_TableEntryReference:
+        m_KeyId: 0
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+    failurePenalties: []
+  - choiceText:
+      m_TableReference:
+        m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+      m_TableEntryReference:
+        m_KeyId: 10472060346368
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+    resultText:
+      m_TableReference:
+        m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+      m_TableEntryReference:
+        m_KeyId: 3933465744498688
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
     rewards:
-    - rewardType: 7
-      amount: 0
-      cardData: {fileID: 0}
-      relicData: {fileID: 0}
-      battleData: {fileID: 11400000, guid: a04d41da3094d4652979a72820083345, type: 2}
-      isRandom: 0
-      minAmount: 0
-      maxAmount: 0
-    penalties:
     - rewardType: 0
       amount: 10
       cardData: {fileID: 0}
@@ -118,14 +110,57 @@ MonoBehaviour:
       isRandom: 0
       minAmount: 0
       maxAmount: 0
-    successRate: 1
-    failureText: Failed
+    penalties: []
+    successRate: 0.5
+    failureText:
+      m_TableReference:
+        m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+      m_TableEntryReference:
+        m_KeyId: 3933546648428544
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
     failurePenalties:
-    - rewardType: 0
-      amount: -1
+    - rewardType: 4
+      amount: 1
       cardData: {fileID: 0}
-      relicData: {fileID: 0}
+      relicData: {fileID: 11400000, guid: fd334d9908294490dba0578deea31d38, type: 2}
       battleData: {fileID: 0}
       isRandom: 0
       minAmount: 0
       maxAmount: 0
+  - choiceText:
+      m_TableReference:
+        m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+      m_TableEntryReference:
+        m_KeyId: 10482164424704
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+    resultText:
+      m_TableReference:
+        m_TableCollectionName: GUID:eb482bd51d9064809a1856d4c6123118
+      m_TableEntryReference:
+        m_KeyId: 3933718740721664
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+    rewards: []
+    penalties: []
+    successRate: 1
+    failureText:
+      m_TableReference:
+        m_TableCollectionName: 
+      m_TableEntryReference:
+        m_KeyId: 0
+        m_Key: 
+      m_FallbackState: 0
+      m_WaitForCompletion: 0
+      m_LocalVariables: []
+    failurePenalties: []
+  references:
+    version: 2
+    RefIds: []

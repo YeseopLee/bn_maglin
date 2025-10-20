@@ -19,59 +19,41 @@ MonoBehaviour:
     m_Items: []
   m_TableData:
   - m_Id: 10482164424704
-    m_Localized: "\uC774\uBCA4\uD2B801_C3"
+    m_Localized: "\uADF8\uB0E5 \uC9C0\uB098\uCE5C\uB2E4."
     m_Metadata:
       m_Items: []
   - m_Id: 10472060346368
-    m_Localized: "\uC774\uBCA4\uD2B801_C2"
+    m_Localized: "\uC81C\uB2E8\uC744 \uD30C\uAD34\uD55C\uB2E4."
     m_Metadata:
       m_Items: []
   - m_Id: 10424383692800
-    m_Localized: "\uC774\uBCA4\uD2B801_C1"
+    m_Localized: "\uCCB4\uB825 20\uC744 \uBC14\uCE5C\uB2E4."
     m_Metadata:
       m_Items: []
   - m_Id: 10356742152192
-    m_Localized: "\uC774\uBCA4\uD2B801 \uC124\uBA85"
+    m_Localized: "\uACE0\uB300\uC758 \uC81C\uB2E8 \uC704\uC5D0 \uB0A1\uC740 \uCD1B\uBD88\uC774
+      \uAE5C\uBE61\uC778\uB2E4. \n\uBB34\uC5B8\uAC00\uB97C \uBC14\uCE58\uBA74 \uD798\uC744
+      \uC5BB\uC744 \uC218 \uC788\uC744\uC9C0\uB3C4 \uBAA8\uB978\uB2E4."
     m_Metadata:
       m_Items: []
   - m_Id: 10212873330688
-    m_Localized: "\uC774\uBCA4\uD2B801"
+    m_Localized: "\uC78A\uD78C \uC81C\uB2E8"
     m_Metadata:
       m_Items: []
-  - m_Id: 19408658358272
-    m_Localized: "\uC774\uBCA4\uD2B802"
+  - m_Id: 3933339454005248
+    m_Localized: "\uC720\uBB3C\uC744 \uD68D\uB4DD\uD588\uB2E4."
     m_Metadata:
       m_Items: []
-  - m_Id: 19414089981952
-    m_Localized: "\uC774\uBCA4\uD2B802 \uC124\uBA85"
+  - m_Id: 3933465744498688
+    m_Localized: "\uACE8\uB4DC\uB97C 10 \uD68D\uB4DD\uD588\uB2E4."
     m_Metadata:
       m_Items: []
-  - m_Id: 19415889338368
-    m_Localized: "\uC774\uBCA4\uD2B802_C1"
+  - m_Id: 3933546648428544
+    m_Localized: "\uC800\uC8FC\uBC1B\uC740 \uC720\uBB3C\uC744 \uD68D\uB4DD\uD588\uB2E4."
     m_Metadata:
       m_Items: []
-  - m_Id: 19420444352512
-    m_Localized: "\uC774\uBCA4\uD2B802_C2"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19422335983616
-    m_Localized: "\uC774\uBCA4\uD2B802_C3"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19423577497600
-    m_Localized: "\uC774\uBCA4\uD2B803"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19425427185664
-    m_Localized: "\uC774\uBCA4\uD2B803_\uC124\uBA85"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19426677088256
-    m_Localized: "\uC774\uBCA4\uD2B803_C1"
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19427813744640
-    m_Localized: EVENT03_C1
+  - m_Id: 3933718740721664
+    m_Localized: "\uC544\uBB34\uC77C\uB3C4 \uC77C\uC5B4\uB098\uC9C0 \uC54A\uC558\uB2E4."
     m_Metadata:
       m_Items: []
   references:

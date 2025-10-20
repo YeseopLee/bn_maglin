@@ -16,7 +16,7 @@ MonoBehaviour:
   m_TableCollectionNameGuidString: eb482bd51d9064809a1856d4c6123118
   m_Entries:
   - m_Id: 10212873330688
-    m_Key: EVENT01_TITLE
+    m_Key: EVENT01
     m_Metadata:
       m_Items: []
   - m_Id: 10356742152192
@@ -35,44 +35,20 @@ MonoBehaviour:
     m_Key: EVENT01_C3
     m_Metadata:
       m_Items: []
-  - m_Id: 19408658358272
-    m_Key: EVENT02_TITLE
+  - m_Id: 3933339454005248
+    m_Key: EVENT01_R1
     m_Metadata:
       m_Items: []
-  - m_Id: 19414089981952
-    m_Key: EVENT02_DESCRIPTION
+  - m_Id: 3933465744498688
+    m_Key: EVENT01_R2_1
     m_Metadata:
       m_Items: []
-  - m_Id: 19415889338368
-    m_Key: EVENT02_C1
+  - m_Id: 3933546648428544
+    m_Key: EVENT01_R2_2
     m_Metadata:
       m_Items: []
-  - m_Id: 19420444352512
-    m_Key: EVENT02_C2
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19422335983616
-    m_Key: EVENT02_C3
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19423577497600
-    m_Key: EVENT03_TITLE
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19425427185664
-    m_Key: EVENT03_DESCRIPTION
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19426677088256
-    m_Key: EVENT03_C1
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19427813744640
-    m_Key: EVENT03_C2
-    m_Metadata:
-      m_Items: []
-  - m_Id: 19428979761152
-    m_Key: EVENT03_C3
+  - m_Id: 3933718740721664
+    m_Key: EVENT01_R3
     m_Metadata:
       m_Items: []
   m_Metadata:

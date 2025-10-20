@@ -17,6 +17,11 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: fbe78ea78b60c4867a1c760aa02119f2
   m_SerializeEntries:
+  - m_GUID: 10ce292591d2549f5ba0795befd3df82
+    m_Address: Assets/Localization/FontAssetTable Shared Data.asset
+    m_ReadOnly: 1
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: 2f64ae3dc4b454c70be012293f1ac110
     m_Address: Assets/Localization/UiTable Shared Data.asset
     m_ReadOnly: 1

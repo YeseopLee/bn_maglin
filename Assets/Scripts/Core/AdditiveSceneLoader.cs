@@ -343,6 +343,12 @@ namespace Maglin.Core
             // 씬 로딩 후 추가 대기 (게임 오브젝트들이 초기화될 시간)
             await Task.Delay((int)(postLoadingDelay * 1000));
 
+            // LanguageManager에게 씬 로드 알림
+            if (LanguageManager.Instance != null)
+            {
+                LanguageManager.Instance.OnSceneLoaded();
+            }
+
             OnTargetSceneLoaded?.Invoke(sceneName);
 
             if (debugMode)
