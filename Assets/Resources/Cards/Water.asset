@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bf8935723bbf14916b41ed37b4710b30, type: 3}
   m_Name: Water
   m_EditorClassIdentifier: 
-  cardName: Water
+  cardName: Water Element
   cardType: 0
   elementType: 2
   baseDamage: 0
@@ -34,4 +34,8 @@ MonoBehaviour:
   monsterToSummon: {fileID: 0}
   summonPosition: 0
   pushExistingMonster: 1
+  enableCCEffect: 0
+  ccEffectType: 0
+  ccEffectDuration: 1
+  ccEffectValue: 0
   requiredCombinations: []

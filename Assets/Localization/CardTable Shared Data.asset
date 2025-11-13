@@ -1,0 +1,102 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b11a58205ec3474ca216360e9fa74a8, type: 3}
+  m_Name: CardTable Shared Data
+  m_EditorClassIdentifier: 
+  m_TableCollectionName: CardTable
+  m_TableCollectionNameGuidString: 3a58dde50f6b84b1bbd7db2bfe5b2922
+  m_Entries:
+  - m_Id: 28381798400
+    m_Key: element_fire
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2193347305472
+    m_Key: 'element_fire_desc
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 87521484800
+    m_Key: element_ice
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2656855646208
+    m_Key: 'element_ice_desc
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 71667015680
+    m_Key: element_light
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2598059892736
+    m_Key: 'element_light_desc
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 155204968448
+    m_Key: element_dark
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2806890094592
+    m_Key: 'element_dark_desc
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1509419900928
+    m_Key: element_wind
+    m_Metadata:
+      m_Items: []
+  - m_Id: 2829237346304
+    m_Key: 'element_wind_desc
+
+'
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1746138030080
+    m_Key: a1_energyball
+    m_Metadata:
+      m_Items: []
+  - m_Id: 3000062959616
+    m_Key: a1_energyball_desc
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1794435440640
+    m_Key: a1_wall
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1924127514624
+    m_Key: a1_stone
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1972034854912
+    m_Key: a1_arrow
+    m_Metadata:
+      m_Items: []
+  - m_Id: 1993442582528
+    m_Key: a1_bome_energyball
+    m_Metadata:
+      m_Items: []
+  m_Metadata:
+    m_Items: []
+  m_KeyGenerator:
+    rid: 538336565767700480
+  references:
+    version: 2
+    RefIds:
+    - rid: 538336565767700480
+      type: {class: DistributedUIDGenerator, ns: UnityEngine.Localization.Tables, asm: Unity.Localization}
+      data:
+        m_CustomEpoch: 1762935564856

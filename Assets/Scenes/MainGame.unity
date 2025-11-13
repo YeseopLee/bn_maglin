@@ -1310,18 +1310,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   starterDeck:
-  - {fileID: 11400000, guid: efd678e606cf34774b1d52d7195fc39e, type: 2}
-  - {fileID: 11400000, guid: d3f1fe76ad1d94470907d4c85b8318ff, type: 2}
   - {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
   - {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}
   - {fileID: 11400000, guid: fd039a11222e24eb99aa6790758da01e, type: 2}
-  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
-  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
-  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
-  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
-  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
-  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
-  - {fileID: 11400000, guid: 704e732d9569b495ea931e24a38b3fd1, type: 2}
+  - {fileID: 11400000, guid: de39f22d7a9b345aaa1634c45d1bca4b, type: 2}
+  - {fileID: 11400000, guid: aed21699177cc445aae3d9036ab045d7, type: 2}
   currentDeck: []
   hand: []
   discardPile: []

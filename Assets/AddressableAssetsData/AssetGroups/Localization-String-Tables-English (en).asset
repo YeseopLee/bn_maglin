@@ -17,6 +17,12 @@ MonoBehaviour:
     m_SerializedData: []
   m_GUID: 265c1c32aa7e949c99534b88a4d67aa9
   m_SerializeEntries:
+  - m_GUID: 3ab7c654e4b954935a7b98d8f3f39acf
+    m_Address: CardTable_en
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-en
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: e0878bdf46a13453ebd776c09b63a00f
     m_Address: EventTable_en
     m_ReadOnly: 1

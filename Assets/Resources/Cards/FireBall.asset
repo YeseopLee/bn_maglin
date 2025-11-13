@@ -22,11 +22,22 @@ MonoBehaviour:
   targetCount: 1
   cardDescription: FireBall
   cardImage: {fileID: 0}
-  cardVFXEffect: {fileID: 11400000, guid: 1390e2ead98454ba9bc997193d225dc8, type: 2}
+  cardEffect: {fileID: 11400000, guid: 5b0253a2f2b134729a00ac39704e8ac1, type: 2}
   cardSound: {fileID: 0}
+  showVFXPerTarget: 1
   comboFailureType: 0
   cardPrice: 0
-  fieldEffectToApply: {fileID: 11400000, guid: 0a5f10d97ee1e446ab4786633cb853ff, type: 2}
+  fieldEffectToApply: {fileID: 0}
+  movementType: 0
+  movementDistance: 1
+  enableMonsterSummon: 0
+  monsterToSummon: {fileID: 0}
+  summonPosition: 0
+  pushExistingMonster: 1
+  enableCCEffect: 0
+  ccEffectType: 0
+  ccEffectDuration: 1
+  ccEffectValue: 0
   requiredCombinations:
   - elementCard: {fileID: 11400000, guid: 444b79299024c43f6955ee46892c8a80, type: 2}
     active1Card: {fileID: 11400000, guid: 8b8c19584aa924701b736db7fb274d36, type: 2}

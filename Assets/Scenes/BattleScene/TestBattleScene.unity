@@ -11679,7 +11679,7 @@ MonoBehaviour:
   turnIndicator: {fileID: 0}
   healthSlider: {fileID: 773651738}
   manaSlider: {fileID: 215307494}
-  targetEnemyPanel: {fileID: 1214275304}
+  targetEnemyPanel: {fileID: 0}
   targetEnemySprite: {fileID: 360762853}
   targetEnemyHealthBar: {fileID: 1371883327}
   targetEnemyHealthText: {fileID: 637916974}
@@ -25315,9 +25315,9 @@ MonoBehaviour:
   m_UiScaleMode: 1
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 1600, y: 900}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
-  m_MatchWidthOrHeight: 0
+  m_MatchWidthOrHeight: 0.5
   m_PhysicalUnit: 3
   m_FallbackScreenDPI: 96
   m_DefaultSpriteDPI: 96
@@ -35135,7 +35135,7 @@ Camera:
   m_Depth: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 320
+    m_Bits: 576
   m_RenderingPath: -1
   m_TargetTexture: {fileID: 8400000, guid: 9d32c65e3112d481caf99eb10f0daf5e, type: 2}
   m_TargetDisplay: 0

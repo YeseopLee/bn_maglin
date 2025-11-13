@@ -22,7 +22,7 @@ MonoBehaviour:
   targetCount: 1
   cardDescription: EnergyBall
   cardImage: {fileID: 21300000, guid: c8796ba9057304c9ba3490450d775f59, type: 3}
-  cardEffect: {fileID: 11400000, guid: 842d58133dec44bb7a78191d760d15c5, type: 2}
+  cardEffect: {fileID: 11400000, guid: fba4f3435deed48b3b33f24c25c4594e, type: 2}
   cardSound: {fileID: 0}
   showVFXPerTarget: 1
   comboFailureType: 0
@@ -34,8 +34,8 @@ MonoBehaviour:
   monsterToSummon: {fileID: 0}
   summonPosition: 0
   pushExistingMonster: 1
-  enableCCEffect: 1
-  ccEffectType: 1
+  enableCCEffect: 0
+  ccEffectType: 0
   ccEffectDuration: 2
   ccEffectValue: 0.05
   requiredCombinations: []

@@ -24,6 +24,12 @@ MonoBehaviour:
     - Locale-zh-CN
     - Preload
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 903b44c80caa441d897ccf2edc9465a9
+    m_Address: CardTable_zh-CN
+    m_ReadOnly: 1
+    m_SerializedLabels:
+    - Locale-zh-CN
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 1
   m_Settings: {fileID: 11400000, guid: f2a4bfe0442ab45829921392e15d4d77, type: 2}
   m_SchemaSet:

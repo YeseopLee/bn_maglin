@@ -27,6 +27,11 @@ MonoBehaviour:
     m_ReadOnly: 1
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3a58dde50f6b84b1bbd7db2bfe5b2922
+    m_Address: Assets/Localization/CardTable Shared Data.asset
+    m_ReadOnly: 1
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   - m_GUID: eb482bd51d9064809a1856d4c6123118
     m_Address: Assets/Localization/EventTable Shared Data.asset
     m_ReadOnly: 1
